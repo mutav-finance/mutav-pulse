@@ -103,3 +103,26 @@ fn rebalance_allocates_to_strategies_and_total_assets_sums() {
     assert_eq!(c.reserve.total_assets(), 1_100);
     assert_eq!(c.reserve.nav_per_share(), 11_000_000);
 }
+
+#[test]
+fn sign_guarantee_gated_by_free_capital() {
+    let c = setup(10_000); // 100% coverage ratio
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+
+    // Exposure = 100 * 6 * 100% = 600 <= free_capital 1000 -> ok.
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &6);
+    assert_eq!(c.reserve.coverage_required(), 600);
+    assert_eq!(c.reserve.free_capital(), 400);
+
+    // Another 100*6 = 600 exposure but only 400 free -> must panic.
+    let r = c.reserve.try_sign_guarantee(&landlord, &100, &6);
+    assert!(r.is_err());
+
+    // Settling the first frees the floor again.
+    c.reserve.settle_guarantee(&gid);
+    assert_eq!(c.reserve.coverage_required(), 0);
+    assert_eq!(c.reserve.free_capital(), 1_000);
+}

@@ -4,7 +4,7 @@ use stellar_tokens::fungible::{Base, FungibleToken};
 use strategy::StrategyClient;
 
 mod types;
-use types::{DataKey, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
+use types::{BPS_DENOM, DataKey, Guarantee, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
 
@@ -136,6 +136,87 @@ impl Reserve {
         assert!(shares > 0, "zero shares minted");
         Base::mint(e, &from, shares);
         shares
+    }
+
+    fn coverage_ratio_bps(e: &Env) -> i128 {
+        let v: u32 = e.storage().instance().get(&DataKey::CoverageRatioBps).unwrap();
+        v as i128
+    }
+
+    fn active_guarantee_ids(e: &Env) -> Vec<u32> {
+        e.storage().instance().get(&DataKey::ActiveGuarantees).unwrap()
+    }
+
+    pub fn guarantee(e: &Env, id: u32) -> Guarantee {
+        e.storage().persistent().get(&DataKey::Guarantee(id)).unwrap()
+    }
+
+    pub fn coverage_required(e: &Env) -> i128 {
+        let ratio = Self::coverage_ratio_bps(e);
+        let mut raw = 0i128;
+        for id in Self::active_guarantee_ids(e).iter() {
+            let g = Self::guarantee(e, id);
+            let remaining_months = (g.months_covered - g.months_used) as i128;
+            raw += g.monthly_amount * remaining_months;
+        }
+        raw * ratio / BPS_DENOM
+    }
+
+    pub fn free_capital(e: &Env) -> i128 {
+        // Stable-backed surplus (H2): volatile venue value never counts here.
+        let fc = Self::stable_assets(e) - Self::coverage_required(e);
+        if fc > 0 { fc } else { 0 }
+    }
+
+    pub fn sign_guarantee(
+        e: &Env,
+        landlord: Address,
+        monthly_amount: i128,
+        months_covered: u32,
+    ) -> u32 {
+        Self::admin(e).require_auth();
+        assert!(monthly_amount > 0 && months_covered > 0, "invalid guarantee");
+        let ratio = Self::coverage_ratio_bps(e);
+        let new_exposure = monthly_amount * (months_covered as i128) * ratio / BPS_DENOM;
+        assert!(
+            Self::free_capital(e) >= new_exposure,
+            "insufficient free capital to underwrite"
+        );
+
+        let id: u32 = e.storage().instance().get(&DataKey::NextGuaranteeId).unwrap();
+        e.storage().instance().set(&DataKey::NextGuaranteeId, &(id + 1));
+        let g = Guarantee {
+            id,
+            landlord,
+            monthly_amount,
+            months_covered,
+            months_used: 0,
+            active: true,
+        };
+        e.storage().persistent().set(&DataKey::Guarantee(id), &g);
+        let mut active = Self::active_guarantee_ids(e);
+        active.push_back(id);
+        e.storage().instance().set(&DataKey::ActiveGuarantees, &active);
+        id
+    }
+
+    pub fn settle_guarantee(e: &Env, id: u32) {
+        Self::admin(e).require_auth();
+        let mut g = Self::guarantee(e, id);
+        g.active = false;
+        e.storage().persistent().set(&DataKey::Guarantee(id), &g);
+        Self::remove_active(e, id);
+    }
+
+    fn remove_active(e: &Env, id: u32) {
+        let active = Self::active_guarantee_ids(e);
+        let mut next = Vec::<u32>::new(e);
+        for x in active.iter() {
+            if x != id {
+                next.push_back(x);
+            }
+        }
+        e.storage().instance().set(&DataKey::ActiveGuarantees, &next);
     }
 }
 
