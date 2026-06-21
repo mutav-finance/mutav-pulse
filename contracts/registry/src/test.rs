@@ -1,8 +1,8 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, Env};
-use interfaces::{Guarantee, RegistryClient};
-use crate::Registry;
+use interfaces::Guarantee;
+use crate::{Registry, RegistryClient};
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
     Guarantee {

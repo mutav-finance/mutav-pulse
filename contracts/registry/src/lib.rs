@@ -22,6 +22,32 @@ impl Registry {
         e.storage().instance().set(&DataKey::ActiveIds, &Vec::<u32>::new(e));
     }
 
+    pub fn admin(e: &Env) -> Address {
+        e.storage().instance().get(&DataKey::Admin).unwrap()
+    }
+
+    pub fn set_writer(e: Env, policy: Address) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        e.storage().instance().set(&DataKey::Writer, &policy);
+    }
+
+    pub fn writer(e: Env) -> Address {
+        e.storage().instance().get(&DataKey::Writer).unwrap()
+    }
+
+    pub fn set_admin(e: Env, new_admin: Address) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        e.storage().instance().set(&DataKey::Admin, &new_admin);
+    }
+
+    pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
+        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
+        admin.require_auth();
+        e.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
+
     fn require_writer(e: &Env) {
         let writer: Address = e.storage().instance().get(&DataKey::Writer).unwrap();
         writer.require_auth();
@@ -30,28 +56,6 @@ impl Registry {
 
 #[contractimpl]
 impl RegistryTrait for Registry {
-    fn set_writer(e: Env, policy: Address) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-        e.storage().instance().set(&DataKey::Writer, &policy);
-    }
-
-    fn writer(e: Env) -> Address {
-        e.storage().instance().get(&DataKey::Writer).unwrap()
-    }
-
-    fn set_admin(e: Env, new_admin: Address) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-        e.storage().instance().set(&DataKey::Admin, &new_admin);
-    }
-
-    fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-        e.deployer().update_current_contract_wasm(new_wasm_hash);
-    }
-
     fn next_id(e: Env, ) -> u32 {
         Registry::require_writer(&e);
         let id: u32 = e.storage().instance().get(&DataKey::NextId).unwrap();
