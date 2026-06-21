@@ -31,7 +31,7 @@ impl Vault {
 
     pub fn admin(e: &Env) -> Address { e.storage().instance().get(&DataKey::Admin).unwrap() }
     pub fn underlying(e: &Env) -> Address { e.storage().instance().get(&DataKey::Underlying).unwrap() }
-    pub fn policy(e: &Env) -> Address { e.storage().instance().get(&DataKey::Policy).unwrap() }
+    pub fn policy(e: &Env) -> Address { e.storage().instance().get(&DataKey::Policy).expect("policy not set") }
     pub fn premium_income(e: &Env) -> i128 { e.storage().instance().get(&DataKey::PremiumIncome).unwrap_or(0) }
 
     pub fn set_policy(e: &Env, policy: Address) {
@@ -53,6 +53,7 @@ impl Vault {
     pub fn add_strategy(e: &Env, address: Address, weight_bps: u32, volatile: bool) {
         Self::admin(e).require_auth();
         let mut list: Vec<StrategyAlloc> = e.storage().instance().get(&DataKey::Strategies).unwrap();
+        assert!(list.iter().all(|s| s.address != address), "strategy already added");
         list.push_back(StrategyAlloc { address, weight_bps, volatile });
         e.storage().instance().set(&DataKey::Strategies, &list);
     }
@@ -269,14 +270,15 @@ impl Vault {
 impl VaultTrait for Vault {
     fn disburse(e: Env, to: Address, amount: i128) {
         // Only callable by the registered policy contract.
-        let policy: Address = e.storage().instance().get(&DataKey::Policy).unwrap();
+        let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
-        // Snapshot stable assets before the payout; calling coverage_required on the
-        // policy would cause re-entry (policy → vault → policy) so we use the local
-        // stable_assets_inner value instead.  ensure_liquidity already guarantees
-        // available_held >= amount; the post-payout check below confirms the stable
-        // floor is non-negative (coverage enforcement via free_capital is handled in
-        // process_redemptions, the admin-gated path where re-entry is not a concern).
+        // Pre-transfer snapshot: `stable_pre >= amount` prevents the vault from
+        // overdrawing its own stable balance (vault overdraft guard).  This does NOT
+        // prove `stable_assets >= coverage_required` post-payout — that solvency
+        // invariant is enforced by the policy lowering coverage_required (via
+        // months_used / active flag) BEFORE calling disburse, so the ordering is:
+        //   1. policy decrements coverage  2. vault disburses
+        // TODO(solvency-oracle): guard prevents vault overdraft, not coverage breach; coverage enforcement relies on policy ordering
         let stable_pre = Vault::stable_assets_inner(&e);
         assert!(stable_pre >= amount, "disburse breaches solvency");
         Vault::ensure_liquidity(&e, amount);
@@ -285,7 +287,7 @@ impl VaultTrait for Vault {
 
     fn collect_premium(e: Env, from: Address, amount: i128) {
         // Only callable by the registered policy contract.
-        let policy: Address = e.storage().instance().get(&DataKey::Policy).unwrap();
+        let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
         assert!(amount > 0, "amount must be positive");
         Vault::token_client(&e).transfer(&from, &e.current_contract_address(), &amount);

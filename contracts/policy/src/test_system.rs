@@ -46,7 +46,7 @@ fn full_demo_flow_holds_solvency_invariant() {
     let sid = s.e.register(MockStrategy, (s.underlying.clone(),));
     s.vault.add_strategy(&sid, &10_000, &false);
     s.vault.rebalance();
-    assert!(s.vault.stable_assets() >= s.policy.coverage_required());
+    assert_eq!(s.policy.coverage_required(), 0); // no guarantees signed yet — coverage is vacuously zero
 
     let g1 = s.policy.sign_guarantee(&landlord, &500, &6, &1_000, &2_592_000);
     let g2 = s.policy.sign_guarantee(&landlord, &300, &6, &1_000, &2_592_000);

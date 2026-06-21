@@ -102,3 +102,43 @@ fn disburse_and_collect_are_policy_gated() {
     c.e.set_auths(&[]);
     assert!(c.vault.try_disburse(&landlord, &10).is_err());
 }
+
+/// Ported from monolith `inflation_attack_does_not_zero_out_second_depositor`.
+/// An attacker deposits 1 unit, then inflates the vault balance with a direct
+/// token mint (donation attack). The virtual offset in the share formula must
+/// ensure the victim still receives > 0 shares.
+#[test]
+fn inflation_attack_does_not_zero_out_second_depositor() {
+    let c = setup();
+    let attacker = Address::generate(&c.e);
+    let victim = Address::generate(&c.e);
+    c.token_admin.mint(&attacker, &1);
+    c.token_admin.mint(&victim, &10_000);
+
+    // Attacker seeds 1 unit then donates 10_000 straight to the vault id.
+    c.vault.deposit(&attacker, &1);
+    c.token_admin.mint(&c.vault_id, &10_000); // direct donation inflates assets
+
+    // With the virtual offset, the victim still receives non-zero shares.
+    let victim_shares = c.vault.deposit(&victim, &10_000);
+    assert!(victim_shares > 0, "victim was inflated out of shares");
+}
+
+/// Ported from monolith `cancel_redeem_returns_escrowed_shares`.
+/// Verifies that cancelling a redeem request returns the escrowed shares and
+/// removes the request from the pending queue.
+#[test]
+fn cancel_redeem_returns_escrowed_shares() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&alice, &1_000);
+
+    let rid = c.vault.request_redeem(&alice, &400);
+    assert_eq!(c.vault.balance(&alice), 600); // 400 escrowed to vault
+    assert_eq!(c.vault.pending_requests().len(), 1);
+
+    c.vault.cancel_redeem(&rid);
+    assert_eq!(c.vault.balance(&alice), 1_000); // shares returned
+    assert_eq!(c.vault.pending_requests().len(), 0);
+}

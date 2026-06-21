@@ -1,5 +1,6 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Ledger as _;
 use soroban_sdk::{token, Address, Env};
 use vault::{Vault, VaultClient};
 use registry::{Registry, RegistryClient};
@@ -65,4 +66,34 @@ fn premium_gated_coverage_and_default() {
     c.policy.cover_default(&gid); // pays landlord via vault.disburse
     assert_eq!(c.token.balance(&landlord), 100);
     assert_eq!(c.policy.coverage_required(), 500);
+}
+
+/// Ported from monolith `coverage_lapses_when_premium_period_passes` +
+/// `cover_default_halted_until_premiums_current`.
+/// Uses a short 100-second period so ledger.set_timestamp can advance past it.
+#[test]
+fn cover_default_halted_and_coverage_lapses_over_time() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&alice, &1_000);
+
+    // Unpaid: cover_default is halted, is_current is false.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &100); // 100-sec period
+    assert!(!c.policy.is_current(&gid));
+    assert!(c.policy.try_cover_default(&gid).is_err());
+
+    // Pay the premium -> is_current, coverage active.
+    c.policy.pay_premium(&agency, &gid);
+    assert!(c.policy.is_current(&gid));
+    assert_eq!(c.policy.coverage_required(), 600);
+
+    // Advance past the paid_until timestamp -> coverage lapses.
+    c.e.ledger().set_timestamp(150);
+    assert!(!c.policy.is_current(&gid));
+    assert_eq!(c.policy.coverage_required(), 0);
+    assert!(c.policy.try_cover_default(&gid).is_err());
 }
