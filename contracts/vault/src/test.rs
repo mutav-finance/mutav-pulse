@@ -56,3 +56,22 @@ fn deposit_and_nav_and_free_capital() {
     c.policy.set_coverage(&600);
     assert_eq!(c.vault.free_capital(), 400);
 }
+
+#[test]
+fn redemption_gated_by_free_capital() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&alice, &1_000);
+
+    c.policy.set_coverage(&800); // free capital = 200
+    let rid = c.vault.request_redeem(&alice, &1_000);
+    c.vault.process_redemptions(&10);
+    assert!(!c.vault.request(&rid).fulfilled); // blocked
+
+    c.policy.set_coverage(&0); // floor releases
+    c.vault.process_redemptions(&10);
+    assert!(c.vault.request(&rid).fulfilled);
+    c.vault.claim(&rid);
+    assert_eq!(c.token.balance(&alice), 1_000);
+}
