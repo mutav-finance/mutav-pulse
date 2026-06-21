@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractclient, contracttype, Address, Env, Vec};
+use soroban_sdk::{contractclient, contracttype, Address, BytesN, Env, Vec};
 
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
 /// storage, keyed by id — never here.
@@ -31,6 +31,10 @@ pub trait Policy {
 
 #[contractclient(name = "RegistryClient")]
 pub trait Registry {
+    fn set_writer(env: Env, policy: Address);
+    fn writer(env: Env) -> Address;
+    fn set_admin(env: Env, new_admin: Address);
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
     fn next_id(env: Env) -> u32;
     fn put(env: Env, g: Guarantee);
     fn get(env: Env, id: u32) -> Guarantee;
