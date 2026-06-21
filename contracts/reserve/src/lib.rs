@@ -7,6 +7,7 @@ mod types;
 use types::{BPS_DENOM, DataKey, Guarantee, RedeemRequest, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
+mod test_narrative;
 
 #[contract]
 pub struct Reserve;

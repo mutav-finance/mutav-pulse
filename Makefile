@@ -1,7 +1,7 @@
 default: build
 
 build:
-	cargo build --target wasm32v1-none --release
+	stellar contract build
 
 test:
 	cargo test

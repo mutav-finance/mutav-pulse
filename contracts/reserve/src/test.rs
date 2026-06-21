@@ -76,7 +76,7 @@ fn inflation_attack_does_not_zero_out_second_depositor() {
 
 use mock_strategy::{MockStrategy, MockStrategyClient};
 
-fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
+pub fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
     let id = c.e.register(MockStrategy, (c.underlying.clone(),));
     c.reserve.add_strategy(&id, &weight_bps, &false); // stable mock
     MockStrategyClient::new(&c.e, &id)
