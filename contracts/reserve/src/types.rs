@@ -20,6 +20,9 @@ pub struct Guarantee {
     pub monthly_amount: i128,
     pub months_covered: u32,
     pub months_used: u32,
+    pub fee_bps: u32,    // monthly premium = monthly_amount * fee_bps / 10000
+    pub period_secs: u64, // length of one premium period
+    pub paid_until: u64,  // ledger timestamp coverage is paid through (0 = unpaid)
     pub active: bool,
 }
 

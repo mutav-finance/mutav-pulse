@@ -1,5 +1,5 @@
 #![cfg(test)]
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::{token, Address, Env};
 use crate::{Reserve, ReserveClient};
 
@@ -104,37 +104,69 @@ fn rebalance_allocates_to_strategies_and_total_assets_sums() {
     assert_eq!(c.reserve.nav_per_share(), 11_000_000);
 }
 
+const MONTH: u64 = 2_592_000;
+
 #[test]
-fn sign_guarantee_gated_by_free_capital() {
+fn premium_activates_and_gates_coverage() {
     let c = setup(10_000); // 100% coverage ratio
     let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000); // premium funds
     c.reserve.deposit(&alice, &1_000);
 
-    // Exposure = 100 * 6 * 100% = 600 <= free_capital 1000 -> ok.
-    let gid = c.reserve.sign_guarantee(&landlord, &100, &6);
+    // Sign two guarantees (100/mo x 6mo, 12% fee). Nothing locked yet.
+    let g0 = c.reserve.sign_guarantee(&landlord, &100, &6, &1_200, &MONTH);
+    let g1 = c.reserve.sign_guarantee(&landlord, &100, &6, &1_200, &MONTH);
+    assert_eq!(c.reserve.coverage_required(), 0); // unpaid -> uncovered
+    assert_eq!(c.reserve.monthly_premium(&g0), 12); // 100 * 12%
+
+    // Pay g0 -> activates 600 coverage; premium 12 flows into the reserve.
+    c.reserve.pay_premium(&agency, &g0);
+    assert!(c.reserve.is_current(&g0));
     assert_eq!(c.reserve.coverage_required(), 600);
-    assert_eq!(c.reserve.free_capital(), 400);
+    assert_eq!(c.reserve.total_assets(), 1_012);
 
-    // Another 100*6 = 600 exposure but only 400 free -> must panic.
-    let r = c.reserve.try_sign_guarantee(&landlord, &100, &6);
+    // Activating g1 too would need 1200 backing but only ~1024 is stable ->
+    // the capacity gate reverts at pay_premium (and rolls back the transfer).
+    let r = c.reserve.try_pay_premium(&agency, &g1);
     assert!(r.is_err());
+    assert_eq!(c.reserve.coverage_required(), 600); // unchanged
 
-    // Settling the first frees the floor again.
-    c.reserve.settle_guarantee(&gid);
+    // Settling g0 frees the floor.
+    c.reserve.settle_guarantee(&g0);
     assert_eq!(c.reserve.coverage_required(), 0);
-    assert_eq!(c.reserve.free_capital(), 1_000);
+}
+
+#[test]
+fn premium_income_lifts_nav() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    assert_eq!(c.reserve.nav_per_share(), 10_000_000); // 1.00
+
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &6, &1_000, &MONTH); // 10% fee
+    c.reserve.pay_premium(&agency, &gid); // +10 revenue, no shares minted
+    assert_eq!(c.reserve.total_assets(), 1_010);
+    assert_eq!(c.reserve.nav_per_share(), 10_100_000); // 1.01 -> premium accrues to investors
 }
 
 #[test]
 fn cover_default_pays_one_month_and_keeps_active() {
     let c = setup(10_000);
     let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
     c.reserve.deposit(&alice, &1_000);
-    let gid = c.reserve.sign_guarantee(&landlord, &100, &2); // 2 months cap
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &2, &1_000, &MONTH); // 2 months cap
+    c.reserve.pay_premium(&agency, &gid); // activate coverage
 
     c.reserve.cover_default(&gid);
     assert_eq!(c.token.balance(&landlord), 100);
@@ -156,17 +188,20 @@ fn cover_default_pays_one_month_and_keeps_active() {
 fn cover_default_divests_when_idle_is_short() {
     let c = setup(10_000);
     let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
     c.reserve.deposit(&alice, &1_000);
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &1, &1_000, &MONTH);
+    c.reserve.pay_premium(&agency, &gid); // +10 into the vault
     let s1 = add_mock(&c, 10_000);
-    c.reserve.rebalance(); // all 1000 now in strategy, idle = 0
+    c.reserve.rebalance(); // all 1010 now in strategy, idle = 0
     assert_eq!(c.reserve.available_held(), 0);
 
-    let gid = c.reserve.sign_guarantee(&landlord, &100, &1);
     c.reserve.cover_default(&gid); // must divest 100 to pay
     assert_eq!(c.token.balance(&landlord), 100);
-    assert_eq!(s1.balance(), 900);
+    assert_eq!(s1.balance(), 910); // 1010 - 100
 }
 
 #[test]
@@ -175,32 +210,35 @@ fn redemption_only_from_surplus_then_claim() {
     let alice = Address::generate(&c.e);
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&agency, &1_000);
     c.reserve.deposit(&alice, &1_000); // alice holds 1000 shares
 
-    // Lock 800 into coverage -> free capital 200.
-    c.reserve.sign_guarantee(&landlord, &100, &8); // exposure 800
-    assert_eq!(c.reserve.free_capital(), 200);
+    // Lock 800 into coverage via an active (paid) guarantee.
+    c.reserve.sign_guarantee(&landlord, &100, &8, &1_000, &MONTH); // exposure 800
+    c.reserve.pay_premium(&agency, &0); // +10, activates coverage
+    assert_eq!(c.reserve.free_capital(), 210); // stable 1010 - coverage 800
 
-    // Alice requests to redeem all 1000 shares (=1000 underlying at NAV 1.0).
+    // Alice requests to redeem all 1000 shares.
     let rid = c.reserve.request_redeem(&alice, &1_000);
     c.reserve.process_redemptions(&10);
 
-    // Surplus is only 200, so the 1000-underlying request cannot fulfill.
+    // Surplus is only ~210, so the full request cannot fulfill.
     let req = c.reserve.request(&rid);
     assert!(!req.fulfilled);
 
-    // Settle the guarantee -> surplus becomes 1000, request can fulfill.
-    // (guarantee id is 0, the first signed)
+    // Settle the guarantee -> floor releases, request can fulfill.
     c.reserve.settle_guarantee(&0);
     c.reserve.process_redemptions(&10);
     let req2 = c.reserve.request(&rid);
     assert!(req2.fulfilled);
-    assert_eq!(req2.claimable, 1_000);
+    // alice (sole shareholder) gets her deposit back plus the accrued premium.
+    assert!(req2.claimable >= 1_000);
 
     c.reserve.claim(&rid);
-    assert_eq!(c.token.balance(&alice), 1_000);
-    // shares burned, supply back to 0
-    assert_eq!(c.reserve.total_assets(), 0);
+    assert!(c.token.balance(&alice) >= 1_000);
+    // shares burned; only rounding dust remains.
+    assert!(c.reserve.total_assets() <= 2);
 }
 
 #[test]
@@ -208,11 +246,14 @@ fn cover_default_has_priority_over_queue() {
     let c = setup(10_000);
     let alice = Address::generate(&c.e);
     let landlord = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
     c.reserve.deposit(&alice, &1_000);
-    let gid = c.reserve.sign_guarantee(&landlord, &100, &4); // exposure 400, free 600
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &4, &1_000, &MONTH); // exposure 400
+    c.reserve.pay_premium(&agency, &gid); // activate coverage
 
-    // Alice queues to exit 1000 (more than the 600 surplus).
+    // Alice queues to exit 1000 (more than the surplus).
     let rid = c.reserve.request_redeem(&alice, &1_000);
     c.reserve.process_redemptions(&10);
     assert!(!c.reserve.request(&rid).fulfilled); // blocked by the floor
@@ -236,6 +277,56 @@ fn cancel_redeem_returns_escrowed_shares() {
     c.reserve.cancel_redeem(&rid);
     assert_eq!(c.reserve.balance(&alice), 1_000); // returned
     assert_eq!(c.reserve.pending_requests().len(), 0);
+}
+
+#[test]
+fn cover_default_halted_until_premiums_current() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &3, &1_000, &MONTH);
+
+    // Unpaid: not current, coverage halted.
+    assert!(!c.reserve.is_current(&gid));
+    assert!(c.reserve.try_cover_default(&gid).is_err());
+
+    // Pay the premium -> current -> coverage resumes.
+    c.reserve.pay_premium(&agency, &gid);
+    assert!(c.reserve.is_current(&gid));
+    c.reserve.cover_default(&gid);
+    assert_eq!(c.token.balance(&landlord), 100);
+}
+
+#[test]
+fn coverage_lapses_when_premium_period_passes() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+
+    // Short 100-second period; pay once -> covered through t=100.
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &6, &1_000, &100);
+    c.reserve.pay_premium(&agency, &gid);
+    assert!(c.reserve.is_current(&gid));
+    assert_eq!(c.reserve.coverage_required(), 600);
+
+    // Time advances past the paid period -> coverage lapses, capital is freed.
+    c.e.ledger().set_timestamp(150);
+    assert!(!c.reserve.is_current(&gid));
+    assert_eq!(c.reserve.coverage_required(), 0);
+    assert!(c.reserve.try_cover_default(&gid).is_err());
+
+    // Agency catches up -> coverage resumes.
+    c.reserve.pay_premium(&agency, &gid);
+    assert!(c.reserve.is_current(&gid));
+    assert_eq!(c.reserve.coverage_required(), 600);
 }
 
 #[test]

@@ -152,15 +152,55 @@ impl Reserve {
         e.storage().persistent().get(&DataKey::Guarantee(id)).unwrap()
     }
 
+    /// A guarantee is covered only while its premiums are paid up to date
+    /// (paid through a time strictly after now; paid_until == 0 means unpaid).
+    pub fn is_current(e: &Env, id: u32) -> bool {
+        Self::guarantee(e, id).paid_until > e.ledger().timestamp()
+    }
+
+    pub fn monthly_premium(e: &Env, id: u32) -> i128 {
+        let g = Self::guarantee(e, id);
+        g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM
+    }
+
     pub fn coverage_required(e: &Env) -> i128 {
         let ratio = Self::coverage_ratio_bps(e);
+        let now = e.ledger().timestamp();
         let mut raw = 0i128;
         for id in Self::active_guarantee_ids(e).iter() {
             let g = Self::guarantee(e, id);
-            let remaining_months = (g.months_covered - g.months_used) as i128;
-            raw += g.monthly_amount * remaining_months;
+            // Premium-gated: only paid-up (current) guarantees lock capital.
+            if g.paid_until > now {
+                let remaining_months = (g.months_covered - g.months_used) as i128;
+                raw += g.monthly_amount * remaining_months;
+            }
         }
         raw * ratio / BPS_DENOM
+    }
+
+    /// Agency pays the monthly premium; revenue flows into the reserve (lifts
+    /// NAV, no shares minted) and extends coverage by one period.
+    pub fn pay_premium(e: &Env, payer: Address, id: u32) {
+        payer.require_auth();
+        let mut g = Self::guarantee(e, id);
+        assert!(g.active, "guarantee inactive");
+
+        let premium = g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM;
+        assert!(premium > 0, "zero premium");
+        Self::token_client(e).transfer(&payer, &e.current_contract_address(), &premium);
+
+        // Extend from whichever is later: now (if lapsed) or the current paid-through.
+        let now = e.ledger().timestamp();
+        let base = if g.paid_until > now { g.paid_until } else { now };
+        g.paid_until = base + g.period_secs;
+        e.storage().persistent().set(&DataKey::Guarantee(id), &g);
+
+        // Activating/maintaining coverage must keep the reserve solvent (the
+        // premium alone cannot back a full month of exposure).
+        assert!(
+            Self::stable_assets(e) >= Self::coverage_required(e),
+            "insufficient capital to activate coverage"
+        );
     }
 
     pub fn free_capital(e: &Env) -> i128 {
@@ -174,15 +214,14 @@ impl Reserve {
         landlord: Address,
         monthly_amount: i128,
         months_covered: u32,
+        fee_bps: u32,
+        period_secs: u64,
     ) -> u32 {
         Self::admin(e).require_auth();
         assert!(monthly_amount > 0 && months_covered > 0, "invalid guarantee");
-        let ratio = Self::coverage_ratio_bps(e);
-        let new_exposure = monthly_amount * (months_covered as i128) * ratio / BPS_DENOM;
-        assert!(
-            Self::free_capital(e) >= new_exposure,
-            "insufficient free capital to underwrite"
-        );
+        assert!(fee_bps > 0 && period_secs > 0, "invalid premium terms");
+        // No capital is locked at sign time: coverage is premium-gated and only
+        // activates (and is checked for solvency) on the first pay_premium.
 
         let id: u32 = e.storage().instance().get(&DataKey::NextGuaranteeId).unwrap();
         e.storage().instance().set(&DataKey::NextGuaranteeId, &(id + 1));
@@ -192,6 +231,9 @@ impl Reserve {
             monthly_amount,
             months_covered,
             months_used: 0,
+            fee_bps,
+            period_secs,
+            paid_until: 0, // unpaid -> not covered until first premium
             active: true,
         };
         e.storage().persistent().set(&DataKey::Guarantee(id), &g);
@@ -245,6 +287,8 @@ impl Reserve {
         let mut g = Self::guarantee(e, id);
         assert!(g.active, "guarantee inactive");
         assert!(g.months_used < g.months_covered, "coverage exhausted");
+        // Coverage is halted unless the agency's premiums are up to date.
+        assert!(g.paid_until > e.ledger().timestamp(), "premiums not up to date");
 
         Self::ensure_liquidity(e, g.monthly_amount);
         Self::token_client(e).transfer(
