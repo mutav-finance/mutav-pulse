@@ -1,0 +1,17 @@
+[package]
+name = "reserve"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-tokens = { workspace = true }
+strategy = { path = "../strategy" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+mock-strategy = { path = "../mock-strategy" }
