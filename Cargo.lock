@@ -944,6 +944,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
 
 [[package]]
+name = "mock-policy"
+version = "0.1.0"
+dependencies = [
+ "interfaces",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "mock-strategy"
 version = "0.1.0"
 dependencies = [
@@ -1034,6 +1042,17 @@ checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der",
  "spki",
+]
+
+[[package]]
+name = "policy"
+version = "0.1.0"
+dependencies = [
+ "interfaces",
+ "mock-strategy",
+ "registry",
+ "soroban-sdk",
+ "vault",
 ]
 
 [[package]]
@@ -1756,6 +1775,18 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "vault"
+version = "0.1.0"
+dependencies = [
+ "interfaces",
+ "mock-policy",
+ "mock-strategy",
+ "soroban-sdk",
+ "stellar-tokens",
+ "strategy",
+]
 
 [[package]]
 name = "version_check"
