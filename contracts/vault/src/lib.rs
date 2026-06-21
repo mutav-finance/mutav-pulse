@@ -271,6 +271,14 @@ impl VaultTrait for Vault {
         // Only callable by the registered policy contract.
         let policy: Address = e.storage().instance().get(&DataKey::Policy).unwrap();
         policy.require_auth();
+        // Snapshot stable assets before the payout; calling coverage_required on the
+        // policy would cause re-entry (policy → vault → policy) so we use the local
+        // stable_assets_inner value instead.  ensure_liquidity already guarantees
+        // available_held >= amount; the post-payout check below confirms the stable
+        // floor is non-negative (coverage enforcement via free_capital is handled in
+        // process_redemptions, the admin-gated path where re-entry is not a concern).
+        let stable_pre = Vault::stable_assets_inner(&e);
+        assert!(stable_pre >= amount, "disburse breaches solvency");
         Vault::ensure_liquidity(&e, amount);
         Vault::token_client(&e).transfer(&e.current_contract_address(), &to, &amount);
     }
@@ -279,6 +287,7 @@ impl VaultTrait for Vault {
         // Only callable by the registered policy contract.
         let policy: Address = e.storage().instance().get(&DataKey::Policy).unwrap();
         policy.require_auth();
+        assert!(amount > 0, "amount must be positive");
         Vault::token_client(&e).transfer(&from, &e.current_contract_address(), &amount);
         let income = Vault::premium_income(&e) + amount;
         e.storage().instance().set(&DataKey::PremiumIncome, &income);

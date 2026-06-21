@@ -75,3 +75,30 @@ fn redemption_gated_by_free_capital() {
     c.vault.claim(&rid);
     assert_eq!(c.token.balance(&alice), 1_000);
 }
+
+#[test]
+fn disburse_and_collect_are_policy_gated() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&alice, &1_000);
+
+    // collect_premium via the policy: no shares minted, NAV rises.
+    let supply_before = c.vault.total_supply();
+    c.policy.call_collect(&agency, &50);
+    assert_eq!(c.vault.total_supply(), supply_before); // no new shares
+    assert_eq!(c.vault.premium_income(), 50);
+    assert_eq!(c.vault.total_assets(), 1_050);
+
+    // disburse via the policy pays out.
+    c.policy.call_disburse(&landlord, &100);
+    assert_eq!(c.token.balance(&landlord), 100);
+
+    // A non-policy caller cannot disburse: disable auth mocking so
+    // policy.require_auth() in disburse actually enforces the caller.
+    c.e.set_auths(&[]);
+    assert!(c.vault.try_disburse(&landlord, &10).is_err());
+}
