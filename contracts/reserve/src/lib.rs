@@ -1,6 +1,7 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, token, Address, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
+use strategy::StrategyClient;
 
 mod types;
 use types::{DataKey, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
@@ -52,10 +53,63 @@ impl Reserve {
         Self::token_client(e).balance(&e.current_contract_address()) - Self::reserved_for_claims(e)
     }
 
-    /// Net assets attributable to outstanding shares.
+    /// Net assets attributable to outstanding shares (drives NAV).
     pub fn total_assets(e: &Env) -> i128 {
-        // Strategies are summed in Task 5; here it is just available held.
-        Self::available_held(e)
+        Self::available_held(e) + Self::strategies_balance(e)
+    }
+
+    pub fn add_strategy(e: &Env, address: Address, weight_bps: u32, volatile: bool) {
+        Self::admin(e).require_auth();
+        let mut list: Vec<StrategyAlloc> =
+            e.storage().instance().get(&DataKey::Strategies).unwrap();
+        list.push_back(StrategyAlloc { address, weight_bps, volatile });
+        e.storage().instance().set(&DataKey::Strategies, &list);
+    }
+
+    pub fn strategies(e: &Env) -> Vec<StrategyAlloc> {
+        e.storage().instance().get(&DataKey::Strategies).unwrap()
+    }
+
+    fn strategies_balance(e: &Env) -> i128 {
+        let mut total = 0i128;
+        for s in Self::strategies(e).iter() {
+            total += StrategyClient::new(e, &s.address).balance();
+        }
+        total
+    }
+
+    /// Solvency-relevant assets: cash + stable (non-volatile) strategies only.
+    /// The coverage floor may never depend on volatile venue value (H2).
+    pub fn stable_assets(e: &Env) -> i128 {
+        let mut total = Self::available_held(e);
+        for s in Self::strategies(e).iter() {
+            if !s.volatile {
+                total += StrategyClient::new(e, &s.address).balance();
+            }
+        }
+        total
+    }
+
+    /// Allocate any idle available held into strategies per weights.
+    pub fn rebalance(e: &Env) {
+        Self::admin(e).require_auth();
+        let idle = Self::available_held(e);
+        if idle <= 0 {
+            return;
+        }
+        let list = Self::strategies(e);
+        let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
+        if total_weight == 0 {
+            return;
+        }
+        let token = Self::token_client(e);
+        for s in list.iter() {
+            let portion = idle * (s.weight_bps as i128) / total_weight;
+            if portion > 0 {
+                token.transfer(&e.current_contract_address(), &s.address, &portion);
+                StrategyClient::new(e, &s.address).invest(&portion);
+            }
+        }
     }
 
     pub fn nav_per_share(e: &Env) -> i128 {

@@ -73,3 +73,33 @@ fn inflation_attack_does_not_zero_out_second_depositor() {
     let victim_shares = c.reserve.deposit(&victim, &10_000);
     assert!(victim_shares > 0, "victim was inflated out of shares");
 }
+
+use mock_strategy::{MockStrategy, MockStrategyClient};
+
+fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
+    let id = c.e.register(MockStrategy, (c.underlying.clone(),));
+    c.reserve.add_strategy(&id, &weight_bps, &false); // stable mock
+    MockStrategyClient::new(&c.e, &id)
+}
+
+#[test]
+fn rebalance_allocates_to_strategies_and_total_assets_sums() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+
+    let s1 = add_mock(&c, 6_000); // 60%
+    let s2 = add_mock(&c, 4_000); // 40%
+    c.reserve.rebalance();
+
+    assert_eq!(s1.balance(), 600);
+    assert_eq!(s2.balance(), 400);
+    assert_eq!(c.reserve.available_held(), 0);
+    assert_eq!(c.reserve.total_assets(), 1_000);
+
+    // Yield in a strategy lifts NAV.
+    s1.accrue(&100);
+    assert_eq!(c.reserve.total_assets(), 1_100);
+    assert_eq!(c.reserve.nav_per_share(), 11_000_000);
+}
