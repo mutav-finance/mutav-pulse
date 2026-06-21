@@ -4,7 +4,7 @@ use stellar_tokens::fungible::{Base, FungibleToken};
 use strategy::StrategyClient;
 
 mod types;
-use types::{BPS_DENOM, DataKey, Guarantee, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
+use types::{BPS_DENOM, DataKey, Guarantee, RedeemRequest, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
 
@@ -260,6 +260,122 @@ impl Reserve {
         if !g.active {
             Self::remove_active(e, id);
         }
+    }
+
+    pub fn request(e: &Env, id: u32) -> RedeemRequest {
+        e.storage().persistent().get(&DataKey::Request(id)).unwrap()
+    }
+
+    pub fn pending_requests(e: &Env) -> Vec<u32> {
+        e.storage().instance().get(&DataKey::PendingRequests).unwrap()
+    }
+
+    pub fn request_redeem(e: &Env, owner: Address, shares: i128) -> u32 {
+        owner.require_auth();
+        assert!(shares > 0, "shares must be positive");
+        // Escrow the shares into the contract (internal move; owner already authed).
+        Base::update(e, Some(&owner), Some(&e.current_contract_address()), shares);
+
+        let id: u32 = e.storage().instance().get(&DataKey::NextRequestId).unwrap();
+        e.storage().instance().set(&DataKey::NextRequestId, &(id + 1));
+        let req = RedeemRequest {
+            id,
+            owner,
+            shares,
+            fulfilled: false,
+            claimed: false,
+            claimable: 0,
+        };
+        e.storage().persistent().set(&DataKey::Request(id), &req);
+        let mut pending = Self::pending_requests(e);
+        pending.push_back(id);
+        e.storage().instance().set(&DataKey::PendingRequests, &pending);
+        id
+    }
+
+    /// Returns escrowed shares for an unfulfilled request and drops it.
+    pub fn cancel_redeem(e: &Env, id: u32) {
+        let mut req = Self::request(e, id);
+        req.owner.require_auth();
+        assert!(!req.fulfilled, "already fulfilled");
+        assert!(!req.claimed, "already claimed");
+        // Return the escrowed shares from the contract to the owner. Uses the
+        // internal `update` (no-auth) since the holder is this contract.
+        Base::update(e, Some(&e.current_contract_address()), Some(&req.owner), req.shares);
+        req.claimed = true; // consume so it cannot be processed/cancelled twice
+        e.storage().persistent().set(&DataKey::Request(id), &req);
+        let pending = Self::pending_requests(e);
+        let mut next = Vec::<u32>::new(e);
+        for x in pending.iter() {
+            if x != id {
+                next.push_back(x);
+            }
+        }
+        e.storage().instance().set(&DataKey::PendingRequests, &next);
+    }
+
+    pub fn process_redemptions(e: &Env, max_batch: u32) {
+        Self::admin(e).require_auth();
+        // Reentrancy guard (M2): `ensure_liquidity` calls out to adapters.
+        assert!(
+            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
+            "reentrant call"
+        );
+        e.storage().instance().set(&DataKey::Locked, &true);
+
+        let pending = Self::pending_requests(e);
+        let mut still_pending = Vec::<u32>::new(e);
+        let mut processed: u32 = 0;
+        for id in pending.iter() {
+            let mut req = Self::request(e, id);
+            if req.fulfilled || req.claimed {
+                continue;
+            }
+            // Bounded processing (M3): once the batch is spent, keep the rest queued.
+            if processed >= max_batch {
+                still_pending.push_back(id);
+                continue;
+            }
+            processed += 1;
+
+            let supply = Base::total_supply(e);
+            let claimable = if supply == 0 {
+                0
+            } else {
+                req.shares * (Self::total_assets(e) + VIRTUAL_OFFSET) / (supply + VIRTUAL_OFFSET)
+            };
+            // Gate on stable surplus only (H2).
+            if claimable > 0 && Self::free_capital(e) >= claimable {
+                Self::ensure_liquidity(e, claimable);
+                // Effects before further interactions: burn escrowed shares now.
+                Base::update(e, Some(&e.current_contract_address()), None, req.shares);
+                let reserved = Self::reserved_for_claims(e) + claimable;
+                e.storage().instance().set(&DataKey::ReservedForClaims, &reserved);
+                req.fulfilled = true;
+                req.claimable = claimable;
+                e.storage().persistent().set(&DataKey::Request(id), &req);
+            } else {
+                still_pending.push_back(id);
+            }
+        }
+        e.storage().instance().set(&DataKey::PendingRequests, &still_pending);
+        e.storage().instance().set(&DataKey::Locked, &false);
+    }
+
+    pub fn claim(e: &Env, id: u32) {
+        let mut req = Self::request(e, id);
+        req.owner.require_auth();
+        assert!(req.fulfilled, "not yet fulfilled");
+        assert!(!req.claimed, "already claimed");
+        Self::token_client(e).transfer(
+            &e.current_contract_address(),
+            &req.owner,
+            &req.claimable,
+        );
+        let reserved = Self::reserved_for_claims(e) - req.claimable;
+        e.storage().instance().set(&DataKey::ReservedForClaims, &reserved);
+        req.claimed = true;
+        e.storage().persistent().set(&DataKey::Request(id), &req);
     }
 }
 

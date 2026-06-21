@@ -168,3 +168,72 @@ fn cover_default_divests_when_idle_is_short() {
     assert_eq!(c.token.balance(&landlord), 100);
     assert_eq!(s1.balance(), 900);
 }
+
+#[test]
+fn redemption_only_from_surplus_then_claim() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000); // alice holds 1000 shares
+
+    // Lock 800 into coverage -> free capital 200.
+    c.reserve.sign_guarantee(&landlord, &100, &8); // exposure 800
+    assert_eq!(c.reserve.free_capital(), 200);
+
+    // Alice requests to redeem all 1000 shares (=1000 underlying at NAV 1.0).
+    let rid = c.reserve.request_redeem(&alice, &1_000);
+    c.reserve.process_redemptions(&10);
+
+    // Surplus is only 200, so the 1000-underlying request cannot fulfill.
+    let req = c.reserve.request(&rid);
+    assert!(!req.fulfilled);
+
+    // Settle the guarantee -> surplus becomes 1000, request can fulfill.
+    // (guarantee id is 0, the first signed)
+    c.reserve.settle_guarantee(&0);
+    c.reserve.process_redemptions(&10);
+    let req2 = c.reserve.request(&rid);
+    assert!(req2.fulfilled);
+    assert_eq!(req2.claimable, 1_000);
+
+    c.reserve.claim(&rid);
+    assert_eq!(c.token.balance(&alice), 1_000);
+    // shares burned, supply back to 0
+    assert_eq!(c.reserve.total_assets(), 0);
+}
+
+#[test]
+fn cover_default_has_priority_over_queue() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &4); // exposure 400, free 600
+
+    // Alice queues to exit 1000 (more than the 600 surplus).
+    let rid = c.reserve.request_redeem(&alice, &1_000);
+    c.reserve.process_redemptions(&10);
+    assert!(!c.reserve.request(&rid).fulfilled); // blocked by the floor
+
+    // A default is still served from the reserve, ahead of the queue.
+    c.reserve.cover_default(&gid);
+    assert_eq!(c.token.balance(&landlord), 100);
+}
+
+#[test]
+fn cancel_redeem_returns_escrowed_shares() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+
+    let rid = c.reserve.request_redeem(&alice, &400);
+    assert_eq!(c.reserve.balance(&alice), 600); // escrowed
+    assert_eq!(c.reserve.pending_requests().len(), 1);
+
+    c.reserve.cancel_redeem(&rid);
+    assert_eq!(c.reserve.balance(&alice), 1_000); // returned
+    assert_eq!(c.reserve.pending_requests().len(), 0);
+}
