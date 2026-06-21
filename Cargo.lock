@@ -1166,16 +1166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reserve"
-version = "0.1.0"
-dependencies = [
- "mock-strategy",
- "soroban-sdk",
- "stellar-tokens",
- "strategy",
-]
-
-[[package]]
 name = "rfc6979"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

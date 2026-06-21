@@ -1,30 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-# Requires: stellar CLI, a funded testnet identity named `deployer`.
 NETWORK=testnet
 SOURCE=deployer
 ADMIN=$(stellar keys address "$SOURCE")
-RATIO_BPS=10000
-
-echo "Building..."
-make build
-
-echo "Deploying a test USDC SAC is out of scope here; export USDC_SAC first." >&2
 : "${USDC_SAC:?set USDC_SAC to the underlying token contract id}"
 
-RESERVE=$(stellar contract deploy \
-  --wasm target/wasm32v1-none/release/reserve.wasm \
-  --source "$SOURCE" --network "$NETWORK" \
-  -- --admin "$ADMIN" --underlying "$USDC_SAC" --coverage_ratio_bps "$RATIO_BPS")
-echo "RESERVE=$RESERVE"
+make build
+dep(){ stellar contract deploy --wasm "target/wasm32v1-none/release/$1" --source "$SOURCE" --network "$NETWORK" -- "${@:2}"; }
+inv(){ stellar contract invoke --id "$1" --source "$SOURCE" --network "$NETWORK" -- "${@:2}"; }
 
-MOCK=$(stellar contract deploy \
-  --wasm target/wasm32v1-none/release/mock_strategy.wasm \
-  --source "$SOURCE" --network "$NETWORK" \
-  -- --underlying "$USDC_SAC")
-echo "MOCK_STRATEGY=$MOCK"
+REGISTRY=$(dep registry.wasm --admin "$ADMIN")
+VAULT=$(dep vault.wasm --admin "$ADMIN" --underlying "$USDC_SAC")
+POLICY=$(dep policy.wasm --admin "$ADMIN")
+MOCK=$(dep mock_strategy.wasm --underlying "$USDC_SAC")
 
-stellar contract invoke --id "$RESERVE" --source "$SOURCE" --network "$NETWORK" \
-  -- add_strategy --address "$MOCK" --weight_bps 10000 --volatile false
-echo "Wired mock strategy at 100% (replace with real adapters in Plan 2)."
+inv "$REGISTRY" set_writer --policy "$POLICY"
+inv "$POLICY" set_vault --addr "$VAULT"
+inv "$POLICY" set_registry --addr "$REGISTRY"
+inv "$POLICY" set_coverage_ratio_bps --bps 10000
+inv "$VAULT" set_policy --policy "$POLICY"
+inv "$VAULT" add_strategy --address "$MOCK" --weight_bps 10000 --volatile false
+
+echo "REGISTRY=$REGISTRY"; echo "VAULT=$VAULT"; echo "POLICY=$POLICY"; echo "MOCK=$MOCK"
