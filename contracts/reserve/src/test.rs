@@ -126,3 +126,45 @@ fn sign_guarantee_gated_by_free_capital() {
     assert_eq!(c.reserve.coverage_required(), 0);
     assert_eq!(c.reserve.free_capital(), 1_000);
 }
+
+#[test]
+fn cover_default_pays_one_month_and_keeps_active() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &2); // 2 months cap
+
+    c.reserve.cover_default(&gid);
+    assert_eq!(c.token.balance(&landlord), 100);
+    let g = c.reserve.guarantee(&gid);
+    assert_eq!(g.months_used, 1);
+    assert!(g.active); // still active
+    // remaining exposure 100*1 = 100
+    assert_eq!(c.reserve.coverage_required(), 100);
+
+    c.reserve.cover_default(&gid); // exhausts the cap
+    assert_eq!(c.token.balance(&landlord), 200);
+    let g2 = c.reserve.guarantee(&gid);
+    assert_eq!(g2.months_used, 2);
+    assert!(!g2.active); // auto-settled
+    assert_eq!(c.reserve.coverage_required(), 0);
+}
+
+#[test]
+fn cover_default_divests_when_idle_is_short() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    let s1 = add_mock(&c, 10_000);
+    c.reserve.rebalance(); // all 1000 now in strategy, idle = 0
+    assert_eq!(c.reserve.available_held(), 0);
+
+    let gid = c.reserve.sign_guarantee(&landlord, &100, &1);
+    c.reserve.cover_default(&gid); // must divest 100 to pay
+    assert_eq!(c.token.balance(&landlord), 100);
+    assert_eq!(s1.balance(), 900);
+}

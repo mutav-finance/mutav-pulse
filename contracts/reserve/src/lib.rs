@@ -218,6 +218,49 @@ impl Reserve {
         }
         e.storage().instance().set(&DataKey::ActiveGuarantees, &next);
     }
+
+    /// Divest from strategies (in order) until available held covers `needed`.
+    fn ensure_liquidity(e: &Env, needed: i128) {
+        if Self::available_held(e) >= needed {
+            return;
+        }
+        for s in Self::strategies(e).iter() {
+            if Self::available_held(e) >= needed {
+                break;
+            }
+            let short = needed - Self::available_held(e);
+            let client = StrategyClient::new(e, &s.address);
+            let avail = client.balance();
+            let pull = if short < avail { short } else { avail };
+            if pull > 0 {
+                client.divest(&pull, &e.current_contract_address());
+            }
+        }
+        assert!(Self::available_held(e) >= needed, "insufficient liquidity");
+    }
+
+    pub fn cover_default(e: &Env, id: u32) {
+        Self::admin(e).require_auth();
+        let mut g = Self::guarantee(e, id);
+        assert!(g.active, "guarantee inactive");
+        assert!(g.months_used < g.months_covered, "coverage exhausted");
+
+        Self::ensure_liquidity(e, g.monthly_amount);
+        Self::token_client(e).transfer(
+            &e.current_contract_address(),
+            &g.landlord,
+            &g.monthly_amount,
+        );
+
+        g.months_used += 1;
+        if g.months_used == g.months_covered {
+            g.active = false;
+        }
+        e.storage().persistent().set(&DataKey::Guarantee(id), &g);
+        if !g.active {
+            Self::remove_active(e, id);
+        }
+    }
 }
 
 #[contractimpl(contracttrait)]
