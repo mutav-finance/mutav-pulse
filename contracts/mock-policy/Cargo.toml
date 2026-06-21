@@ -1,0 +1,12 @@
+[package]
+name = "mock-policy"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+interfaces = { path = "../interfaces" }
