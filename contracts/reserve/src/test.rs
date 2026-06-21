@@ -237,3 +237,29 @@ fn cancel_redeem_returns_escrowed_shares() {
     assert_eq!(c.reserve.balance(&alice), 1_000); // returned
     assert_eq!(c.reserve.pending_requests().len(), 0);
 }
+
+#[test]
+fn set_admin_rotates_authority() {
+    let c = setup(10_000);
+    let new_admin = Address::generate(&c.e);
+    c.reserve.set_admin(&new_admin);
+    assert_eq!(c.reserve.admin(), new_admin);
+}
+
+#[test]
+fn remove_strategy_divests_and_drops_it() {
+    let c = setup(10_000);
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.reserve.deposit(&alice, &1_000);
+    let s1 = add_mock(&c, 10_000);
+    c.reserve.rebalance();
+    assert_eq!(s1.balance(), 1_000);
+    assert_eq!(c.reserve.strategies().len(), 1);
+
+    c.reserve.remove_strategy(&s1.address);
+    assert_eq!(s1.balance(), 0);                 // fully divested
+    assert_eq!(c.reserve.available_held(), 1_000); // back in the vault
+    assert_eq!(c.reserve.strategies().len(), 0);   // dropped from registry
+    assert_eq!(c.reserve.total_assets(), 1_000);   // value preserved
+}

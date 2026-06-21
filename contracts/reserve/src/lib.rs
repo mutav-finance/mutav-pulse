@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, token, Address, Env, MuxedAddress, String, Vec};
+use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
 use strategy::StrategyClient;
 
@@ -377,6 +377,35 @@ impl Reserve {
         e.storage().instance().set(&DataKey::ReservedForClaims, &reserved);
         req.claimed = true;
         e.storage().persistent().set(&DataKey::Request(id), &req);
+    }
+
+    pub fn set_admin(e: &Env, new_admin: Address) {
+        Self::admin(e).require_auth();
+        e.storage().instance().set(&DataKey::Admin, &new_admin);
+    }
+
+    pub fn remove_strategy(e: &Env, address: Address) {
+        Self::admin(e).require_auth();
+        // Pull the whole position back to the vault first.
+        let client = StrategyClient::new(e, &address);
+        let bal = client.balance();
+        if bal > 0 {
+            client.divest(&bal, &e.current_contract_address());
+        }
+        // Drop it from the registry.
+        let list = Self::strategies(e);
+        let mut next = Vec::<StrategyAlloc>::new(e);
+        for s in list.iter() {
+            if s.address != address {
+                next.push_back(s);
+            }
+        }
+        e.storage().instance().set(&DataKey::Strategies, &next);
+    }
+
+    pub fn upgrade(e: &Env, new_wasm_hash: BytesN<32>) {
+        Self::admin(e).require_auth();
+        e.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 
