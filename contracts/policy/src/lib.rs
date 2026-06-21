@@ -49,8 +49,9 @@ impl Policy {
         Self::admin(e).require_auth();
         assert!(monthly_amount > 0 && months_covered > 0, "invalid guarantee");
         assert!(fee_bps > 0 && period_secs > 0, "invalid premium terms");
-        let id = Self::registry(e).next_id();
-        Self::registry(e).put(&Guarantee {
+        let reg = Self::registry(e);
+        let id = reg.next_id();
+        reg.put(&Guarantee {
             id, landlord, monthly_amount, months_covered, months_used: 0,
             fee_bps, period_secs, paid_until: 0, active: true,
         });
@@ -59,7 +60,8 @@ impl Policy {
 
     pub fn pay_premium(e: &Env, payer: Address, id: u32) {
         payer.require_auth();
-        let mut g = Self::registry(e).get(&id);
+        let reg = Self::registry(e);
+        let mut g = reg.get(&id);
         assert!(g.active, "guarantee inactive");
         let premium = g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM;
         assert!(premium > 0, "zero premium");
@@ -67,27 +69,29 @@ impl Policy {
         let now = e.ledger().timestamp();
         let base = if g.paid_until > now { g.paid_until } else { now };
         g.paid_until = base + g.period_secs;
-        Self::registry(e).put(&g);
+        reg.put(&g);
         assert!(Self::vault(e).stable_assets() >= Self::coverage_required(e.clone()), "insufficient capital to activate coverage");
     }
 
     pub fn cover_default(e: &Env, id: u32) {
         Self::admin(e).require_auth();
-        let mut g = Self::registry(e).get(&id);
+        let reg = Self::registry(e);
+        let mut g = reg.get(&id);
         assert!(g.active, "guarantee inactive");
         assert!(g.months_used < g.months_covered, "coverage exhausted");
         assert!(g.paid_until > e.ledger().timestamp(), "premiums not up to date");
         g.months_used += 1;
         if g.months_used == g.months_covered { g.active = false; }
-        Self::registry(e).put(&g);
+        reg.put(&g);
         Self::vault(e).disburse(&g.landlord, &g.monthly_amount);
     }
 
     pub fn settle_guarantee(e: &Env, id: u32) {
         Self::admin(e).require_auth();
-        let mut g = Self::registry(e).get(&id);
+        let reg = Self::registry(e);
+        let mut g = reg.get(&id);
         g.active = false;
-        Self::registry(e).put(&g);
+        reg.put(&g);
     }
 }
 
