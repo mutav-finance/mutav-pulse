@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractclient, contracttype, Address, Env, Vec};
+use soroban_sdk::{contractclient, contracttype, Address, Env, Val, Vec};
 
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
 /// storage, keyed by id — never here.
@@ -35,4 +35,20 @@ pub trait Registry {
     fn put(env: Env, g: Guarantee);
     fn get(env: Env, id: u32) -> Guarantee;
     fn active_ids(env: Env) -> Vec<u32>;
+}
+
+/// Minimal client for a DeFindex vault (single-asset use). The rich `deposit`
+/// return is ignored (captured as raw `Val`); the adapter reads its df-share
+/// balance from the DeFindex vault's own token instead.
+#[contractclient(name = "DefindexVaultClient")]
+pub trait DefindexVault {
+    fn deposit(
+        env: Env,
+        amounts_desired: Vec<i128>,
+        amounts_min: Vec<i128>,
+        from: Address,
+        invest: bool,
+    ) -> Val;
+    fn withdraw(env: Env, df_amount: i128, min_amounts_out: Vec<i128>, from: Address) -> Vec<i128>;
+    fn get_asset_amounts_per_shares(env: Env, vault_shares: i128) -> Vec<i128>;
 }
