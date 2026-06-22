@@ -3,3 +3,4 @@
 .env
 .soroban
 **/test_snapshots/
+.design/onre-ref/
