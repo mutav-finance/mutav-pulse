@@ -1,0 +1,325 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+/* ─── TGA Brand Theme ─────────────────────────────────────────────────────── */
+/* Source: .design/branding/tga/identity/palettes.json + patterns/STYLE.md    */
+/* Aesthetic: Precision Brutalism — no gradients, no shadows, no rounded corners */
+
+@theme {
+  /* ── Fonts ── */
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-body:    "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono Variable", "JetBrains Mono", "Fira Code", monospace;
+
+  /* ── Amber scale (primary accent — scarce, <5% of pixels) ── */
+  --color-amber-50:  oklch(0.976 0.015 61.37);
+  --color-amber-100: oklch(0.949 0.031 61.13);
+  --color-amber-200: oklch(0.901 0.067 65.34);
+  --color-amber-300: oklch(0.858 0.104 68.94);
+  --color-amber-400: oklch(0.809 0.163 74.93);
+  --color-amber-500: oklch(0.758 0.152 74.86);
+  --color-amber-600: oklch(0.634 0.128 74.58);
+  --color-amber-700: oklch(0.513 0.103 75.08);
+  --color-amber-800: oklch(0.383 0.077 74.53);
+  --color-amber-900: oklch(0.261 0.053 74.88);
+  --color-amber-950: oklch(0.199 0.040 76.08);
+
+  /* ── Amber Light scale (light surface accent — #C47E10) ── */
+  --color-amber-light-50:  oklch(0.967 0.019 55.18);
+  --color-amber-light-100: oklch(0.934 0.040 56.34);
+  --color-amber-light-200: oklch(0.859 0.094 61.36);
+  --color-amber-light-300: oklch(0.794 0.164 69.69);
+  --color-amber-light-400: oklch(0.725 0.153 69.83);
+  --color-amber-light-500: oklch(0.651 0.137 69.81);
+  --color-amber-light-600: oklch(0.549 0.116 69.56);
+  --color-amber-light-700: oklch(0.444 0.094 70.26);
+  --color-amber-light-800: oklch(0.339 0.072 69.99);
+  --color-amber-light-900: oklch(0.245 0.052 68.95);
+  --color-amber-light-950: oklch(0.190 0.041 70.86);
+
+  /* ── Copper scale (terminal secondary accent — #B87010) ── */
+  --color-copper-50:  oklch(0.958 0.023 48.50);
+  --color-copper-100: oklch(0.925 0.041 50.60);
+  --color-copper-200: oklch(0.852 0.094 56.63);
+  --color-copper-300: oklch(0.768 0.166 65.33);
+  --color-copper-400: oklch(0.690 0.149 65.34);
+  --color-copper-500: oklch(0.610 0.132 65.34);
+  --color-copper-600: oklch(0.515 0.111 65.53);
+  --color-copper-700: oklch(0.420 0.091 65.34);
+  --color-copper-800: oklch(0.333 0.072 64.97);
+  --color-copper-900: oklch(0.234 0.051 64.89);
+  --color-copper-950: oklch(0.179 0.040 65.53);
+
+  /* ── Dark neutral scale (Investidor canvas — #0E0F11 = 950) ── */
+  --color-neutral-50:  oklch(0.913 0.004 271.52);
+  --color-neutral-100: oklch(0.836 0.009 271.38);
+  --color-neutral-200: oklch(0.673 0.017 266.24);
+  --color-neutral-300: oklch(0.510 0.014 264.46);
+  --color-neutral-400: oklch(0.337 0.009 268.41);
+  --color-neutral-500: oklch(0.210 0.010 265.00);
+  --color-neutral-600: oklch(0.175 0.010 265.00);
+  --color-neutral-700: oklch(0.162 0.008 265.00);
+  --color-neutral-800: oklch(0.149 0.007 270.00);
+  --color-neutral-900: oklch(0.130 0.005 270.00);
+  --color-neutral-950: oklch(0.104 0.005 271.00);
+
+  /* ── Warm light neutral scale (Imobiliárias canvas — #F7F6F3 = 500) ── */
+  --color-neutral-light-50:  oklch(1.000 0.000 0);
+  --color-neutral-light-100: oklch(0.991 0.001 106);
+  --color-neutral-light-200: oklch(0.985 0.003 91);
+  --color-neutral-light-300: oklch(0.982 0.003 84);
+  --color-neutral-light-400: oklch(0.978 0.004 90);
+  --color-neutral-light-500: oklch(0.973 0.004 91.28);
+  --color-neutral-light-600: oklch(0.940 0.006 88);
+  --color-neutral-light-700: oklch(0.872 0.008 85);
+  --color-neutral-light-800: oklch(0.810 0.016 94);
+  --color-neutral-light-900: oklch(0.637 0.012 90);
+  --color-neutral-light-950: oklch(0.480 0.010 91);
+
+  /* ── Success scale ── */
+  --color-success-500: oklch(0.664 0.132 156.97);
+  --color-success-600: oklch(0.555 0.110 157.29);
+
+  /* ── Error scale ── */
+  --color-error-500: oklch(0.569 0.174 24.54);
+  --color-error-600: oklch(0.483 0.147 24.48);
+
+  /* ── Border radius — always 0 (Precision Brutalism) ── */
+  --radius: 0px;
+
+  /* ── Spacing scale (8px base grid) ── */
+  --spacing-0: 0px;
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+  --spacing-8: 64px;
+  --spacing-10: 80px;
+  --spacing-12: 96px;
+
+  /* ── Type scale ── */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.03em;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-xs--letter-spacing: 0.01em;
+
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-sm--letter-spacing: 0.01em;
+
+  --text-base-sm: 0.875rem;
+  --text-base-sm--line-height: 1.25rem;
+  --text-base-sm--letter-spacing: 0em;
+
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-base--letter-spacing: 0em;
+
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-lg--letter-spacing: 0em;
+
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-xl--letter-spacing: 0em;
+
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.01em;
+
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: 2rem;
+  --text-3xl--letter-spacing: -0.01em;
+
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-4xl--letter-spacing: -0.02em;
+
+  --text-5xl: clamp(2.25rem, 1.544rem + 1.127vw, 3rem);
+  --text-5xl--line-height: 1.083;
+  --text-5xl--letter-spacing: -0.02em;
+
+  --text-6xl: clamp(3rem, 2.056rem + 1.502vw, 4rem);
+  --text-6xl--line-height: 1.0625;
+  --text-6xl--letter-spacing: -0.03em;
+}
+
+/* ─── Front-specific semantic tokens ─────────────────────────────────────── */
+
+/* Dashboard Investidor (dark, amber accent) — default front */
+:root,
+[data-front="investidor"] {
+  --color-canvas:     #0E0F11;
+  --color-surface:    #16181C;
+  --color-surface-2:  #1E2126;
+  --color-surface-3:  #252830;
+  --color-border:     #2A2D33;
+  --color-text:       #F0F0EE;
+  --color-text-2:     #8A8F99;
+  --color-text-3:     #555B66;
+  --color-accent:     #E8A020;
+  --color-accent-dim: #9E6A10;
+  --color-success:    #3DAB72;
+  --color-error:      #C94040;
+}
+
+/* Dashboard Imobiliárias (light, warm neutral) */
+[data-front="imobiliarias"] {
+  --color-canvas:     #F7F6F3;
+  --color-surface:    #FFFFFF;
+  --color-surface-2:  #EEEDEA;
+  --color-border:     #D9D7D2;
+  --color-text:       #1A1A1A;
+  --color-text-2:     #6B6860;
+  --color-text-3:     #9E9C98;
+  --color-accent:     #C47E10;
+  --color-accent-dim: #FFF0D4;
+  --color-success:    #2E8B5A;
+  --color-error:      #B83232;
+}
+
+/* Terminal (dark, copper secondary) */
+[data-front="terminal"] {
+  --color-canvas:     #0A0B0D;
+  --color-surface:    #111316;
+  --color-surface-2:  #181B1F;
+  --color-border:     #2A2D33;
+  --color-text:       #E8E4DC;
+  --color-text-2:     #7A7870;
+  --color-text-3:     #4A4844;
+  --color-accent:     #E8A020;
+  --color-accent-dim: #B87010;
+  --color-success:    #3DAB72;
+  --color-error:      #C94040;
+}
+
+/* ─── Base styles ─────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100%;
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* ── Typography hierarchy rules ── */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* ── Three-layer typography classes ── */
+
+/* Layer 1: Declaration — Geist Bold */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Layer 2: Explanation — Inter */
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Layer 3: Evidence — JetBrains Mono (tabular numerals mandatory) */
+.font-mono,
+.data,
+[data-mono] {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Investidor texture (architectural grid — body/page canvas only) ── */
+.texture-investidor {
+  background-image:
+    linear-gradient(to right,  rgba(240, 240, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(240, 240, 238, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Terminal texture (scanlines — terminal canvas only) ── */
+.texture-terminal {
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0px, transparent 2px,
+      rgba(232, 228, 220, 0.025) 2px, rgba(232, 228, 220, 0.025) 3px
+    );
+  background-size: 100% 3px;
+}
+
+/* ── The pulse animation (only ambient animation in TGA) ── */
+@keyframes tga-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-accent);
+  animation: tga-pulse 2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ── Interaction transitions (only color/bg/border/opacity — never transform) ── */
+button,
+a,
+input,
+[role="button"] {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+button:active,
+[role="button"]:active {
+  opacity: 0.85;
+  transition-duration: 80ms;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Focus: border color only — no ring, no glow, no box-shadow ── */
+:focus-visible {
+  outline: none;
+  border-color: var(--color-accent) !important;
+}
