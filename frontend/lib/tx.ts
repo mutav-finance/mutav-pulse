@@ -42,7 +42,9 @@ export async function deposit(from: string, amount: bigint): Promise<string> {
   const client = vaultWriter(from);
   const tx = await client.deposit({ from, amount });
   const sent = await tx.signAndSend();
-  return sent.sendTransactionResponse?.hash ?? "";
+  const hash = sent.sendTransactionResponse?.hash;
+  if (!hash) throw new Error("transaction did not return a hash");
+  return hash;
 }
 
 /**
@@ -59,7 +61,9 @@ export async function requestRedeem(
   const client = vaultWriter(owner);
   const tx = await client.request_redeem({ owner, shares });
   const sent = await tx.signAndSend();
-  return sent.sendTransactionResponse?.hash ?? "";
+  const hash = sent.sendTransactionResponse?.hash;
+  if (!hash) throw new Error("transaction did not return a hash");
+  return hash;
 }
 
 /**
@@ -73,7 +77,9 @@ export async function claim(caller: string, id: bigint): Promise<string> {
   const client = vaultWriter(caller);
   const tx = await client.claim({ id: Number(id) });
   const sent = await tx.signAndSend();
-  return sent.sendTransactionResponse?.hash ?? "";
+  const hash = sent.sendTransactionResponse?.hash;
+  if (!hash) throw new Error("transaction did not return a hash");
+  return hash;
 }
 
 /**
@@ -87,5 +93,7 @@ export async function cancelRedeem(caller: string, id: bigint): Promise<string> 
   const client = vaultWriter(caller);
   const tx = await client.cancel_redeem({ id: Number(id) });
   const sent = await tx.signAndSend();
-  return sent.sendTransactionResponse?.hash ?? "";
+  const hash = sent.sendTransactionResponse?.hash;
+  if (!hash) throw new Error("transaction did not return a hash");
+  return hash;
 }

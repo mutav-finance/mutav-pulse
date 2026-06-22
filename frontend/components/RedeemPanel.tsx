@@ -17,7 +17,7 @@
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput } from "@/lib/format";
 import type { RedeemRequest } from "vault";
 
 interface RedeemPanelProps {
@@ -306,11 +306,7 @@ export function RedeemPanel({
         {balance > 0n && (
           <button
             type="button"
-            onClick={() =>
-              setRawInput(
-                (Number(balance) / 1e7).toFixed(7).replace(/\.?0+$/, ""),
-              )
-            }
+            onClick={() => setRawInput(stroopsToInput(balance))}
             className="font-body"
             style={{
               fontSize: "11px",

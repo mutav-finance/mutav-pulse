@@ -1,6 +1,11 @@
 export function fromStroops(v: bigint): number {
   return Number(v) / 1e7;
 }
+export function stroopsToInput(v: bigint): string {
+  const whole = v / 10_000_000n;
+  const frac = (v % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
 export function fmtUsd(v: bigint): string {
   return "$" + fromStroops(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
