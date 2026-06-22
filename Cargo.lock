@@ -3,6 +3,18 @@
 version = 4
 
 [[package]]
+name = "adapter-defindex"
+version = "0.1.0"
+dependencies = [
+ "interfaces",
+ "mock-defindex",
+ "mock-policy",
+ "soroban-sdk",
+ "strategy",
+ "vault",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -942,6 +954,15 @@ name = "memchr"
 version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
+
+[[package]]
+name = "mock-defindex"
+version = "0.1.0"
+dependencies = [
+ "interfaces",
+ "soroban-sdk",
+ "stellar-tokens",
+]
 
 [[package]]
 name = "mock-policy"
