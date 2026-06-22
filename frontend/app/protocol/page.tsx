@@ -724,10 +724,12 @@ export default function ProtocolPage() {
                   label="Defaulted Guarantee"
                   value={cdId}
                   onChange={setCdId}
-                  options={guaranteeOptions.filter((_, i) => {
-                    const g = data.activeGuarantees[i];
-                    return g && !g.isCurrent;
-                  })}
+                  options={data.activeGuarantees
+                    .filter((g) => !g.isCurrent)
+                    .map((g) => ({
+                      value: String(g.id),
+                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtUsd(g.guarantee.monthly_amount)}/mo · overdue`,
+                    }))}
                   disabled={!isPolicyAdmin}
                   placeholder="Select overdue guarantee…"
                 />
