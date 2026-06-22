@@ -223,8 +223,7 @@ export default function TransparencyPage() {
                 letterSpacing: "0.08em",
                 color: "var(--color-text-2)",
                 textTransform: "uppercase",
-                marginBottom: "10px",
-                margin: "0 0 10px",
+                margin: "0 0 8px",
               }}
             >
               MUTAV RESERVE
