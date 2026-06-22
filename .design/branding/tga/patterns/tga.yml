@@ -1,0 +1,782 @@
+name: tga
+description: >
+  Token de Garantia de Aluguel — three-front brand system operating across
+  Dashboard Investidor (dark / Precision Brutalism), Dashboard Imobiliárias
+  (light / Structured Warmth), and Terminal (operator layer). Single amber
+  accent, zero decorative effects, surface stacking for depth.
+tags:
+  - fintech
+  - real-estate
+  - web3
+  - precision-brutalism
+  - three-front
+  - dark-primary
+
+# ─── SYSTEM STRATEGY ────────────────────────────────────────────────────────
+system_strategy: generate  # full greenfield system
+tech_stack: next-js-tailwind-v4
+component_base: shadcn-ui
+font_strategy: fontsource-variable  # JetBrains Mono + Inter via fontsource; Geist via next/font/google
+
+# ─── INTENSITY ───────────────────────────────────────────────────────────────
+intensity:
+  variance: 3
+  # Structured and predictable — Ruler archetype communicates through architecture
+  # not surprise. Score 3 (not 1) because three distinct front personalities exist:
+  # dark/precision, light/warmth, monospace/operator.
+  motion: 2
+  # Override minimal-dark preset motion:4 (glow shifts, scale transforms).
+  # TGA uses no glow and no scale transforms. Only functional animation:
+  # the live amber pulse dot (opacity 1→0.4→1, 2s linear, infinite). All hover
+  # states are instant color/border changes with 150ms ease-out — no movement.
+  density: 6
+  # Override minimal-dark preset density:2 (extremely spacious).
+  # Investidor and Terminal are data-dense: tables, live counters, timestamps.
+  # Override terminal preset density:7 — operators need clear readability.
+  # Imobiliárias is slightly less dense (score ~4) but system average is 6.
+
+# ─── TOKENS ──────────────────────────────────────────────────────────────────
+tokens:
+
+  # ── COLOR ─────────────────────────────────────────────────────────────────
+  color:
+
+    # Semantic tokens — resolved per-front in the `fronts:` section below
+    semantic:
+      canvas:          "--color-canvas"
+      surface:         "--color-surface"
+      surface-2:       "--color-surface-2"
+      surface-3:       "--color-surface-3"
+      border:          "--color-border"
+      text:            "--color-text"
+      text-2:          "--color-text-2"
+      text-3:          "--color-text-3"
+      accent:          "--color-accent"
+      accent-dim:      "--color-accent-dim"
+      success:         "--color-success"
+      error:           "--color-error"
+
+    # ── Primitive palettes ──────────────────────────────────────────────────
+
+    # System 1: Dashboard Investidor (Dark / Precision Brutalism)
+    investidor:
+      canvas:            { hex: "#0E0F11", oklch: "oklch(0.104 0.005 270)", usage: "Page canvas" }
+      surface-1:         { hex: "#16181C", oklch: "oklch(0.149 0.007 270)", usage: "Card backgrounds" }
+      surface-2:         { hex: "#1E2126", oklch: "oklch(0.175 0.010 265)", usage: "Elevated states, modals" }
+      surface-3:         { hex: "#252830", oklch: "oklch(0.210 0.010 265)", usage: "Hover states, panels" }
+      border:            { hex: "#2A2D33", oklch: "oklch(0.234 0.009 264)", usage: "1px structural borders" }
+      fg-primary:        { hex: "#F0F0EE", oklch: "oklch(0.944 0.004 102)", usage: "Primary text" }
+      fg-secondary:      { hex: "#8A8F99", oklch: "oklch(0.620 0.015 250)", usage: "Secondary text, labels" }
+      fg-tertiary:       { hex: "#555B66", oklch: "oklch(0.430 0.018 250)", usage: "Disabled, placeholders" }
+      accent:            { hex: "#E8A020", oklch: "oklch(0.758 0.152 74.86)", usage: "CTAs, logo, active states" }
+      accent-dim:        { hex: "#9E6A10", oklch: "oklch(0.513 0.103 75.08)", usage: "Amber hover states" }
+      success:           { hex: "#3DAB72", oklch: "oklch(0.664 0.132 156.97)", usage: "Pagamento confirmado" }
+      # Override minimal-dark preset success:#22C55E (vibrant ANSI green).
+      # TGA uses #3DAB72 — muted, not vibrant. Reason: ANSI green carries
+      # hacker/exploit associations incompatible with TGA's precision instrument identity.
+      error:             { hex: "#C94040", oklch: "oklch(0.483 0.147 24.48)", usage: "Inadimplência, failed tx" }
+
+    # System 2: Dashboard Imobiliárias (Light / Structured Warmth)
+    imobiliarias:
+      canvas:            { hex: "#F7F6F3", oklch: "oklch(0.973 0.004 91)", usage: "Page canvas" }
+      surface-1:         { hex: "#FFFFFF", oklch: "oklch(1.000 0.000 0)", usage: "Card backgrounds" }
+      surface-2:         { hex: "#EEEDEA", oklch: "oklch(0.940 0.006 88)", usage: "Grouped content" }
+      surface-active:    { hex: "#FFF8EE", oklch: "oklch(0.985 0.018 88)", usage: "Active/paid contract states" }
+      border:            { hex: "#D9D7D2", oklch: "oklch(0.872 0.008 85)", usage: "Structural borders" }
+      fg-primary:        { hex: "#1A1A1A", oklch: "oklch(0.187 0.000 0)", usage: "Primary text" }
+      fg-secondary:      { hex: "#6B6860", oklch: "oklch(0.480 0.012 75)", usage: "Secondary text" }
+      fg-tertiary:       { hex: "#9E9C98", oklch: "oklch(0.670 0.008 85)", usage: "Placeholders, disabled" }
+      accent:            { hex: "#C47E10", oklch: "oklch(0.610 0.132 65)", usage: "CTAs, active badges" }
+      # Override professional preset primary:#1E40AF (blue). TGA light front
+      # uses amber #C47E10 — same brand identity, light-adjusted value.
+      accent-light:      { hex: "#FFF0D4", oklch: "oklch(0.965 0.040 82)", usage: "Confirmation state bg" }
+      trust:             { hex: "#2E8B5A", oklch: "oklch(0.600 0.120 157)", usage: "Pagamento confirmado" }
+      alert:             { hex: "#B83232", oklch: "oklch(0.483 0.147 24)", usage: "Inadimplência" }
+
+    # System 3: Terminal (Operator Layer)
+    terminal:
+      canvas:            { hex: "#0A0B0D", oklch: "oklch(0.088 0.004 264)", usage: "Terminal canvas" }
+      surface-1:         { hex: "#111316", oklch: "oklch(0.130 0.005 270)", usage: "Panel backgrounds" }
+      surface-2:         { hex: "#181B1F", oklch: "oklch(0.162 0.008 265)", usage: "Focused pane" }
+      border:            { hex: "#2A2D33", oklch: "oklch(0.234 0.009 264)", usage: "Pane borders" }
+      fg-primary:        { hex: "#E8E4DC", oklch: "oklch(0.918 0.009 87)", usage: "Primary mono text" }
+      fg-secondary:      { hex: "#7A7870", oklch: "oklch(0.545 0.010 78)", usage: "Secondary labels" }
+      fg-dim:            { hex: "#4A4844", oklch: "oklch(0.360 0.008 78)", usage: "Commented lines, ghost" }
+      accent:            { hex: "#E8A020", oklch: "oklch(0.758 0.152 74.86)", usage: "Active status, live" }
+      # Override terminal preset primary:#22C55E (ANSI green). TGA Terminal
+      # uses amber #E8A020 as primary. Reason: ANSI green carries hacker/exploit
+      # culture associations incompatible with TGA's operator-layer precision instrument.
+      accent-warm:       { hex: "#B87010", oklch: "oklch(0.610 0.132 65)", usage: "Secondary indicators (copper)" }
+      accent-sienna:     { hex: "#8B4A2A", oklch: "oklch(0.420 0.091 47)", usage: "Third-tier status" }
+      confirmed:         { hex: "#3DAB72", oklch: "oklch(0.664 0.132 156.97)", usage: "Liquidation confirmed" }
+      rejected:          { hex: "#C94040", oklch: "oklch(0.483 0.147 24.48)", usage: "Failed, rejected" }
+      warning:           { hex: "#D4781A", oklch: "oklch(0.640 0.145 58)", usage: "Pending review" }
+      # NOTE: Terminal uses NO green #22C55E anywhere. The three amber-family
+      # accents (amber #E8A020, copper #B87010, sienna #8B4A2A) replace the
+      # ANSI green terminal convention entirely.
+
+    # Semantic token resolution map (per-front overrides)
+    semantic-map:
+      "--color-canvas":
+        investidor:    "#0E0F11"
+        imobiliarias:  "#F7F6F3"
+        terminal:      "#0A0B0D"
+      "--color-surface":
+        investidor:    "#16181C"
+        imobiliarias:  "#FFFFFF"
+        terminal:      "#111316"
+      "--color-surface-2":
+        investidor:    "#1E2126"
+        imobiliarias:  "#EEEDEA"
+        terminal:      "#181B1F"
+      "--color-border":
+        investidor:    "#2A2D33"
+        imobiliarias:  "#D9D7D2"
+        terminal:      "#2A2D33"
+      "--color-text":
+        investidor:    "#F0F0EE"
+        imobiliarias:  "#1A1A1A"
+        terminal:      "#E8E4DC"
+      "--color-text-2":
+        investidor:    "#8A8F99"
+        imobiliarias:  "#6B6860"
+        terminal:      "#7A7870"
+      "--color-text-3":
+        investidor:    "#555B66"
+        imobiliarias:  "#9E9C98"
+        terminal:      "#4A4844"
+      "--color-accent":
+        investidor:    "#E8A020"
+        imobiliarias:  "#C47E10"
+        terminal:      "#E8A020"
+      "--color-accent-dim":
+        investidor:    "#9E6A10"
+        imobiliarias:  "#FFF0D4"
+        terminal:      "#B87010"
+      "--color-success":
+        investidor:    "#3DAB72"
+        imobiliarias:  "#2E8B5A"
+        terminal:      "#3DAB72"
+      "--color-error":
+        investidor:    "#C94040"
+        imobiliarias:  "#B83232"
+        terminal:      "#C94040"
+
+    # WCAG contrast record
+    wcag:
+      - pair: "#F0F0EE on #0E0F11"
+        ratio: "16.9:1"
+        level: AAA
+        status: pass
+      - pair: "#8A8F99 on #0E0F11"
+        ratio: "6.0:1"
+        level: AA
+        status: pass
+      - pair: "#E8A020 on #0E0F11"
+        ratio: "8.8:1"
+        level: AAA
+        status: pass
+      - pair: "#3DAB72 on #0E0F11"
+        ratio: "6.7:1"
+        level: AA
+        status: pass
+      - pair: "#C94040 on #0E0F11"
+        ratio: "3.9:1"
+        level: AA-large-only
+        status: warn
+        constraint: "bold status labels ≥14px only"
+      - pair: "#1A1A1A on #F7F6F3"
+        ratio: "16.1:1"
+        level: AAA
+        status: pass
+      - pair: "#C47E10 on #F7F6F3"
+        ratio: "3.1:1"
+        level: AA-large-only
+        status: warn
+        constraint: "use #1A1A1A as button text (5.3:1 AA pass)"
+      - pair: "#2E8B5A on #F7F6F3"
+        ratio: "3.9:1"
+        level: AA-large-only
+        status: warn
+        constraint: "Inter Semi-bold 600 minimum"
+      - pair: "#7A7870 on #0A0B0D"
+        ratio: "4.5:1"
+        level: AA-threshold
+        status: warn
+        constraint: "14px JetBrains Mono minimum"
+
+  # ── TYPOGRAPHY ────────────────────────────────────────────────────────────
+  typography:
+
+    fonts:
+      display:
+        family: "Geist"
+        weights: [700]
+        usage: "Declarations, hero, titles, logo"
+        loading: "next/font/google — weight: ['700'] only"
+        variable: "--font-display"
+      body:
+        family: "Inter"
+        weights: [400, 500, 600]
+        usage: "Body, UI, navigation, labels"
+        loading: "@fontsource-variable/inter"
+        variable: "--font-body"
+      mono:
+        family: "JetBrains Mono"
+        weights: [400, 500]
+        usage: "ALL numeric data, timestamps, hashes, terminal panes"
+        loading: "@fontsource-variable/jetbrains-mono"
+        variable: "--font-mono"
+        mandatory-feature-settings: |
+          font-feature-settings: "tnum" 1;
+          font-variant-numeric: tabular-nums;
+
+    three-layer-hierarchy:
+      # MANDATORY on every screen across all fronts
+      layer-1-declaration:
+        font: display (Geist Bold 700)
+        meaning: "What happened, what is the status"
+        example: "Pagamento realizado"
+      layer-2-explanation:
+        font: body (Inter Regular/Medium)
+        meaning: "Why it matters, context"
+        example: "Transferido para sua conta"
+      layer-3-evidence:
+        font: mono (JetBrains Mono)
+        meaning: "Machine-verified proof: timestamp, hash, amount"
+        example: "R$2.847,00 · 18h22 · 4h37m"
+
+    scale:
+      # Base: 16px — Major Third ratio: 1.250
+      text-2xs:    { px: 11,  rem: "0.6875rem", line-height: "1rem",    letter-spacing: "+0.03em" }
+      text-xs:     { px: 12,  rem: "0.75rem",   line-height: "1.125rem", letter-spacing: "+0.01em" }
+      text-sm:     { px: 13,  rem: "0.8125rem", line-height: "1.25rem",  letter-spacing: "+0.01em" }
+      text-base-sm: { px: 14, rem: "0.875rem",  line-height: "1.25rem",  letter-spacing: "0em" }
+      text-base:   { px: 16,  rem: "1rem",      line-height: "1.5rem",   letter-spacing: "0em" }
+      text-lg:     { px: 18,  rem: "1.125rem",  line-height: "1.75rem",  letter-spacing: "0em" }
+      text-xl:     { px: 20,  rem: "1.25rem",   line-height: "1.75rem",  letter-spacing: "0em" }
+      text-2xl:    { px: 24,  rem: "1.5rem",    line-height: "2rem",     letter-spacing: "-0.01em" }
+      text-3xl:    { px: 28,  rem: "1.75rem",   line-height: "2rem",     letter-spacing: "-0.01em" }
+      text-4xl:    { px: 36,  rem: "2.25rem",   line-height: "2.5rem",   letter-spacing: "-0.02em" }
+      text-5xl:    { px: 48,  rem: "clamp(2.25rem, 1.544rem + 1.127vw, 3rem)", line-height: "1.083", letter-spacing: "-0.02em" }
+      text-6xl:    { px: 64,  rem: "clamp(3rem, 2.056rem + 1.502vw, 4rem)",    line-height: "1.0625", letter-spacing: "-0.03em" }
+
+    per-front:
+      investidor:
+        hero: "text-6xl Geist Bold"
+        section: "text-4xl Geist Bold"
+        body: "text-base Inter"
+        data: "text-sm JetBrains Mono (tabular numerals)"
+      imobiliarias:
+        hero: "text-5xl Geist Bold"
+        body: "text-lg Inter (more Inter, less Mono)"
+        data: "text-sm JetBrains Mono (tabular numerals)"
+      terminal:
+        primary: "ALL JetBrains Mono"
+        pane-header: "Geist Bold only"
+        rule: "No Inter in terminal panes"
+
+  # ── SHAPE ─────────────────────────────────────────────────────────────────
+  shape:
+    border-radius:
+      # Override minimal-dark preset: 8-16px → TGA uses 0px everywhere.
+      # Override professional preset: 6-12px → TGA uses 0px.
+      # Reason: Precision Brutalism grammar — no softening, no atmospheric curves.
+      default: 0px
+      card: 0px
+      button: 0px
+      input: 0px
+      badge: 0px
+      icon-container: 0px
+      modal: 0px
+      # NOTE: 0px radius applies to containers and UI elements.
+      # Phosphor icon glyph curves are fine — 0px is NOT required on SVG paths.
+
+    borders:
+      width: 1px
+      style: solid
+      color-dark: "#2A2D33"
+      color-light: "#D9D7D2"
+
+  # ── ELEVATION ─────────────────────────────────────────────────────────────
+  elevation:
+    # Override minimal-dark: glass cards with backdrop-blur → solid surfaces.
+    # Override professional: soft drop shadows → no shadows.
+    # Reason: depth through surface stacking only, not atmospheric effects.
+    strategy: surface-stacking
+    shadows: none
+    # Override minimal-dark preset: backdrop-blur glass cards → TGA uses solid surfaces.
+    glass-effects: none
+    # Override minimal-dark preset: backdrop-blur → TGA never uses it.
+    backdrop-blur: none
+
+    levels:
+      0: { background: "canvas", z: 0 }
+      1: { background: "surface-1", z: 1, note: "Card backgrounds" }
+      2: { background: "surface-2", z: 2, note: "Modals, elevated panels" }
+      3: { background: "surface-3", z: 3, note: "Hover overlays, dropdowns" }
+
+  # ── SPACING ───────────────────────────────────────────────────────────────
+  spacing:
+    base-unit: 8px
+    # Baseline grid: 8px. All spacing values are multiples of 8px.
+    scale:
+      1: 8px
+      2: 16px
+      3: 24px
+      4: 32px
+      5: 40px
+      6: 48px
+      8: 64px
+      10: 80px
+      12: 96px
+
+    component-heights:
+      button-investidor: 40px    # 5 × 8px
+      button-imobiliarias: 48px  # 6 × 8px
+      input: 40px
+      nav-height: 56px
+
+  # ── MOTION ────────────────────────────────────────────────────────────────
+  motion:
+    # Override minimal-dark preset motion:4 (glow shifts, scale transforms).
+    # TGA uses no glow, no scale, no transform animations.
+    # Override terminal preset phosphor-glow text-shadow → none.
+    philosophy: "Functional only. Motion informs, never decorates."
+
+    transitions:
+      default:
+        duration: 150ms
+        easing: ease-out
+        properties: [color, background-color, border-color, opacity]
+      # No transform transitions anywhere — no scale, no translate on interaction.
+
+    animations:
+      live-pulse:
+        # The ONLY ambient animation in the system
+        element: "6px amber dot in nav"
+        keyframes: "opacity: 1 → 0.4 → 1"
+        duration: 2s
+        timing: linear
+        iteration: infinite
+        # This animation must NOT use transform or box-shadow.
+        # Override minimal-dark preset glow effects → no box-shadow pulse.
+
+    prohibited:
+      - scale transforms on hover/active
+      - translate animations
+      - rotate animations
+      - glow animations (box-shadow / text-shadow)
+      - blur transitions
+      - spring/bounce easing
+
+# ─── PATTERNS ────────────────────────────────────────────────────────────────
+patterns:
+
+  card:
+    investidor:
+      background: "#16181C"
+      border: "1px solid #2A2D33"
+      border-radius: 0px
+      shadow: none
+      padding: "24px"
+      label: "Inter Medium 12px ALL CAPS tracking+0.01em #8A8F99"
+      value: "Geist Bold 48px #F0F0EE"
+      sub-value: "JetBrains Mono 11px #555B66 (tabular numerals)"
+    imobiliarias:
+      background: "#FFFFFF"
+      border: "1px solid #D9D7D2"
+      border-radius: 0px
+      shadow: none
+      padding: "24px"
+      status-stripe: "4px top border: amber active / #B83232 default / #2E8B5A paid"
+      property-label: "Inter Medium 14px #1A1A1A"
+      tenant: "Inter Regular 13px #6B6860"
+      amount: "JetBrains Mono Medium 16px #1A1A1A tabular-nums"
+      inadimplencia: "card bg shifts to #FFF8EE"
+      pagamento-confirmado: "amount: Geist Bold 32px #2E8B5A"
+
+  button-primary:
+    investidor:
+      background: "transparent"
+      border: "1px solid #E8A020"
+      border-radius: 0px
+      height: 40px
+      color: "#E8A020"
+      font: "Inter Medium 14px"
+      hover-background: "#E8A020"
+      hover-color: "#0E0F11"
+      transition: "background-color 150ms ease-out, color 150ms ease-out"
+    imobiliarias:
+      background: "#C47E10"
+      border: "1px solid #C47E10"
+      border-radius: 0px
+      height: 48px
+      color: "#1A1A1A"
+      # #1A1A1A on #C47E10 = 5.3:1 AA pass. Do NOT use white text on amber.
+      font: "Inter Medium 14px"
+      hover-background: "#9E6A10"
+      hover-color: "#1A1A1A"
+    terminal:
+      background: "transparent"
+      border: "1px solid #E8A020"
+      border-radius: 0px
+      color: "#E8A020"
+      font: "JetBrains Mono Medium 13px"
+      format: "[ APROVAR ]"
+      # Bracketed label format. Color coded by action type.
+      hover-background: "transparent"
+      hover-border-color: "#B87010"
+
+  button-secondary:
+    investidor:
+      background: "transparent"
+      border: "1px solid #2A2D33"
+      border-radius: 0px
+      height: 40px
+      color: "#8A8F99"
+      font: "Inter Medium 14px"
+      hover-border-color: "#E8A020"
+      hover-color: "#F0F0EE"
+    imobiliarias:
+      background: "transparent"
+      border: "1px solid #C47E10"
+      border-radius: 0px
+      height: 48px
+      color: "#C47E10"
+      font: "Inter Medium 14px"
+      hover-background: "#FFF0D4"
+
+  input:
+    investidor:
+      background: "transparent"
+      border: "1px solid #2A2D33"
+      border-radius: 0px
+      color: "#F0F0EE"
+      label-font: "Inter Medium 13px #8A8F99"
+      input-font: "JetBrains Mono Regular 14px (data inputs)"
+      # Override: body font for descriptive fields, mono for data fields
+      focus-border: "1px solid #E8A020"
+      focus-ring: none
+      # Override minimal-dark preset: no glow ring on focus.
+      placeholder-color: "#555B66"
+    imobiliarias:
+      background: "#FFFFFF"
+      border: "1px solid #D9D7D2"
+      border-radius: 0px
+      color: "#1A1A1A"
+      label-font: "Inter Medium 13px #6B6860"
+      input-font: "JetBrains Mono Regular 14px (data inputs)"
+      focus-border: "1px solid #C47E10"
+      focus-ring: none
+      placeholder-color: "#9E9C98"
+
+  badge:
+    structure: "6px colored square (0px radius) + 8px gap + JetBrains Mono 11px label"
+    border-radius: 0px
+    # Never pill/rounded badges.
+    states:
+      ATIVO:      { square-color: "#3DAB72", label: "ATIVO",      font: "JetBrains Mono 11px" }
+      EM_DEFAULT: { square-color: "#C94040", label: "EM_DEFAULT", font: "JetBrains Mono 11px" }
+      LIQUIDADO:  { square-color: "#E8A020", label: "LIQUIDADO",  font: "JetBrains Mono 11px" }
+    note: "Square is 6×6px at 0px radius. The square is color; the label inherits foreground text color."
+
+  nav:
+    investidor:
+      background: "#0E0F11"
+      height: 56px
+      logo: "Direction 1 wordmark — 'tga' Geist Bold lowercase amber left"
+      nav-items: "Inter Medium 14px #8A8F99; active: #F0F0EE + 1px amber bottom border"
+      live-dot: "6px #E8A020 circle, opacity pulse 2s linear infinite (1→0.4→1)"
+      counter: "JetBrains Mono 12px"
+      connect-button: "amber outline, 0px radius, no fill (see button-primary.investidor)"
+      wallet-address: "JetBrains Mono 12px #555B66"
+      border-bottom: "1px solid #2A2D33"
+
+  layout:
+    grid: 12-column
+    gutter: 24px
+    margin: 32px
+    max-width: 1440px
+    breakpoints:
+      sm: 640px
+      md: 768px
+      lg: 1024px
+      xl: 1280px
+      2xl: 1440px
+
+# ─── LOGO ─────────────────────────────────────────────────────────────────────
+logo:
+  directions:
+    1-wordmark-pure:
+      usage: "Primary for all fronts"
+      type: "wordmark"
+      text: "tga"
+      case: lowercase
+      font: "Geist Bold 700"
+      tracking: "-3% (-0.03em)"
+      dark-background: { color: "#E8A020", background: "#0E0F11" }
+      light-background: { color: "#C47E10", background: "#F7F6F3" }
+      icon: "lowercase 't' in amber, obsidian square container, 0px radius"
+      min-width: 48px
+      min-icon-size: 16px
+
+    2-structural-mark:
+      usage: "Formal/institutional — investor materials, legal docs, pitch deck"
+      type: "wordmark + rule"
+      construction: "1px amber vertical rule (cap height) + 8px gap + wordmark"
+
+    3-typographic-monogram:
+      usage: "Dashboard Investidor and Terminal ONLY. Never on Imobiliárias."
+      text: "TGA"
+      case: ALL-CAPS
+      tracking: "-6% (-0.06em)"
+      color: amber (per-front value)
+
+  construction-rules:
+    baseline-grid: 8px
+    clear-space: "1× cap height on all sides"
+    never-recreate: "Always use approved artwork — never set type manually"
+    icon-radius: 0px
+
+# ─── ICONOGRAPHY ─────────────────────────────────────────────────────────────
+iconography:
+  library: "@phosphor-icons/react"
+  install: "npm install @phosphor-icons/react"
+  weight: light      # ≈1.5px stroke at 20px
+  sizes: [12, 16, 20, 24]  # px: inline / standard / prominent / empty-states
+  container: bare    # no circles, no rounded squares
+  color: foreground-inherited
+  amber-icons: NEVER
+  # Icons inherit foreground color and are never colored amber.
+  # Amber is reserved for text, CTAs, and status markers only.
+
+# ─── TEXTURE RECIPES ─────────────────────────────────────────────────────────
+textures:
+  investidor:
+    # Override minimal-dark preset: 0.02 opacity noise texture → TGA uses
+    # architectural grid. Reason: blueprint DNA from logo direction 2.
+    type: architectural-grid
+    css: |
+      background-image:
+        linear-gradient(to right,  rgba(240,240,238,0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(240,240,238,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+    apply-to: "body / page canvas only"
+    opacity: 0.03
+
+  terminal:
+    # Override terminal preset: phosphor glow → no glow. Scanlines only.
+    type: scanlines
+    css: |
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0px, transparent 2px,
+          rgba(232,228,220,0.025) 2px, rgba(232,228,220,0.025) 3px
+        );
+      background-size: 100% 3px;
+    apply-to: "terminal canvas only"
+
+  imobiliarias:
+    type: none
+    # No texture on the light professional front.
+
+# ─── EFFECTS ─────────────────────────────────────────────────────────────────
+effects:
+  # Override minimal-dark preset: ambient glow / orbs (amber glow effects).
+  # TGA uses NO glow effects anywhere. Reason: Precision Brutalism excludes decoration.
+  ambient-glow: none
+  orbs: none
+  glass: none
+  noise-texture: none  # replaced by architectural-grid on Investidor
+
+  interaction-vocabulary:
+    hover:
+      surfaces: "background shifts one level up (Surface1 → Surface2)"
+      buttons: "fill transitions in (Investidor) or shade deepens (Imobiliárias)"
+      border: "color shifts to accent or brighter border"
+      duration: 150ms
+      easing: ease-out
+      transform: none  # no scale, no translate
+    active:
+      buttons: "opacity 0.85 on pressed state"
+      duration: 80ms
+    focus:
+      all: "1px amber border (#E8A020 dark / #C47E10 light)"
+      ring: none
+      outline: none
+      # Override minimal-dark preset: no glow ring on focus.
+    transition:
+      properties: [color, background-color, border-color, opacity]
+      duration: 150ms
+      easing: ease-out
+    disabled:
+      opacity: 0.4
+      cursor: not-allowed
+
+# ─── FRONTS (per-front overrides) ────────────────────────────────────────────
+fronts:
+
+  investidor:
+    name: "Dashboard Investidor"
+    theme: dark
+    preset-base: minimal-dark
+    personality: "Precision Brutalism"
+    archetype: "Ruler 80% / Caregiver 20%"
+
+    # Preset overrides (documented)
+    overrides:
+      border-radius:
+        preset-value: "8-16px"
+        tga-value: "0px"
+        reason: "Precision Brutalism grammar — no softening"
+      glass-effects:
+        preset-value: "backdrop-blur glass cards"
+        tga-value: "solid surfaces, no glass"
+        reason: "Glass is atmospheric decoration; TGA uses surface stacking for depth"
+      ambient-glow:
+        preset-value: "amber glow effects / orbs"
+        tga-value: "none"
+        reason: "Precision Brutalism excludes decorative effects"
+      noise-texture:
+        preset-value: "0.02 opacity noise"
+        tga-value: "architectural grid (24px repeating lines at 3% opacity)"
+        reason: "Blueprint DNA from logo direction 2"
+      success-color:
+        preset-value: "#22C55E"
+        tga-value: "#3DAB72"
+        reason: "Muted, not vibrant. ANSI green excluded."
+      motion:
+        preset-value: "4 (glow shifts, scale transforms)"
+        tga-value: "2 (functional animation only)"
+        reason: "No glow, no scale — amber pulse only"
+      density:
+        preset-value: "2 (extremely spacious)"
+        tga-value: "6 (data-dense)"
+        reason: "Data tables, live counters, timestamps fill the screen"
+
+    css-vars:
+      --color-canvas:     "#0E0F11"
+      --color-surface:    "#16181C"
+      --color-surface-2:  "#1E2126"
+      --color-surface-3:  "#252830"
+      --color-border:     "#2A2D33"
+      --color-text:       "#F0F0EE"
+      --color-text-2:     "#8A8F99"
+      --color-text-3:     "#555B66"
+      --color-accent:     "#E8A020"
+      --color-accent-dim: "#9E6A10"
+      --color-success:    "#3DAB72"
+      --color-error:      "#C94040"
+
+    amber-scarcity-rule: "<5% of screen pixels at any moment"
+
+  imobiliarias:
+    name: "Dashboard Imobiliárias"
+    theme: light
+    preset-base: professional
+    personality: "Structured Warmth"
+    archetype: "Ruler 50% / Caregiver 50%"
+
+    overrides:
+      primary-color:
+        preset-value: "#1E40AF (blue)"
+        tga-value: "#C47E10 (amber)"
+        reason: "Same amber brand identity, light-adjusted value"
+      border-radius:
+        preset-value: "6-12px"
+        tga-value: "0px"
+        reason: "Precision Brutalism — 0px everywhere across all fronts"
+      shadows:
+        preset-value: "soft drop shadows"
+        tga-value: "none"
+        reason: "Depth through surface stacking only"
+
+    css-vars:
+      --color-canvas:     "#F7F6F3"
+      --color-surface:    "#FFFFFF"
+      --color-surface-2:  "#EEEDEA"
+      --color-border:     "#D9D7D2"
+      --color-text:       "#1A1A1A"
+      --color-text-2:     "#6B6860"
+      --color-text-3:     "#9E9C98"
+      --color-accent:     "#C47E10"
+      --color-accent-dim: "#FFF0D4"
+      --color-success:    "#2E8B5A"
+      --color-error:      "#B83232"
+
+    blockchain-jargon: NEVER
+    # The Imobiliárias front never exposes blockchain terminology.
+
+  terminal:
+    name: "Terminal (Operator Layer)"
+    theme: dark
+    preset-base: terminal
+    personality: "Monospace Operator"
+    archetype: "Ruler 100%"
+
+    overrides:
+      primary-color:
+        preset-value: "#22C55E (terminal green)"
+        tga-value: "#E8A020 (amber) + #B87010 (copper) + #8B4A2A (sienna)"
+        reason: "ANSI green carries hacker/exploit culture associations incompatible with TGA's operator-layer precision instrument"
+      phosphor-glow:
+        preset-value: "text-shadow glow on text"
+        tga-value: "none"
+        reason: "Clean data, no atmospheric treatment"
+      ascii-decorations:
+        preset-value: "ASCII art decorations"
+        tga-value: "none"
+        reason: "Clean monospace UI, not retro aesthetic"
+
+    css-vars:
+      --color-canvas:     "#0A0B0D"
+      --color-surface:    "#111316"
+      --color-surface-2:  "#181B1F"
+      --color-border:     "#2A2D33"
+      --color-text:       "#E8E4DC"
+      --color-text-2:     "#7A7870"
+      --color-text-3:     "#4A4844"
+      --color-accent:     "#E8A020"
+      --color-accent-dim: "#B87010"
+      --color-success:    "#3DAB72"
+      --color-error:      "#C94040"
+
+    typography-rule: "ALL JetBrains Mono in panes. Geist Bold for pane headers only. No Inter in terminal panes."
+    green-ban: "NO #22C55E anywhere in Terminal — not even for success states. Use #3DAB72."
+
+# ─── CONSTRAINTS ─────────────────────────────────────────────────────────────
+constraints:
+  never:
+    - gradients on any surface in any front (no linear-gradient, radial-gradient as background fills)
+    - drop shadows (box-shadow on any UI element)
+    - rounded corners (border-radius must be 0px on all elements — inputs, cards, buttons, badges, modals)
+    - glass / backdrop-blur effects
+    - "#22C55E ANSI green in any front (especially Terminal)"
+    - amber colored icons (amber reserved for text, CTAs, status markers only)
+    - photography in Dashboard Investidor product UI
+    - blockchain jargon in Dashboard Imobiliárias
+    - gradients as decorative fills
+    - text-shadow effects
+    - scale or translate transforms on hover/active
+    - pure black #000000 as background
+    - glow orbs or ambient bloom effects
+    - ASCII art decorations
+    - pill/rounded badges
+    - Inter font inside Terminal panes
+
+  always:
+    - 0px border-radius on every UI element without exception
+    - 1px solid borders (never 2px, never dashed decoratively)
+    - JetBrains Mono tabular numerals for all numeric data (font-feature-settings: "tnum" 1)
+    - three-layer hierarchy on every screen (Geist / Inter / JetBrains Mono)
+    - amber scarcity (<5% of screen pixels) on dark fronts
+    - surface stacking for depth (never shadows)
+    - success/error colors semantic only (never decorative)
+    - #1A1A1A as button text on amber fill (#C47E10) in Imobiliárias
+    - Inter Semi-bold 600 minimum when using #2E8B5A on light backgrounds
+    - bold status labels ≥14px when using #C94040 on dark backgrounds
+    - Phosphor Icons at "light" weight only
+    - clear space of 1× cap height around logo on all sides
+    - 8px baseline grid for all spacing decisions

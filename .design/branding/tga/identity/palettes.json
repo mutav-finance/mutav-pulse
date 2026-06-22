@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "brand": "TGA — Token de Garantia de Aluguel",
+    "generated": "2026-04-14",
+    "source": "tints.dev OKLCH scales from brand hex values",
+    "note": "All values in OKLCH. Use these scales for design tokens and CSS custom properties."
+  },
+  "palettes": {
+    "amber": {
+      "description": "Primary accent — Dashboard Investidor (#E8A020 = ~500)",
+      "50":  "oklch(0.976 0.015 61.37)",
+      "100": "oklch(0.949 0.031 61.13)",
+      "200": "oklch(0.901 0.067 65.34)",
+      "300": "oklch(0.858 0.104 68.94)",
+      "400": "oklch(0.809 0.163 74.93)",
+      "500": "oklch(0.758 0.152 74.86)",
+      "600": "oklch(0.634 0.128 74.58)",
+      "700": "oklch(0.513 0.103 75.08)",
+      "800": "oklch(0.383 0.077 74.53)",
+      "900": "oklch(0.261 0.053 74.88)",
+      "950": "oklch(0.199 0.040 76.08)",
+      "brand": {
+        "investidor": "500",
+        "hex": "#E8A020",
+        "note": "Primary accent for dark surfaces. Amber is scarce — <5% of screen pixels."
+      }
+    },
+    "amberLight": {
+      "description": "Light mode amber — Dashboard Imobiliárias (#C47E10 = ~500)",
+      "50":  "oklch(0.967 0.019 55.18)",
+      "100": "oklch(0.934 0.040 56.34)",
+      "200": "oklch(0.859 0.094 61.36)",
+      "300": "oklch(0.794 0.164 69.69)",
+      "400": "oklch(0.725 0.153 69.83)",
+      "500": "oklch(0.651 0.137 69.81)",
+      "600": "oklch(0.549 0.116 69.56)",
+      "700": "oklch(0.444 0.094 70.26)",
+      "800": "oklch(0.339 0.072 69.99)",
+      "900": "oklch(0.245 0.052 68.95)",
+      "950": "oklch(0.190 0.041 70.86)",
+      "brand": {
+        "imobiliarias": "500",
+        "hex": "#C47E10",
+        "note": "Adjusted luminosity for light canvas. ⚠️ Fails WCAG AA for normal text — use dark (#1A1A1A) as button label."
+      }
+    },
+    "copper": {
+      "description": "Terminal secondary accent — replaces ANSI green (#B87010 = ~500)",
+      "50":  "oklch(0.958 0.023 48.50)",
+      "100": "oklch(0.925 0.041 50.60)",
+      "200": "oklch(0.852 0.094 56.63)",
+      "300": "oklch(0.768 0.166 65.33)",
+      "400": "oklch(0.690 0.149 65.34)",
+      "500": "oklch(0.610 0.132 65.34)",
+      "600": "oklch(0.515 0.111 65.53)",
+      "700": "oklch(0.420 0.091 65.34)",
+      "800": "oklch(0.333 0.072 64.97)",
+      "900": "oklch(0.234 0.051 64.89)",
+      "950": "oklch(0.179 0.040 65.53)",
+      "brand": {
+        "terminal": "500",
+        "hex": "#B87010",
+        "note": "Terminal-exclusive. Secondary status indicators, fund utilization %. Never in Dashboard fronts."
+      }
+    },
+    "success": {
+      "description": "Semantic success — pagamento confirmado (#3DAB72 = ~500)",
+      "50":  "oklch(0.958 0.055 157.35)",
+      "100": "oklch(0.928 0.100 157.32)",
+      "200": "oklch(0.850 0.168 157.18)",
+      "300": "oklch(0.793 0.157 156.99)",
+      "400": "oklch(0.724 0.143 157.09)",
+      "500": "oklch(0.664 0.132 156.97)",
+      "600": "oklch(0.555 0.110 157.29)",
+      "700": "oklch(0.454 0.089 157.18)",
+      "800": "oklch(0.346 0.069 157.29)",
+      "900": "oklch(0.244 0.048 157.29)",
+      "950": "oklch(0.183 0.036 158.12)",
+      "brand": {
+        "investidor": "500",
+        "imobiliarias": "600",
+        "hex_investidor": "#3DAB72",
+        "hex_imobiliarias": "#2E8B5A",
+        "note": "Never decorative. Appears only on confirmed payment / active contract. Use Semi-bold on light bg (3.9:1 → passes AA large)."
+      }
+    },
+    "error": {
+      "description": "Semantic error — inadimplência / failed transaction (#C94040 = ~500)",
+      "50":  "oklch(0.959 0.013 17.52)",
+      "100": "oklch(0.918 0.028 17.73)",
+      "200": "oklch(0.827 0.065 18.58)",
+      "300": "oklch(0.745 0.105 19.85)",
+      "400": "oklch(0.657 0.162 22.57)",
+      "500": "oklch(0.569 0.174 24.54)",
+      "600": "oklch(0.483 0.147 24.48)",
+      "700": "oklch(0.404 0.123 24.51)",
+      "800": "oklch(0.313 0.096 24.54)",
+      "900": "oklch(0.231 0.071 24.65)",
+      "950": "oklch(0.184 0.055 24.33)",
+      "brand": {
+        "investidor": "600",
+        "imobiliarias": "700",
+        "hex_investidor": "#C94040",
+        "hex_imobiliarias": "#B83232",
+        "note": "⚠️ On dark bg: 3.9:1 (AA large only). Always paired with bold status label. Never used for body text."
+      }
+    },
+    "neutral": {
+      "description": "Dark neutral scale — Dashboard Investidor surfaces (#0E0F11 = ~950)",
+      "50":  "oklch(0.913 0.004 271.52)",
+      "100": "oklch(0.836 0.009 271.38)",
+      "200": "oklch(0.673 0.017 266.24)",
+      "300": "oklch(0.510 0.014 264.46)",
+      "400": "oklch(0.337 0.009 268.41)",
+      "500": "oklch(0.210 0.010 265.00)",
+      "600": "oklch(0.175 0.010 265.00)",
+      "700": "oklch(0.162 0.008 265.00)",
+      "800": "oklch(0.149 0.007 270.00)",
+      "900": "oklch(0.130 0.005 270.00)",
+      "950": "oklch(0.104 0.005 271.00)",
+      "brand": {
+        "canvas": "950",
+        "surface1": "900",
+        "surface2": "800",
+        "surface3": "700",
+        "border": "600",
+        "hex_canvas": "#0E0F11",
+        "note": "Scale anchored to brand obsidian. Pure black (#000000) is never used."
+      }
+    },
+    "neutralLight": {
+      "description": "Warm light neutral scale — Dashboard Imobiliárias surfaces (#F7F6F3 = ~500)",
+      "50":  "oklch(1.000 0.000 0)",
+      "100": "oklch(0.991 0.001 106)",
+      "200": "oklch(0.985 0.003 91)",
+      "300": "oklch(0.982 0.003 84)",
+      "400": "oklch(0.978 0.004 90)",
+      "500": "oklch(0.973 0.004 91.28)",
+      "600": "oklch(0.940 0.006 88)",
+      "700": "oklch(0.872 0.008 85)",
+      "800": "oklch(0.810 0.016 94)",
+      "900": "oklch(0.637 0.012 90)",
+      "950": "oklch(0.480 0.010 91)",
+      "brand": {
+        "canvas": "500",
+        "surface2": "600",
+        "border": "700",
+        "hex_canvas": "#F7F6F3",
+        "note": "Warm off-white scale. Canvas warmth is the Caregiver's signal — not decorative, structural."
+      }
+    }
+  },
+  "contrast_audit": {
+    "note": "WCAG 2.1 contrast ratios. AA = 4.5:1 normal text, 3:1 large text. AAA = 7:1.",
+    "dashboard_investidor": {
+      "primary_on_canvas": { "fg": "#F0F0EE", "bg": "#0E0F11", "ratio": "16.9:1", "wcag": "AAA" },
+      "primary_on_surface1": { "fg": "#F0F0EE", "bg": "#16181C", "ratio": "16.1:1", "wcag": "AAA" },
+      "secondary_on_canvas": { "fg": "#8A8F99", "bg": "#0E0F11", "ratio": "6.0:1", "wcag": "AA" },
+      "amber_on_canvas": { "fg": "#E8A020", "bg": "#0E0F11", "ratio": "8.8:1", "wcag": "AAA" },
+      "amber_on_surface1": { "fg": "#E8A020", "bg": "#16181C", "ratio": "8.3:1", "wcag": "AAA" },
+      "success_on_canvas": { "fg": "#3DAB72", "bg": "#0E0F11", "ratio": "6.7:1", "wcag": "AA" },
+      "error_on_canvas": { "fg": "#C94040", "bg": "#0E0F11", "ratio": "3.9:1", "wcag": "AA-large-only", "note": "Use with bold status labels ≥14px only" }
+    },
+    "dashboard_imobiliarias": {
+      "primary_on_canvas": { "fg": "#1A1A1A", "bg": "#F7F6F3", "ratio": "16.1:1", "wcag": "AAA" },
+      "secondary_on_canvas": { "fg": "#6B6860", "bg": "#F7F6F3", "ratio": "5.2:1", "wcag": "AA" },
+      "amber_on_canvas": { "fg": "#C47E10", "bg": "#F7F6F3", "ratio": "3.1:1", "wcag": "AA-large-only", "note": "Use for large text, icons, borders — not body copy" },
+      "white_on_amber": { "fg": "#FFFFFF", "bg": "#C47E10", "ratio": "3.3:1", "wcag": "AA-large-only", "note": "⚠️ Do not use white text on amber buttons" },
+      "dark_on_amber": { "fg": "#1A1A1A", "bg": "#C47E10", "ratio": "5.3:1", "wcag": "AA", "note": "✅ Use dark text on amber CTAs" },
+      "trust_on_canvas": { "fg": "#2E8B5A", "bg": "#F7F6F3", "ratio": "3.9:1", "wcag": "AA-large-only", "note": "Use Inter Semi-bold 600 minimum" },
+      "alert_on_canvas": { "fg": "#B83232", "bg": "#F7F6F3", "ratio": "5.5:1", "wcag": "AA" }
+    },
+    "terminal": {
+      "primary_on_canvas": { "fg": "#E8E4DC", "bg": "#0A0B0D", "ratio": "15.5:1", "wcag": "AAA" },
+      "amber_on_canvas": { "fg": "#E8A020", "bg": "#0A0B0D", "ratio": "9.0:1", "wcag": "AAA" },
+      "copper_on_canvas": { "fg": "#B87010", "bg": "#0A0B0D", "ratio": "5.0:1", "wcag": "AA" },
+      "secondary_on_canvas": { "fg": "#7A7870", "bg": "#0A0B0D", "ratio": "4.5:1", "wcag": "AA-threshold", "note": "14px JetBrains Mono minimum. Below 14px promote to primary foreground." },
+      "success_on_canvas": { "fg": "#3DAB72", "bg": "#0A0B0D", "ratio": "6.7:1", "wcag": "AA" },
+      "error_on_canvas": { "fg": "#C94040", "bg": "#0A0B0D", "ratio": "4.0:1", "wcag": "AA-large-only", "note": "Bold status labels only" }
+    }
+  }
+}

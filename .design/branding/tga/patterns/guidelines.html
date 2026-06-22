@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TGA — Brand Guidelines</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ──────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Design tokens ──────────────────────────────────────────────── */
+    :root {
+      --font-display: 'Geist', sans-serif;
+      --font-body:    'Inter', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+
+      /* Investidor (default / guide canvas) */
+      --canvas:     #0E0F11;
+      --surface:    #16181C;
+      --surface-2:  #1E2126;
+      --surface-3:  #252830;
+      --border:     #2A2D33;
+      --text:       #F0F0EE;
+      --text-2:     #8A8F99;
+      --text-3:     #555B66;
+      --accent:     #E8A020;
+      --accent-dim: #9E6A10;
+      --success:    #3DAB72;
+      --warning:    #D4781A;
+      --error:      #C94040;
+      --error-dim:  #8B2C2C;
+    }
+
+    /* ── Base ───────────────────────────────────────────────────────── */
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--canvas);
+      color: var(--text);
+      line-height: 1.5;
+      /* Architectural grid texture */
+      background-image:
+        linear-gradient(to right,  rgba(240,240,238,0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(240,240,238,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+      min-height: 100vh;
+    }
+
+    /* ── Typography utilities ────────────────────────────────────────── */
+    .font-display { font-family: var(--font-display); font-weight: 700; }
+    .font-body    { font-family: var(--font-body); }
+    .font-mono    { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+
+    .text-2xs   { font-size: 0.6875rem; line-height: 1rem;     letter-spacing: 0.03em; }
+    .text-xs    { font-size: 0.75rem;   line-height: 1.125rem; letter-spacing: 0.01em; }
+    .text-sm    { font-size: 0.8125rem; line-height: 1.25rem;  letter-spacing: 0.01em; }
+    .text-bsm   { font-size: 0.875rem;  line-height: 1.25rem; }
+    .text-base  { font-size: 1rem;      line-height: 1.5rem; }
+    .text-lg    { font-size: 1.125rem;  line-height: 1.75rem; }
+    .text-xl    { font-size: 1.25rem;   line-height: 1.75rem; }
+    .text-2xl   { font-size: 1.5rem;    line-height: 2rem;    letter-spacing: -0.01em; }
+    .text-3xl   { font-size: 1.75rem;   line-height: 2rem;    letter-spacing: -0.01em; }
+    .text-4xl   { font-size: 2.25rem;   line-height: 2.5rem;  letter-spacing: -0.02em; }
+    .text-5xl   { font-size: clamp(2.25rem, 1.544rem + 1.127vw, 3rem); line-height: 1.083; letter-spacing: -0.02em; }
+    .text-6xl   { font-size: clamp(3rem, 2.056rem + 1.502vw, 4rem);   line-height: 1.0625; letter-spacing: -0.03em; }
+
+    /* ── Color utilities ─────────────────────────────────────────────── */
+    .color-text   { color: var(--text); }
+    .color-text-2 { color: var(--text-2); }
+    .color-text-3 { color: var(--text-3); }
+    .color-accent { color: var(--accent); }
+    .color-success { color: var(--success); }
+    .color-error   { color: var(--error); }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+
+    section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+    section:last-child { border-bottom: none; }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      line-height: 2.5rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 48px;
+    }
+
+    /* ── Navigation ──────────────────────────────────────────────────── */
+    nav {
+      background-color: var(--canvas);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-image:
+        linear-gradient(to right,  rgba(240,240,238,0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(240,240,238,0.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+      text-decoration: none;
+    }
+
+    .nav-items {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-items a {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color 150ms ease-out;
+    }
+
+    .nav-items a:hover { color: var(--text); }
+    .nav-items a.active {
+      color: var(--text);
+      border-bottom: 1px solid var(--accent);
+      padding-bottom: 1px;
+    }
+
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent);
+      border-radius: 0;
+      animation: tga-pulse 2s linear infinite;
+    }
+
+    @keyframes tga-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .live-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-2);
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* ── Hero ────────────────────────────────────────────────────────── */
+    .hero {
+      padding: 120px 0 96px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 2.056rem + 1.502vw, 4rem);
+      line-height: 1.0625;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .hero-title span { color: var(--accent); }
+
+    .hero-sub {
+      font-family: var(--font-body);
+      font-size: 1.125rem;
+      color: var(--text-2);
+      max-width: 600px;
+      line-height: 1.75rem;
+      margin-bottom: 48px;
+    }
+
+    .hero-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* ── Three-layer hierarchy demo ──────────────────────────────────── */
+    .hierarchy-demo {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 32px;
+      max-width: 480px;
+    }
+
+    .hierarchy-declaration {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      line-height: 2rem;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .hierarchy-explanation {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--text-2);
+      margin-bottom: 16px;
+    }
+
+    .hierarchy-evidence {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--text-3);
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    .hierarchy-layer-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* ── Color System ────────────────────────────────────────────────── */
+    .front-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .front-tab {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      padding: 12px 24px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 150ms ease-out, border-color 150ms ease-out;
+      font-feature-settings: "tnum" 1;
+      letter-spacing: 0.03em;
+    }
+
+    .front-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    .front-tab:hover { color: var(--text); }
+
+    .color-panel { display: none; }
+    .color-panel.active { display: block; }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .swatch {
+      background: var(--canvas);
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .swatch-color {
+      height: 64px;
+      width: 100%;
+    }
+
+    .swatch-info {
+      background: var(--surface);
+      padding: 12px;
+    }
+
+    .swatch-role {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .swatch-hex {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--text);
+      font-feature-settings: "tnum" 1;
+    }
+
+    .swatch-usage {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    /* ── Typography Scale ────────────────────────────────────────────── */
+    .type-scale-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 200px;
+      gap: 24px;
+      align-items: baseline;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .type-scale-row:first-child { border-top: 1px solid var(--border); }
+
+    .type-token {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-feature-settings: "tnum" 1;
+    }
+
+    .type-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-feature-settings: "tnum" 1;
+      text-align: right;
+    }
+
+    /* ── Components ──────────────────────────────────────────────────── */
+    .component-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    @media (max-width: 768px) { .component-grid { grid-template-columns: 1fr; } }
+
+    .component-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) { .component-grid-3 { grid-template-columns: 1fr; } }
+
+    .front-label {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      margin-bottom: 16px;
+      font-feature-settings: 'tnum' 1;
+    }
+    .front-label.accent { color: var(--accent); }
+
+    /* Icon grid */
+    .icon-row {
+      display: flex;
+      gap: 0;
+      flex-wrap: wrap;
+      border: 1px solid var(--border);
+    }
+    .icon-cell {
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      flex-direction: column;
+      gap: 4px;
+      cursor: default;
+    }
+    .icon-cell:hover { background: var(--surface); }
+    .icon-cell-label {
+      font-family: var(--font-mono);
+      font-size: 0.4375rem;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+
+    .component-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 32px;
+    }
+
+    .component-block.light-bg {
+      background: #F7F6F3;
+      background-image: none;
+    }
+
+    .component-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .component-label.dark-label { color: #C47E10; }
+
+    /* ── Investidor Card ─────────────────────────────────────────────── */
+    .inv-card {
+      background: #16181C;
+      border: 1px solid #2A2D33;
+      border-radius: 0;
+      padding: 24px;
+    }
+
+    .inv-card-label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      color: #8A8F99;
+      margin-bottom: 8px;
+    }
+
+    .inv-card-value {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 2.25rem;
+      line-height: 2.5rem;
+      letter-spacing: -0.02em;
+      color: #F0F0EE;
+      margin-bottom: 4px;
+    }
+
+    .inv-card-sub {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: #555B66;
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Imobiliárias Contract Card ──────────────────────────────────── */
+    .imob-card {
+      background: #FFFFFF;
+      border: 1px solid #D9D7D2;
+      border-radius: 0;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .imob-card-stripe {
+      height: 4px;
+      width: 100%;
+    }
+
+    .imob-card-body { padding: 20px 24px 24px; }
+
+    .imob-property {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: #1A1A1A;
+      margin-bottom: 4px;
+    }
+
+    .imob-tenant {
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      color: #6B6860;
+      margin-bottom: 16px;
+    }
+
+    .imob-amount {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      font-size: 1rem;
+      color: #1A1A1A;
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.875rem;
+      border-radius: 0;
+      transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
+      text-decoration: none;
+      padding: 0 20px;
+    }
+
+    .btn-inv-primary {
+      font-family: var(--font-body);
+      height: 40px;
+      border: 1px solid #E8A020;
+      background: transparent;
+      color: #E8A020;
+    }
+
+    .btn-inv-primary:hover {
+      background: #E8A020;
+      color: #0E0F11;
+    }
+
+    .btn-inv-secondary {
+      font-family: var(--font-body);
+      height: 40px;
+      border: 1px solid #2A2D33;
+      background: transparent;
+      color: #8A8F99;
+    }
+
+    .btn-inv-secondary:hover {
+      border-color: #E8A020;
+      color: #F0F0EE;
+    }
+
+    .btn-imob-primary {
+      font-family: var(--font-body);
+      height: 48px;
+      border: 1px solid #C47E10;
+      background: #C47E10;
+      color: #1A1A1A;
+    }
+
+    .btn-imob-primary:hover { background: #9E6A10; }
+
+    .btn-imob-secondary {
+      font-family: var(--font-body);
+      height: 48px;
+      border: 1px solid #C47E10;
+      background: transparent;
+      color: #C47E10;
+    }
+
+    .btn-imob-secondary:hover { background: #FFF0D4; }
+
+    .btn-terminal {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      height: auto;
+      padding: 8px 16px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-feature-settings: "tnum" 1;
+      white-space: nowrap;
+    }
+
+    .btn-terminal:hover { border-color: var(--accent-dim); color: var(--accent-dim); }
+
+    .btn-terminal-reject {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    .btn-terminal-reject:hover { border-color: var(--error-dim); color: var(--error-dim); }
+
+    /* ── Badges ──────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-square {
+      width: 6px;
+      height: 6px;
+      border-radius: 0;
+      flex-shrink: 0;
+    }
+
+    .badge-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      letter-spacing: 0.04em;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .badge-label.dark-text { color: #6B6860; }
+
+    /* ── Input ───────────────────────────────────────────────────────── */
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+
+    .input-label {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.8125rem;
+      color: #8A8F99;
+    }
+
+    .input-label.light { color: #6B6860; }
+
+    .input-field {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: #F0F0EE;
+      background: transparent;
+      border: 1px solid #2A2D33;
+      border-radius: 0;
+      padding: 10px 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color 150ms ease-out;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .input-field::placeholder { color: #555B66; }
+    .input-field:focus { border-color: #E8A020; }
+
+    .input-field.light {
+      font-family: var(--font-body);
+      color: #1A1A1A;
+      background: #FFFFFF;
+      border-color: #D9D7D2;
+    }
+
+    .input-field.light::placeholder { color: #9E9C98; }
+    .input-field.light:focus { border-color: #C47E10; }
+
+    /* ── Operator (terminal/log) block — Investor palette ─────────────── */
+    .terminal-block {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      padding: 0;
+      overflow: hidden;
+      /* Scanline texture */
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0px, transparent 2px,
+          rgba(240,240,238,0.025) 2px, rgba(240,240,238,0.025) 3px
+        );
+      background-size: 100% 3px;
+    }
+
+    .terminal-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-image: none;
+    }
+
+    .terminal-header-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.75rem;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .terminal-body { padding: 16px; }
+
+    .terminal-line {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      font-feature-settings: "tnum" 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .t-dim    { color: var(--text-3); }
+    .t-ghost  { color: var(--text-3); }
+    .t-label  { color: var(--text-2); }
+    .t-text   { color: var(--text); }
+    .t-amber  { color: var(--accent); }
+    .t-copper { color: var(--accent-dim); }
+    .t-green  { color: var(--success); }
+    .t-red    { color: var(--error); }
+    .t-warn   { color: var(--warning); }
+
+    /* ── Constraint list ─────────────────────────────────────────────── */
+    .constraint-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    @media (max-width: 768px) { .constraint-grid { grid-template-columns: 1fr; } }
+
+    .constraint-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 32px;
+    }
+
+    .constraint-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      font-feature-settings: "tnum" 1;
+    }
+
+    .constraint-title.never { color: #C94040; }
+    .constraint-title.always { color: #3DAB72; }
+
+    .constraint-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .constraint-list li {
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      line-height: 1.5;
+    }
+
+    .constraint-list li::before {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .constraint-list.never li::before { content: "—"; color: #C94040; }
+    .constraint-list.always li::before { content: "+"; color: #3DAB72; }
+
+    /* ── Logo symbol exploration ────────────────────────────────────── */
+    .logo-symbol-section {
+      margin-top: 40px;
+    }
+
+    .logo-symbol-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .logo-symbol-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .logo-symbol-block {
+      background: #0E0F11;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 32px;
+      gap: 20px;
+    }
+
+    .logo-symbol-block.light-sym { background: #F7F6F3; }
+
+    .symbol-concept-name {
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-2);
+      text-align: center;
+    }
+
+    .logo-symbol-block.light-sym .symbol-concept-name { color: #6B6860; }
+
+    .symbol-concept-tag {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      text-align: center;
+    }
+
+    .logo-symbol-block.light-sym .symbol-concept-tag { color: #9E9C98; }
+
+    /* ── Inline icon utility ─────────────────────────────────────────── */
+    .icon-inline {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    /* ── Logo section ────────────────────────────────────────────────── */
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .logo-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 40px;
+      gap: 16px;
+    }
+
+    .logo-block-dark { background: var(--canvas); }
+    .logo-block-light { background: #F7F6F3; }
+    .logo-block-terminal { background: var(--canvas); }
+
+    .logo-wordmark {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-monogram {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.75rem;
+      letter-spacing: -0.06em;
+    }
+
+    .logo-meta {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .logo-block-dark  .logo-meta { color: var(--text-3); }
+    .logo-block-light .logo-meta { color: #9E9C98; }
+    .logo-block-terminal .logo-meta { color: var(--text-3); }
+
+    .logo-rule-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-rule {
+      width: 1px;
+      height: 1.6em;
+      background: #E8A020;
+      flex-shrink: 0;
+    }
+
+    /* ── Spacing utilities ───────────────────────────────────────────── */
+    .mt-8  { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .mt-32 { margin-top: 32px; }
+    .mt-40 { margin-top: 40px; }
+    .mb-8  { margin-bottom: 8px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mb-24 { margin-bottom: 24px; }
+    .mb-32 { margin-bottom: 32px; }
+    .mb-40 { margin-bottom: 40px; }
+
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .gap-8  { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .gap-16 { gap: 16px; }
+    .gap-24 { gap: 24px; }
+    .gap-32 { gap: 32px; }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    /* ── Surface demo ────────────────────────────────────────────────── */
+    .surface-stack {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .surface-swatch {
+      flex: 1;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .surface-hex {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .surface-label {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+    }
+
+    /* ── Photography Section ─────────────────────────────────────────── */
+
+    .photo-principle {
+      border-left: 2px solid var(--accent);
+      padding: 20px 24px;
+      background: var(--surface);
+      margin-bottom: 48px;
+      max-width: 760px;
+    }
+    .photo-principle p {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--text-2);
+      line-height: 1.75;
+    }
+    .photo-principle strong { color: var(--text); }
+
+    .photo-rules-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      margin-bottom: 72px;
+    }
+    .photo-rule-item {
+      background: var(--surface);
+      padding: 24px;
+    }
+    .photo-rule-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .photo-rule-value {
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .photo-rule-detail {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      line-height: 1.5;
+    }
+
+    /* Photo placeholder — simulates B&W architecture photo */
+    .photo-ph {
+      background-color: #16171a;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 11px, rgba(0,0,0,0.28) 11px, rgba(0,0,0,0.28) 13px),
+        repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(0,0,0,0.2) 15px, rgba(0,0,0,0.2) 17px),
+        linear-gradient(170deg, #2c2e32 0%, #1a1b1e 40%, #0e0f11 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    /* Sky area — lighter top */
+    .photo-ph::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 35%;
+      background: linear-gradient(180deg, #282a2e 0%, transparent 100%);
+      pointer-events: none;
+    }
+    /* Grain noise */
+    .photo-ph::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E");
+      background-size: 250px 250px;
+      pointer-events: none;
+    }
+    .photo-ph-label {
+      position: absolute;
+      bottom: 10px;
+      left: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.5625rem;
+      color: rgba(240,240,238,0.25);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* Accent shapes */
+    .ac-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--accent);
+      z-index: 6;
+    }
+    .ac-rect {
+      position: absolute;
+      background: var(--accent);
+      z-index: 6;
+    }
+    .ac-line {
+      position: absolute;
+      background: var(--accent);
+      z-index: 6;
+      transform-origin: left center;
+    }
+    .ac-outline {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: transparent;
+      z-index: 6;
+    }
+
+    /* Composition text layers */
+    .comp-text { position: absolute; z-index: 10; }
+    .comp-display {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+    }
+    .comp-display-inv {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--canvas);
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+    }
+    .comp-body {
+      font-family: var(--font-body);
+      color: var(--text-2);
+      line-height: 1.45;
+    }
+    .comp-mono {
+      font-family: var(--font-mono);
+      color: var(--text-3);
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* Composition subsection */
+    .comp-sub-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .comp-sub-title {
+      font-family: var(--font-display);
+      font-size: 1.125rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .comp-sub-desc {
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* Level grid */
+    .comp-levels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 80px;
+    }
+    .comp-level-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+    .comp-canvas {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: #0a0b0d;
+    }
+
+    /* Accent library */
+    .accent-lib-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 80px;
+    }
+    .accent-lib-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .accent-lib-preview {
+      height: 140px;
+      position: relative;
+      overflow: hidden;
+      background: #0a0b0d;
+    }
+    .accent-lib-info { padding: 16px; border-top: 1px solid var(--border); }
+    .accent-lib-name {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .accent-lib-rule {
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      line-height: 1.4;
+    }
+
+    /* Templates */
+    .tpl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 80px;
+    }
+    .tpl-wrap { display: flex; flex-direction: column; gap: 12px; }
+    .tpl-meta {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .tpl-name {
+      font-family: var(--font-display);
+      font-size: 0.9375rem;
+      color: var(--text);
+    }
+
+    .tpl-poster {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 9/16;
+    }
+    .tpl-header {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 16/8;
+    }
+    .tpl-banner {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 1;
+    }
+
+    /* Do / Don't */
+    .verdict-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .verdict-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .verdict-top {
+      padding: 10px 16px;
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .verdict-top.ok  { background: rgba(61,171,114,0.08); color: var(--success); border-bottom: 1px solid rgba(61,171,114,0.18); }
+    .verdict-top.no  { background: rgba(201,64,64,0.08);  color: var(--error);   border-bottom: 1px solid rgba(201,64,64,0.18); }
+    .verdict-preview {
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+    }
+    .verdict-bottom {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .verdict-rule {
+      font-family: var(--font-body);
+      font-size: 0.8125rem;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .verdict-rule strong { color: var(--text); }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 0;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-logo {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+    }
+
+    .footer-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-feature-settings: "tnum" 1;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">tga</a>
+    <ul class="nav-items">
+      <li><a href="#overview" class="active">Overview</a></li>
+      <li><a href="#color">Color</a></li>
+      <li><a href="#typography">Typography</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#visual-elements">Visual Elements</a></li>
+      <li><a href="#constraints">Constraints</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        <span class="live-label">BRAND v1.0</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="page-wrap">
+  <div class="hero" id="overview">
+    <p class="hero-eyebrow">Token de Garantia de Aluguel · Brand Guidelines · 2026-04-14</p>
+    <h1 class="hero-title">Precision before<br><span>decoration.</span></h1>
+    <p class="hero-sub">
+      TGA operates across two fronts: Investor Dashboard and Real Estate Dashboard.
+      Operations runs as a mode inside the Investor surface — same palette, same grammar, additional operator UX.
+    </p>
+    <p class="hero-meta">System strategy: generate · Tech: Next.js + Tailwind v4 + shadcn/ui · Preset overrides: 9</p>
+  </div>
+</div>
+
+<!-- Brand Overview -->
+<div class="page-wrap">
+  <section>
+    <p class="section-label">01 · Overview</p>
+    <h2 class="section-title">Precision Brutalism</h2>
+
+    <div class="component-grid">
+      <div>
+        <p class="font-body text-base color-text-2" style="margin-bottom:24px; line-height:1.75rem;">
+          Brutalism is honest about what it is. Structural exposure — the visible grid, layered surfaces,
+          oversized typographic weight. Geometric forms repeated as construction modules.
+          Heavy structure and texture. Concrete. Monumental. Imposing.
+        </p>
+        <p class="font-body text-base color-text-2" style="margin-bottom:24px; line-height:1.75rem;">
+          Authenticity and precision: every element exists because it carries information.
+          Visible grids. Amber is scarce — less than 5% of pixels on any screen.
+          Depth comes from surface stacking, never from shadows.
+        </p>
+        <div style="display:flex; gap:16px; margin-top:32px;">
+          <button class="btn btn-inv-primary">View System</button>
+          <button class="btn btn-inv-secondary">View Code</button>
+        </div>
+      </div>
+
+      <div>
+        <!-- Three-layer hierarchy demo -->
+        <p class="font-mono text-xs color-accent" style="letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px; font-feature-settings:'tnum' 1;">Three-layer hierarchy</p>
+        <div class="hierarchy-demo">
+          <div style="margin-bottom:20px;">
+            <p class="hierarchy-layer-label">Layer 1 — Declaration · Geist Bold</p>
+            <p class="hierarchy-declaration">Payment confirmed</p>
+          </div>
+          <div style="margin-bottom:20px;">
+            <p class="hierarchy-layer-label">Layer 2 — Explanation · Inter</p>
+            <p class="hierarchy-explanation">Transferred to your account</p>
+          </div>
+          <div>
+            <p class="hierarchy-layer-label">Layer 3 — Evidence · JetBrains Mono</p>
+            <p class="hierarchy-evidence">R$2.847,00 · 18h22 · 4h37m</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Surface stacking demo -->
+    <div style="margin-top:56px;">
+      <p class="font-mono text-xs color-accent" style="letter-spacing:0.06em; text-transform:uppercase; margin-bottom:12px; font-feature-settings:'tnum' 1;">Surface stacking (no shadows)</p>
+      <div class="surface-stack">
+        <div class="surface-swatch" style="background:#0E0F11;">
+          <span class="surface-hex" style="color:#555B66;">#0E0F11</span>
+          <span class="surface-label" style="color:#555B66;">Canvas</span>
+        </div>
+        <div class="surface-swatch" style="background:#16181C;">
+          <span class="surface-hex" style="color:#8A8F99;">#16181C</span>
+          <span class="surface-label" style="color:#8A8F99;">Surface 1</span>
+        </div>
+        <div class="surface-swatch" style="background:#1E2126;">
+          <span class="surface-hex" style="color:#8A8F99;">#1E2126</span>
+          <span class="surface-label" style="color:#8A8F99;">Surface 2</span>
+        </div>
+        <div class="surface-swatch" style="background:#252830;">
+          <span class="surface-hex" style="color:#8A8F99;">#252830</span>
+          <span class="surface-label" style="color:#8A8F99;">Surface 3</span>
+        </div>
+        <div class="surface-swatch" style="background:#2A2D33;">
+          <span class="surface-hex" style="color:#F0F0EE;">#2A2D33</span>
+          <span class="surface-label" style="color:#8A8F99;">Border</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Logo -->
+<div class="page-wrap">
+  <section>
+    <p class="section-label">02 · Logo</p>
+    <h2 class="section-title">Three directions</h2>
+
+    <div class="logo-grid">
+      <!-- Direction 1 dark -->
+      <div class="logo-block logo-block-dark">
+        <div>
+          <span class="logo-wordmark" style="color:#E8A020;">tga</span>
+        </div>
+        <p class="logo-meta">Direction 1 · Wordmark · Dark</p>
+      </div>
+      <!-- Direction 1 light -->
+      <div class="logo-block logo-block-light">
+        <div>
+          <span class="logo-wordmark" style="color:#C47E10;">tga</span>
+        </div>
+        <p class="logo-meta" style="color:#9E9C98;">Direction 1 · Wordmark · Light</p>
+      </div>
+      <!-- Direction 2 -->
+      <div class="logo-block logo-block-dark">
+        <div class="logo-rule-block">
+          <div class="logo-rule"></div>
+          <span class="logo-wordmark" style="color:#E8A020;">tga</span>
+        </div>
+        <p class="logo-meta">Direction 2 · Structural Mark · Formal</p>
+      </div>
+      <!-- Direction 3 -->
+      <div class="logo-block logo-block-terminal">
+        <div>
+          <span class="logo-monogram" style="color:#E8A020;">TGA</span>
+        </div>
+        <p class="logo-meta">Direction 3 · Monogram · Investor/Operations</p>
+      </div>
+    </div>
+
+    <div style="background:var(--surface); border:1px solid var(--border); padding:24px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px;">
+      <div>
+        <p class="font-mono text-xs color-accent mb-8" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">Tracking</p>
+        <p class="font-body text-sm color-text-2">Dir 1: <span class="font-mono" style="color:var(--text); font-feature-settings:'tnum' 1;">-0.03em</span></p>
+        <p class="font-body text-sm color-text-2 mt-8">Dir 3: <span class="font-mono" style="color:var(--text); font-feature-settings:'tnum' 1;">-0.06em</span></p>
+      </div>
+      <div>
+        <p class="font-mono text-xs color-accent mb-8" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">Clear space</p>
+        <p class="font-body text-sm color-text-2">1× cap height on all sides</p>
+      </div>
+      <div>
+        <p class="font-mono text-xs color-accent mb-8" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">Minimum size</p>
+        <p class="font-body text-sm color-text-2">48px width / 16px icon</p>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<!-- Color System -->
+<div class="page-wrap">
+  <section id="color">
+    <p class="section-label">03 · Color System</p>
+    <h2 class="section-title">Two fronts, one identity</h2>
+
+    <div class="front-tabs">
+      <button class="front-tab active" onclick="switchPanel('investidor', this)">Investor Dashboard · Operations</button>
+      <button class="front-tab" onclick="switchPanel('imobiliarias', this)">Real Estate Dashboard</button>
+    </div>
+
+    <!-- Investidor panel -->
+    <div class="color-panel active" id="panel-investidor">
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#0E0F11;"></div>
+          <div class="swatch-info" style="background:#16181C;">
+            <p class="swatch-role">Canvas</p>
+            <p class="swatch-hex">#0E0F11</p>
+            <p class="swatch-usage">oklch(0.104 0.005 270) · Page canvas</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#16181C;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Surface 1</p>
+            <p class="swatch-hex">#16181C</p>
+            <p class="swatch-usage">Card backgrounds</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#1E2126;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Surface 2</p>
+            <p class="swatch-hex">#1E2126</p>
+            <p class="swatch-usage">Elevated states, modals</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#2A2D33; border-top:1px solid #3A3D43;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Border</p>
+            <p class="swatch-hex">#2A2D33</p>
+            <p class="swatch-usage">1px structural borders</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#F0F0EE;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Foreground Primary</p>
+            <p class="swatch-hex">#F0F0EE</p>
+            <p class="swatch-usage">16.9:1 AAA ✓</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#8A8F99;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Foreground Secondary</p>
+            <p class="swatch-hex">#8A8F99</p>
+            <p class="swatch-usage">6.0:1 AA ✓ · Labels</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#E8A020;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Accent (Amber)</p>
+            <p class="swatch-hex">#E8A020</p>
+            <p class="swatch-usage">8.8:1 AAA ✓ · CTAs, logo, active</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#3DAB72;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Success</p>
+            <p class="swatch-hex">#3DAB72</p>
+            <p class="swatch-usage">6.7:1 AA ✓ · Payment confirmed</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#D4781A;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Warning</p>
+            <p class="swatch-hex">#D4781A</p>
+            <p class="swatch-usage">Pending review · Operations status</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#C94040;"></div>
+          <div class="swatch-info">
+            <p class="swatch-role">Error</p>
+            <p class="swatch-hex">#C94040</p>
+            <p class="swatch-usage">3.9:1 ⚠ · Bold ≥14px only</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="font-body text-sm color-text-3" style="margin-top:24px; line-height:1.6;">
+        Operations runs on the Investor palette. The same tokens carry through — canvas, surface, accent, success, warning, error.
+        Operator-specific UX (scanline panes, mixed-register rows, mono action buttons) lives in section 05.
+      </p>
+    </div>
+
+    <!-- Imobiliárias panel -->
+    <div class="color-panel" id="panel-imobiliarias">
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#F7F6F3; border:1px solid #D9D7D2;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Canvas</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#F7F6F3</p>
+            <p class="swatch-usage" style="color:#6B6860;">Page canvas</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#FFFFFF; border:1px solid #D9D7D2;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Surface 1</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#FFFFFF</p>
+            <p class="swatch-usage" style="color:#6B6860;">Card backgrounds</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#EEEDEA;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Surface 2</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#EEEDEA</p>
+            <p class="swatch-usage" style="color:#6B6860;">Grouped content</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#FFF8EE;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Surface Active</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#FFF8EE</p>
+            <p class="swatch-usage" style="color:#6B6860;">Default/overdue bg</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#1A1A1A;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Foreground Primary</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#1A1A1A</p>
+            <p class="swatch-usage" style="color:#6B6860;">16.1:1 AAA ✓</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#C47E10;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Accent (Amber)</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#C47E10</p>
+            <p class="swatch-usage" style="color:#6B6860;">3.1:1 ⚠ · Use #1A1A1A text</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#2E8B5A;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Trust (Paid)</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#2E8B5A</p>
+            <p class="swatch-usage" style="color:#6B6860;">3.9:1 ⚠ · Semi-bold 600 min</p>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#B83232;"></div>
+          <div class="swatch-info" style="background:#FFFFFF;">
+            <p class="swatch-role" style="color:#9E9C98;">Alert</p>
+            <p class="swatch-hex" style="color:#1A1A1A;">#B83232</p>
+            <p class="swatch-usage" style="color:#6B6860;">Default/overdue</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px; background:var(--surface); border:1px solid var(--border); padding:8px 16px; font-family:var(--font-mono); font-size:0.75rem; color:var(--error); font-feature-settings:'tnum' 1; letter-spacing:0.04em;">
+      BANNED: #22C55E (ANSI green) — forbidden across both fronts, especially in operator panes
+    </div>
+  </section>
+</div>
+
+<!-- Typography -->
+<div class="page-wrap">
+  <section id="typography">
+    <p class="section-label">04 · Typography</p>
+    <h2 class="section-title">Three-typeface system</h2>
+
+    <div class="component-grid" style="margin-bottom:56px;">
+      <div style="background:var(--surface); border:1px solid var(--border); padding:32px;">
+        <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">DISPLAY — Geist Bold 700</p>
+        <p style="font-family:var(--font-display); font-weight:700; font-size:2.25rem; color:var(--text); letter-spacing:-0.02em; line-height:1.2;">Declaration</p>
+        <p class="font-body text-sm color-text-3 mt-16">Weight 700 only. Hero, section titles, status declarations.</p>
+      </div>
+      <div style="background:var(--surface); border:1px solid var(--border); padding:32px;">
+        <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">BODY — Inter 400/500/600</p>
+        <p style="font-family:var(--font-body); font-size:1rem; color:var(--text); line-height:1.75rem;">Explanation and context. UI, navigation, captions. Never numerical data.</p>
+        <p class="font-body text-sm color-text-3 mt-16">Weights 400, 500, 600 only.</p>
+      </div>
+    </div>
+
+    <div style="background:var(--surface); border:1px solid var(--border); padding:32px; margin-bottom:56px;">
+      <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">MONO — JetBrains Mono 400/500 · tabular-nums required</p>
+      <p style="font-family:var(--font-mono); font-size:0.8125rem; color:var(--text); font-feature-settings:'tnum' 1; font-variant-numeric:tabular-nums; line-height:1.75rem;">
+        R$ 2.847,00 · Hash: 0x4a2f...8e91 · 2026-04-14T18:22:37Z · ID: TGA-0042
+      </p>
+      <p class="font-mono text-sm color-text-3 mt-16" style="font-feature-settings:'tnum' 1;">font-feature-settings: "tnum" 1 — required on all numbers. No exceptions.</p>
+    </div>
+
+    <!-- Type scale -->
+    <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1;">Type scale · Major Third 1.250 · Base 16px</p>
+
+    <div class="type-scale-row">
+      <span class="type-token">text-2xs</span>
+      <span style="font-size:0.6875rem; color:var(--text-2);">11px — Metadata, sub-values, timestamps</span>
+      <span class="type-meta">0.6875rem · 1rem · +0.03em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-xs</span>
+      <span style="font-size:0.75rem; color:var(--text-2);">12px — Nav counter, wallet, micro-labels</span>
+      <span class="type-meta">0.75rem · 1.125rem · +0.01em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-sm</span>
+      <span style="font-size:0.8125rem; color:var(--text);">13px — Tabular data, terminal, badges</span>
+      <span class="type-meta">0.8125rem · 1.25rem · +0.01em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-base</span>
+      <span style="font-size:1rem; color:var(--text);">16px — Main body text</span>
+      <span class="type-meta">1rem · 1.5rem · 0em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-xl</span>
+      <span style="font-family:var(--font-display); font-weight:700; font-size:1.25rem; color:var(--text);">20px — Subtitles, card headers</span>
+      <span class="type-meta">1.25rem · 1.75rem · 0em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-4xl</span>
+      <span style="font-family:var(--font-display); font-weight:700; font-size:2.25rem; color:var(--text); letter-spacing:-0.02em;">36px — Card values, KPIs</span>
+      <span class="type-meta">2.25rem · 2.5rem · -0.02em</span>
+    </div>
+    <div class="type-scale-row">
+      <span class="type-token">text-6xl</span>
+      <span style="font-family:var(--font-display); font-weight:700; font-size:clamp(3rem,2.056rem + 1.502vw,4rem); color:var(--text); letter-spacing:-0.03em;">Hero</span>
+      <span class="type-meta">64px fluid · -0.03em</span>
+    </div>
+  </section>
+</div>
+
+<!-- Components -->
+<div class="page-wrap">
+  <section id="components">
+    <p class="section-label">05 · Components</p>
+    <h2 class="section-title">Two fronts, one grammar</h2>
+
+    <!-- Front key -->
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-bottom:48px;">
+      <div style="border-left:2px solid #E8A020; padding:12px 16px; background:var(--surface);">
+        <p class="front-label accent">Investor Dashboard</p>
+        <p style="font-family:var(--font-body); font-size:0.8125rem; color:var(--text-2); line-height:1.55;">Dark · Precision Brutalism · yield, NAV, contracts, onchain protocol</p>
+      </div>
+      <div style="border-left:2px solid #C47E10; padding:12px 16px; background:#F7F6F3;">
+        <p class="front-label" style="color:#6B6860;">Real Estate Dashboard</p>
+        <p style="font-family:var(--font-body); font-size:0.8125rem; color:#6B6860; line-height:1.55;">Light · Structured Warmth · properties, contracts, payments, defaults</p>
+      </div>
+      <div style="border-left:2px solid #E8A020; padding:12px 16px; background:var(--surface);">
+        <p class="front-label accent">Operations · Investor mode</p>
+        <p style="font-family:var(--font-body); font-size:0.8125rem; color:var(--text-2); line-height:1.55;">Internal ops · same palette as Investor · operator UX: scanline panes, mixed-register rows, mono actions</p>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <p class="font-mono text-xs color-accent mb-24" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1; text-transform:uppercase;">Cards</p>
+    <div class="component-grid-3 mb-40">
+      <!-- Investidor card -->
+      <div class="component-block">
+        <p class="component-label">Investor Dashboard — Dark</p>
+        <div class="inv-card">
+          <p class="inv-card-label">Available Balance</p>
+          <p class="inv-card-value">R$48.200</p>
+          <p class="inv-card-sub">Updated · 18:22:37 · +2.4% 30d</p>
+        </div>
+        <div style="margin-top:16px;" class="inv-card">
+          <p class="inv-card-label" style="display:flex; align-items:center; gap:6px;">
+            <span class="icon-inline"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 12L6 8L9 11L14 4" stroke="#8A8F99" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Active Contracts
+          </p>
+          <p class="inv-card-value" style="font-size:1.75rem;">142</p>
+          <p class="inv-card-sub">TGA-0001 → TGA-0142 · 3 in default</p>
+        </div>
+      </div>
+
+      <!-- Real Estate cards -->
+      <div class="component-block light-bg">
+        <p class="component-label dark-label">Real Estate Dashboard — Light</p>
+        <!-- Active contract -->
+        <div class="imob-card mb-16">
+          <div class="imob-card-stripe" style="background:#C47E10;"></div>
+          <div class="imob-card-body">
+            <p class="imob-property" style="display:flex; align-items:center; gap:6px;">
+              <span class="icon-inline"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 7L8 2L14 7V14H10V10H6V14H2V7Z" stroke="#9E9C98" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              Property A · Residential
+            </p>
+            <p class="imob-tenant">Tenant · Due: 5th</p>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <p class="imob-amount">R$2.847,00</p>
+              <div class="badge">
+                <div class="badge-square" style="background:#C47E10;"></div>
+                <span class="badge-label dark-text">ACTIVE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Paid contract -->
+        <div class="imob-card mb-16">
+          <div class="imob-card-stripe" style="background:#2E8B5A;"></div>
+          <div class="imob-card-body">
+            <p class="imob-property" style="display:flex; align-items:center; gap:6px;">
+              <span class="icon-inline"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 7L8 2L14 7V14H10V10H6V14H2V7Z" stroke="#9E9C98" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              Property B · Commercial
+            </p>
+            <p class="imob-tenant">Tenant · Paid at 18h22</p>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <p style="font-family:var(--font-display); font-weight:700; font-size:1.5rem; color:#2E8B5A; font-feature-settings:'tnum' 1; font-variant-numeric:tabular-nums;">R$3.200,00</p>
+              <div class="badge">
+                <div class="badge-square" style="background:#2E8B5A;"></div>
+                <span class="badge-label dark-text">PAID</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Default contract -->
+        <div class="imob-card" style="background:#FFF8EE;">
+          <div class="imob-card-stripe" style="background:#B83232;"></div>
+          <div class="imob-card-body">
+            <p class="imob-property" style="display:flex; align-items:center; gap:6px;">
+              <span class="icon-inline"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 7L8 2L14 7V14H10V10H6V14H2V7Z" stroke="#9E9C98" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              Property C · Residential
+            </p>
+            <p class="imob-tenant">Tenant · 12 days overdue</p>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <p class="imob-amount" style="color:#B83232;">R$1.650,00</p>
+              <div class="badge">
+                <div class="badge-square" style="background:#B83232;"></div>
+                <span class="badge-label dark-text">IN_DEFAULT</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations card — mixed register, Investor palette -->
+      <div class="component-block">
+        <p class="component-label">Operations — Investor mode</p>
+        <div style="background:var(--surface); border:1px solid var(--border); padding:20px; display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:12px;">
+            <span style="font-family:var(--font-body); font-size:0.8125rem; font-weight:500; color:var(--text);">Contract TGA-0042</span>
+            <div class="live-indicator">
+              <div class="live-dot"></div>
+              <span class="live-label">ACTIVE</span>
+            </div>
+          </div>
+          <!-- Structured rows — Inter labels + Mono values -->
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--font-body); font-size:0.75rem; color:var(--text-2);">Value</span>
+              <span style="font-family:var(--font-mono); font-size:0.875rem; color:var(--text); font-feature-settings:'tnum' 1;">R$2.847,00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--font-body); font-size:0.75rem; color:var(--text-2);">Status</span>
+              <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--success); font-feature-settings:'tnum' 1;">LIQUIDATED</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--font-body); font-size:0.75rem; color:var(--text-2);">Execution time</span>
+              <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--warning); font-feature-settings:'tnum' 1;">4h37m</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family:var(--font-body); font-size:0.75rem; color:var(--text-2);">Block</span>
+              <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-2); font-feature-settings:'tnum' 1;">#284.091.447</span>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border); padding-top:12px; display:flex; gap:8px;">
+            <button class="btn btn-terminal" style="flex:1;">APPROVE</button>
+            <button class="btn btn-terminal btn-terminal-reject" style="flex:1;">REJECT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buttons — Investor / Real Estate / Operations -->
+    <p class="font-mono text-xs color-accent mb-24" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1; text-transform:uppercase;">Buttons</p>
+    <div class="component-grid-3 mb-40">
+      <div class="component-block">
+        <p class="front-label accent">Investor Dashboard</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <button class="btn btn-inv-primary">Connect Wallet</button>
+          <button class="btn btn-inv-secondary">View Contracts</button>
+        </div>
+      </div>
+      <div class="component-block light-bg">
+        <p class="front-label" style="color:#6B6860;">Real Estate Dashboard</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <button class="btn btn-imob-primary">Issue Contract</button>
+          <button class="btn btn-imob-secondary">View History</button>
+        </div>
+      </div>
+      <div class="component-block" style="padding:0; background:transparent; border:none;">
+        <p class="front-label accent" style="padding:16px 16px 0;">Operations · Investor mode</p>
+        <div class="terminal-block" style="margin-top:0;">
+          <div class="terminal-body" style="padding:16px;">
+            <div style="display:flex; gap:12px; flex-direction:column;">
+              <button class="btn btn-terminal">APPROVE</button>
+              <button class="btn btn-terminal btn-terminal-reject">REJECT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Badges & Inputs -->
+    <p class="font-mono text-xs color-accent mb-24" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1; text-transform:uppercase;">Badges & Inputs</p>
+    <div class="component-grid mb-40">
+      <div class="component-block">
+        <p class="component-label">Status markers</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="badge"><div class="badge-square" style="background:#3DAB72;"></div><span class="badge-label">ACTIVE</span></div>
+          <div class="badge"><div class="badge-square" style="background:#C94040;"></div><span class="badge-label">IN_DEFAULT</span></div>
+          <div class="badge"><div class="badge-square" style="background:#E8A020;"></div><span class="badge-label">LIQUIDATED</span></div>
+          <div class="badge"><div class="badge-square" style="background:#D4781A;"></div><span class="badge-label">PENDING_REVIEW</span></div>
+        </div>
+      </div>
+      <div class="component-block">
+        <p class="component-label">Inputs</p>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div class="input-group">
+            <label class="input-label">Contract ID</label>
+            <input type="text" class="input-field" placeholder="TGA-0001" value="TGA-0042">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Value (BRL)</label>
+            <input type="text" class="input-field" placeholder="0.00" value="2.847,00">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Iconografia — Phosphor Icons -->
+    <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1; text-transform:uppercase;">Iconografia — @phosphor-icons/react · weight="light"</p>
+    <div style="margin-bottom:8px;">
+      <p class="font-mono text-xs color-text-3" style="font-feature-settings:'tnum' 1; margin-bottom:16px;">Traço 1.5px · sem preenchimento · sem âmbar · tamanho 16–24px</p>
+      <div class="icon-row" style="display:inline-flex; flex-wrap:wrap;">
+        <!-- House -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z"/><path d="M9 21V12h6v9"/></svg>
+          <span class="icon-cell-label">House</span>
+        </div>
+        <!-- Chart line -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 8 12 12 15 20 6"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
+          <span class="icon-cell-label">ChartLine</span>
+        </div>
+        <!-- ArrowRight -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          <span class="icon-cell-label">ArrowRight</span>
+        </div>
+        <!-- CheckCircle -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DAB72" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>
+          <span class="icon-cell-label">CheckCircle</span>
+        </div>
+        <!-- Warning -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C94040" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="icon-cell-label">Warning</span>
+        </div>
+        <!-- FileText -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span class="icon-cell-label">FileText</span>
+        </div>
+        <!-- Bell -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="icon-cell-label">Bell</span>
+        </div>
+        <!-- X -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8F99" stroke-width="1.25" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span class="icon-cell-label">X</span>
+        </div>
+        <!-- ChevronDown -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8F99" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="icon-cell-label">ChevronDown</span>
+        </div>
+        <!-- User -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="icon-cell-label">User</span>
+        </div>
+        <!-- Clock -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0F0EE" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+          <span class="icon-cell-label">Clock</span>
+        </div>
+        <!-- CopySimple -->
+        <div class="icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8F99" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4v12h4"/></svg>
+          <span class="icon-cell-label">Copy</span>
+        </div>
+      </div>
+    </div>
+    <p class="font-mono" style="font-size:0.625rem; color:var(--text-3); margin-top:8px; margin-bottom:48px; font-feature-settings:'tnum' 1;">Nunca: fill, cor âmbar, containers circulares/arredondados, weight diferente de light</p>
+
+    <!-- Live animation demo -->
+    <p class="font-mono text-xs color-accent mb-16" style="letter-spacing:0.06em; font-feature-settings:'tnum' 1; text-transform:uppercase;">Animação pulse — única animação ambiente do sistema</p>
+    <div style="background:var(--surface); border:1px solid var(--border); padding:24px; display:flex; align-items:center; gap:24px;">
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        <span class="live-label">SISTEMA ATIVO</span>
+      </div>
+      <span class="font-mono text-xs color-text-3" style="font-feature-settings:'tnum' 1;">opacity: 1 → 0.4 → 1 · 2s linear infinite · sem transform · sem box-shadow</span>
+    </div>
+  </section>
+</div>
+
+<!-- Visual Elements -->
+<div class="page-wrap">
+  <section id="visual-elements">
+    <p class="section-label">06 · Visual Elements</p>
+    <h2 class="section-title">Architecture as argument.</h2>
+
+    <!-- Principle -->
+    <div class="photo-principle">
+      <p>
+        In TGA, photography is not decoration — it is <strong>evidence</strong>. Every scene carries
+        the same logic as the product: visible structure, honest material, no element without function.
+        The photo is always black and white. <strong>Amber enters as a solid geometric shape</strong>,
+        never as a filter or direct colorization. The subject is architecture: concrete, modular
+        façades, exposed structure. The scale of the building communicates the weight of the guarantee.
+      </p>
+    </div>
+
+    <!-- 6 Base rules -->
+    <div class="photo-rules-grid">
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Subject</p>
+        <p class="photo-rule-value">Urban and residential architecture</p>
+        <p class="photo-rule-detail">Brutalist buildings, exposed concrete, modular façades, repetitive structure. No people as main subject.</p>
+      </div>
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Angle</p>
+        <p class="photo-rule-value">Worm's eye dominant</p>
+        <p class="photo-rule-detail">Camera pointed upward from below. Amplifies scale and weight. Close-up on façade texture also valid.</p>
+      </div>
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Treatment</p>
+        <p class="photo-rule-value">Black and white, full desaturation</p>
+        <p class="photo-rule-detail">No direct colorization of the photo. Subtle grain/noise applied. No blur, no bokeh — everything in focus.</p>
+      </div>
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Accent color</p>
+        <p class="photo-rule-value">TGA amber as a separate shape</p>
+        <p class="photo-rule-detail">Color enters over the photo as an independent graphic element: circle, rectangle, line, or outline. Never a filter.</p>
+      </div>
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Typography</p>
+        <p class="photo-rule-value">Geist Bold at oversized scale</p>
+        <p class="photo-rule-detail">Text occupies physical area, doesn't just communicate. May bleed off-frame. Always three-layer hierarchy: Geist / Inter / Mono.</p>
+      </div>
+      <div class="photo-rule-item">
+        <p class="photo-rule-label">Composition</p>
+        <p class="photo-rule-value">Photo covers 60–80% of total area</p>
+        <p class="photo-rule-detail">Accent shape creates central tension. Text anchors at edges (top left + base). Never centered and symmetric.</p>
+      </div>
+    </div>
+
+    <!-- Composition system — 3 levels -->
+    <div style="margin-bottom:40px;">
+      <p class="section-label" style="margin-bottom:8px;">Composition system</p>
+      <p style="font-family:var(--font-body);font-size:0.9375rem;color:var(--text-2);max-width:640px;line-height:1.6;">
+        Three levels of visual complexity, from most contained to most tense. Each level defines
+        how many photos, which accent shape, and how much text the composition supports.
+      </p>
+    </div>
+
+    <div class="comp-levels">
+
+      <!-- Nível 1 — Calma -->
+      <div class="comp-level-wrap">
+        <div class="comp-canvas">
+          <!-- Foto full bleed -->
+          <div class="photo-ph" style="position:absolute;inset:0;"></div>
+          <!-- Círculo amber grande, atrás da massa -->
+          <div class="ac-circle" style="width:62%;aspect-ratio:1/1;top:18%;left:50%;transform:translateX(-50%);opacity:0.92;"></div>
+          <!-- Barra âmbar no topo — data -->
+          <div class="ac-rect" style="top:0;left:0;right:0;height:3px;opacity:0.7;"></div>
+          <!-- Texto — topo esq -->
+          <div class="comp-text" style="top:16px;left:20px;">
+            <p class="comp-mono" style="font-size:0.5625rem;letter-spacing:0.1em;">SGR · GUARANTEE</p>
+          </div>
+          <!-- Texto — base -->
+          <div class="comp-text" style="bottom:20px;left:20px;right:20px;">
+            <p class="comp-display" style="font-size:1.75rem;margin-bottom:8px;">Every contract<br>verified.</p>
+            <p class="comp-body" style="font-size:0.75rem;margin-bottom:6px;">On-chain registered protection for landlord and tenant.</p>
+            <p class="comp-mono" style="font-size:0.625rem;">R$2.847,00 · 18h22 · #A3F7</p>
+          </div>
+        </div>
+        <div>
+          <p class="comp-sub-label">Level 1 — Calm</p>
+          <p class="comp-sub-title">1 photo · circle · full hierarchy</p>
+          <p class="comp-sub-desc">Direct reading. For LP headers and institutional materials where the main message cannot compete with form.</p>
+        </div>
+      </div>
+
+      <!-- Nível 2 — Equilíbrio -->
+      <div class="comp-level-wrap">
+        <div class="comp-canvas">
+          <!-- Foto superior (2/3 altura) -->
+          <div class="photo-ph" style="position:absolute;top:0;left:0;right:0;height:62%;"></div>
+          <!-- Foto inferior esq (1/3 restante, metade da largura) -->
+          <div class="photo-ph" style="position:absolute;bottom:0;left:0;width:52%;height:38%;"></div>
+          <!-- Retângulo amber cruzando a divisão -->
+          <div class="ac-rect" style="top:57%;left:52%;right:0;height:6%;"></div>
+          <!-- Retângulo âmbar vertical direita -->
+          <div class="ac-rect" style="top:62%;right:0;width:48%;height:38%;background:var(--surface-2);border:1px solid var(--border);"></div>
+          <!-- Texto na área clara direita inferior -->
+          <div class="comp-text" style="bottom:20px;right:16px;text-align:right;width:44%;">
+            <p class="comp-display" style="font-size:1.25rem;margin-bottom:6px;color:var(--text);">Properties<br>protected.</p>
+            <p class="comp-mono" style="font-size:0.5625rem;">247 contracts · active</p>
+          </div>
+          <!-- Label topo -->
+          <div class="comp-text" style="top:16px;left:20px;">
+            <p class="comp-mono" style="font-size:0.5625rem;letter-spacing:0.1em;">DASHBOARD · REAL ESTATE</p>
+          </div>
+        </div>
+        <div>
+          <p class="comp-sub-label">Level 2 — Balance</p>
+          <p class="comp-sub-title">2 photos · rectangle · grid split</p>
+          <p class="comp-sub-desc">Two-beat narrative. For feature sections, comparisons, and marketing materials with more than one message.</p>
+        </div>
+      </div>
+
+      <!-- Nível 3 — Tensão -->
+      <div class="comp-level-wrap">
+        <div class="comp-canvas">
+          <!-- Foto fundo full bleed -->
+          <div class="photo-ph" style="position:absolute;inset:0;"></div>
+          <!-- Overlay escuro para texto respirar -->
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,15,17,0.1) 0%,rgba(14,15,17,0.75) 100%);z-index:4;"></div>
+          <!-- Linhas diagonais amber -->
+          <div class="ac-line" style="width:140%;height:2px;top:32%;left:-20%;transform:rotate(-8deg);opacity:0.6;"></div>
+          <div class="ac-line" style="width:140%;height:1px;top:36%;left:-20%;transform:rotate(-8deg);opacity:0.35;"></div>
+          <!-- Texto display sangrando -->
+          <div class="comp-text" style="top:0;left:-4px;right:0;z-index:11;">
+            <p class="comp-display" style="font-size:3.5rem;line-height:0.88;color:var(--text);letter-spacing:-0.04em;">TOTAL<br>GUARANTEE.</p>
+          </div>
+          <!-- Acento linha vertical -->
+          <div class="ac-rect" style="top:0;left:0;width:3px;height:45%;z-index:12;"></div>
+          <!-- Texto base -->
+          <div class="comp-text" style="bottom:20px;left:20px;right:20px;z-index:11;">
+            <p class="comp-body" style="font-size:0.75rem;margin-bottom:8px;">No contract without registered coverage.</p>
+            <p class="comp-mono" style="font-size:0.5625rem;letter-spacing:0.08em;">TGA PROTOCOL · ON-CHAIN · 2026</p>
+          </div>
+        </div>
+        <div>
+          <p class="comp-sub-label">Level 3 — Tension</p>
+          <p class="comp-sub-title">1 photo · diagonal lines · bleeding text</p>
+          <p class="comp-sub-desc">Maximum impact. For covers, OOH, launch materials. Text dominates the space — the photo becomes texture.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Do / Don't -->
+    <div style="margin-bottom:40px;">
+      <p class="section-label" style="margin-bottom:8px;">Visual constraints</p>
+      <p style="font-family:var(--font-body);font-size:0.9375rem;color:var(--text-2);max-width:640px;line-height:1.6;">
+        Each rule has a direct opposite. The examples below show what the system accepts
+        and what invalidates the composition.
+      </p>
+    </div>
+
+    <!-- Pair 1: B&W vs colorized -->
+    <div class="verdict-row">
+      <div class="verdict-card">
+        <div class="verdict-top ok">✓ Correct — desaturated photo</div>
+        <div class="verdict-preview">
+          <div class="photo-ph" style="position:absolute;inset:0;"></div>
+          <div class="ac-circle" style="width:55%;aspect-ratio:1/1;top:10%;left:50%;transform:translateX(-50%);"></div>
+          <div class="comp-text" style="bottom:16px;left:16px;">
+            <p class="comp-display" style="font-size:1.25rem;">Concrete.<br>Verified.</p>
+          </div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule">Photo always in <strong>black and white</strong>. The accent color is the only warm point — occupies less than 5% of the area.</p>
+        </div>
+      </div>
+      <div class="verdict-card">
+        <div class="verdict-top no">✗ Forbidden — colorized photo</div>
+        <div class="verdict-preview" style="background:linear-gradient(140deg,#4a3520 0%,#2d2010 50%,#1a1208 100%);">
+          <!-- Foto com warmth/colorização simulada -->
+          <div style="position:absolute;inset:0;background:linear-gradient(140deg,rgba(180,100,20,0.35) 0%,rgba(120,60,10,0.2) 100%);
+            background-image:
+              repeating-linear-gradient(0deg, transparent, transparent 11px, rgba(0,0,0,0.15) 11px, rgba(0,0,0,0.15) 13px),
+              repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(0,0,0,0.1) 15px, rgba(0,0,0,0.1) 17px),
+              linear-gradient(140deg,rgba(180,100,20,0.35) 0%,rgba(120,60,10,0.2) 100%);"></div>
+          <div style="position:absolute;bottom:16px;left:16px;font-family:'Geist',sans-serif;font-size:1.25rem;font-weight:700;color:#F0F0EE;line-height:0.92;letter-spacing:-0.03em;">Concrete.<br>Verified.</div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule"><strong>Warmth, colorization, or amber filter applied to the photo</strong> destroys the separation between evidence (photo) and accent (color). The photo is material, not decoration.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pair 2: forma sobre foto vs blur -->
+    <div class="verdict-row">
+      <div class="verdict-card">
+        <div class="verdict-top ok">✓ Correct — geometric shape over sharp photo</div>
+        <div class="verdict-preview">
+          <div class="photo-ph" style="position:absolute;inset:0;"></div>
+          <div class="ac-rect" style="top:0;right:0;width:40%;height:100%;opacity:0.88;"></div>
+          <div class="comp-text" style="top:16px;right:14px;width:36%;text-align:right;z-index:10;">
+            <p class="comp-display" style="font-size:1rem;color:var(--canvas);">247<br>ativos</p>
+          </div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule">The accent color enters as a <strong>separate solid shape</strong>, not as an effect over the photo. Photo maintains full sharpness.</p>
+        </div>
+      </div>
+      <div class="verdict-card">
+        <div class="verdict-top no">✗ Forbidden — blur / glassmorphism over photo</div>
+        <div class="verdict-preview">
+          <div class="photo-ph" style="position:absolute;inset:0;"></div>
+          <!-- Simula glass/blur overlay -->
+          <div style="position:absolute;top:20%;left:10%;right:10%;bottom:20%;
+            background:rgba(22,24,28,0.55);
+            border:1px solid rgba(255,255,255,0.08);
+            backdrop-filter:blur(12px);
+            -webkit-backdrop-filter:blur(12px);
+            z-index:6;
+            display:flex;align-items:center;justify-content:center;">
+            <p style="font-family:'Geist',sans-serif;font-size:1rem;font-weight:700;color:#F0F0EE;letter-spacing:-0.02em;">247 ativos</p>
+          </div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule"><strong>backdrop-filter: blur() and glassmorphism are forbidden</strong> across the entire TGA system. No element uses blur as a visual treatment.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pair 3: worm's eye vs ângulo neutro -->
+    <div class="verdict-row">
+      <div class="verdict-card">
+        <div class="verdict-top ok">✓ Correct — worm's eye angle, scale evident</div>
+        <div class="verdict-preview">
+          <!-- Simula perspectiva de baixo para cima com gradiente -->
+          <div style="position:absolute;inset:0;background:#18191c;
+            background-image:
+              repeating-linear-gradient(0deg, transparent, transparent 8px, rgba(0,0,0,0.35) 8px, rgba(0,0,0,0.35) 9px),
+              repeating-linear-gradient(90deg, transparent, transparent 12px, rgba(0,0,0,0.25) 12px, rgba(0,0,0,0.25) 13px),
+              linear-gradient(0deg, #0e0f11 0%, #252729 50%, #3a3c40 100%);"></div>
+          <div class="comp-text" style="bottom:16px;left:16px;">
+            <p class="comp-mono" style="font-size:0.5625rem;letter-spacing:0.08em;">ASCENDING ANGLE · FAÇADE</p>
+          </div>
+          <div class="ac-rect" style="bottom:0;left:0;right:0;height:2px;"></div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule">Camera <strong>pointed upward from below</strong>. The façade dominates the frame and communicates weight, scale, and permanence — attributes of the guarantee.</p>
+        </div>
+      </div>
+      <div class="verdict-card">
+        <div class="verdict-top no">✗ Avoid — neutral angle, small subject</div>
+        <div class="verdict-preview">
+          <!-- Simula foto de nível, edifício ao fundo pequeno -->
+          <div style="position:absolute;inset:0;background:#18191c;
+            background-image:
+              repeating-linear-gradient(0deg, transparent, transparent 11px, rgba(0,0,0,0.2) 11px, rgba(0,0,0,0.2) 13px),
+              linear-gradient(180deg, #2a2c30 0%, #1a1b1e 50%, #0e0f11 100%);"></div>
+          <!-- Edifício "pequeno" ao centro -->
+          <div style="position:absolute;bottom:25%;left:50%;transform:translateX(-50%);width:20%;height:30%;
+            background:#2a2c30;border-top:1px solid #3a3c40;"></div>
+          <div style="position:absolute;bottom:25%;left:50%;transform:translateX(-50%) translateX(-30px);width:25%;height:20%;
+            background:#222426;"></div>
+          <div class="comp-text" style="bottom:16px;left:16px;">
+            <p class="comp-mono" style="font-size:0.5625rem;letter-spacing:0.08em;color:var(--error);">NEUTRAL ANGLE · DISTANT SUBJECT</p>
+          </div>
+        </div>
+        <div class="verdict-bottom">
+          <p class="verdict-rule">Eye-level angle with small building in frame <strong>reduces impact and scale</strong>. The subject must dominate the frame — not be contextualized by it.</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<!-- Constraints -->
+<div class="page-wrap">
+  <section id="constraints">
+    <p class="section-label">07 · Constraints</p>
+    <h2 class="section-title">Never / Always</h2>
+
+    <div class="constraint-grid">
+      <div class="constraint-block">
+        <p class="constraint-title never">Never — forbidden across all fronts</p>
+        <ul class="constraint-list never">
+          <li>Gradients as surface fill</li>
+          <li>Drop shadows (box-shadow on any element)</li>
+          <li>Border-radius other than 0px (cards, buttons, inputs, badges, modals)</li>
+          <li>Glass / backdrop-filter: blur()</li>
+          <li>#22C55E ANSI green on any front</li>
+          <li>Amber-colored icons</li>
+          <li>Photography inside the Investor Dashboard product</li>
+          <li>Blockchain jargon in the Real Estate Dashboard</li>
+          <li>text-shadow / phosphor glow</li>
+          <li>scale() or translate on hover/active</li>
+          <li>#000000 pure black as background</li>
+          <li>Decorative orbs or bloom</li>
+          <li>Pill/rounded badges</li>
+          <li>Inter inside terminal/log panes (mono only — structured rows are a separate pattern)</li>
+          <li>Amber on more than 5% of screen pixels</li>
+        </ul>
+      </div>
+
+      <div class="constraint-block">
+        <p class="constraint-title always">Always — required without exception</p>
+        <ul class="constraint-list always">
+          <li>border-radius: 0px on all elements</li>
+          <li>JetBrains Mono with font-feature-settings: "tnum" 1 on all numbers</li>
+          <li>Three-layer hierarchy on every screen (Geist / Inter / Mono)</li>
+          <li>Surface stacking for depth</li>
+          <li>Success/error colors semantic only, never decorative</li>
+          <li>#1A1A1A as text on amber button in Real Estate (5.3:1 AA)</li>
+          <li>Inter Semi-bold 600 with #2E8B5A on light backgrounds</li>
+          <li>Bold labels ≥14px with #C94040 on dark backgrounds</li>
+          <li>Phosphor Icons at weight="light" only</li>
+          <li>1px solid borders — never 2px decorative</li>
+          <li>8px grid as base spacing unit</li>
+          <li>Minimum 1× cap height clear space around logo</li>
+          <li>Transitions on: color, background-color, border-color, opacity only</li>
+          <li>Amber scarce: less than 5% of pixels on dark fronts</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">tga</span>
+    <p class="footer-meta">Token de Garantia de Aluguel · Brand Guidelines v1.0 · 2026-04-14 · Precision Brutalism</p>
+  </div>
+</footer>
+
+<script>
+  function switchPanel(frontId, btn) {
+    // Hide all panels
+    document.querySelectorAll('.color-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.front-tab').forEach(t => t.classList.remove('active'));
+    // Show selected
+    document.getElementById('panel-' + frontId).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

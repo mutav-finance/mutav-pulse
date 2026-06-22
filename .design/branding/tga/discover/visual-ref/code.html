@@ -1,0 +1,337 @@
+<!DOCTYPE html><html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TGA | Sovereign Ledger Protocol</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Space+Grotesk:wght@700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        @font-face {
+            font-family: 'Geist';
+            src: url('https://fonts.cdnfonts.com/css/geist');
+        }
+        
+        body {
+            background-color: #0E0F11;
+            color: #EDECE6;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .font-geist { font-family: 'Geist', sans-serif; }
+        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        
+        .dot-grid {
+            background-image: radial-gradient(#2A2D33 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .tabular { font-variant-numeric: tabular-nums; }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#E8A020",
+                      "background": "#0E0F11",
+                      "surface-1": "#16181C",
+                      "surface-2": "#1E2126",
+                      "border-dim": "#2A2D33",
+                      "text-muted": "#9A9B9E",
+                      "text-main": "#EDECE6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem"
+              }
+            },
+          }
+        }
+    </script>
+</head>
+<body class="bg-background text-text-main selection:bg-primary selection:text-background">
+<!-- TopNavBar (Shared Component) -->
+<nav class="fixed top-0 w-full z-50 bg-[#0E0F11] border-b border-[#2A2D33] h-16 flex justify-between items-center px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">diamond</span>
+<span class="text-xl font-bold tracking-tighter text-[#E8A020] uppercase font-geist" style="">TGA</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-[#E8A020] font-bold border-b-2 border-[#E8A020] pb-1 font-geist tracking-tight" href="#" style="">Market</a>
+<a class="text-[#9A9B9E] font-medium hover:text-[#E8A020] transition-colors duration-100 font-geist tracking-tight" href="#" style="">Protocol</a>
+<a class="text-[#9A9B9E] font-medium hover:text-[#E8A020] transition-colors duration-100 font-geist tracking-tight" href="#" style="">Security</a>
+<a class="text-[#9A9B9E] font-medium hover:text-[#E8A020] transition-colors duration-100 font-geist tracking-tight" href="#" style="">Docs</a>
+</div>
+<button class="bg-primary text-background px-4 py-2 text-xs font-bold font-mono uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all duration-75 rounded-sm" style="">
+            Entrar na whitelist
+        </button>
+</nav>
+<main>
+<!-- Hero Section -->
+<section class="relative min-h-[716px] flex flex-col justify-center items-start px-6 md:px-24 pt-32 pb-20 dot-grid overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-background pointer-events-none"></div>
+<div class="relative z-10 max-w-5xl">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: &quot;FILL&quot; 1;">diamond</span>
+<span class="text-primary font-mono text-xs uppercase tracking-[0.3em]" style="">Protocolo de Liquidez Imobiliária</span>
+</div>
+<h1 class="text-5xl md:text-[80px] font-geist font-bold leading-[0.9] tracking-tighter text-[#EDECE6] mb-8" style="">
+                    Yield real.<br>Ativo real.<br>Mecanismo publico.
+                </h1>
+<p class="text-lg md:text-xl text-text-muted font-normal max-w-2xl mb-10 leading-relaxed" style="">
+                    Contratos de locação tokenizados na Solana. O Sovereign Ledger Protocol automatiza garantias locatícias através de pools de liquidez determinísticas e auditoria on-chain em tempo real.
+                </p>
+<div class="flex flex-col md:flex-row gap-4">
+<button class="bg-primary text-background px-8 py-4 font-bold font-mono uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all" style="">
+                        Entrar na whitelist
+                    </button>
+<button class="border border-border-dim text-text-main px-8 py-4 font-bold font-mono uppercase tracking-widest hover:bg-surface-1 active:scale-95 transition-all flex items-center gap-2" style="">
+                        Ver o mecanismo
+                        <span class="material-symbols-outlined text-sm" style="">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- O Mercado -->
+<section class="border-t border-border-dim bg-background py-24 px-6 md:px-24">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-12">
+<div class="md:col-span-4">
+<h2 class="text-3xl font-geist font-bold tracking-tighter leading-tight mb-6" style="">
+                        R$1,29 bilhão em garantias locatícias estagnadas.
+                    </h2>
+<p class="text-text-muted text-base leading-relaxed mb-8" style="">
+                        O mercado imobiliário brasileiro opera sob ineficiências de capital massivas. TGA destrava essa liquidez transformando cauções em ativos produtivos via DeFi, mantendo a segurança jurídica integral.
+                    </p>
+</div>
+<div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
+<div class="p-8 bg-surface-1 border border-border-dim flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="text-text-muted font-mono text-xs uppercase tracking-widest" style="">Market Size</span>
+<div class="mt-4">
+<div class="text-4xl font-geist font-bold text-primary tabular tracking-tighter" style="">R$1,29bi</div>
+<div class="text-text-muted text-xs font-mono mt-2 italic" style="">Volume Projetado</div>
+</div>
+</div>
+<div class="p-8 bg-surface-1 border border-border-dim flex flex-col justify-between">
+<span class="text-text-muted font-mono text-xs uppercase tracking-widest" style="">Contracts</span>
+<div class="mt-4">
+<div class="text-4xl font-geist font-bold text-text-main tabular tracking-tighter" style="">17,8mi</div>
+<div class="text-text-muted text-xs font-mono mt-2" style="">Déficit Habitacional</div>
+</div>
+</div>
+<div class="p-8 bg-surface-1 border border-border-dim flex flex-col justify-between">
+<span class="text-text-muted font-mono text-xs uppercase tracking-widest" style="">Entry Point</span>
+<div class="mt-4">
+<div class="text-4xl font-geist font-bold text-text-main tabular tracking-tighter" style="">R$500</div>
+<div class="text-text-muted text-xs font-mono mt-2" style="">Ticket Mínimo</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- O Mecanismo -->
+<section class="py-24 px-6 md:px-24 bg-surface-1 border-y border-border-dim">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<!-- Left: Pool Snapshot Card -->
+<div class="bg-background border border-border-dim p-1 font-mono">
+<div class="flex justify-between items-center px-4 py-2 border-b border-border-dim bg-surface-1">
+<span class="text-[10px] text-text-muted uppercase tracking-widest flex items-center gap-2" style="">
+<span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                            Live Pool Snapshot
+                        </span>
+<span class="text-[10px] text-text-muted" style="">SOLANA_MAINNET</span>
+</div>
+<div class="p-6 space-y-4">
+<div class="flex justify-between text-xs">
+<span class="text-text-muted uppercase" style="">Current Block</span>
+<span class="text-text-main tabular" style="">291847392</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-text-muted uppercase" style="">TVL Pool Alpha</span>
+<span class="text-text-main tabular" style="">R$ 2.840.000,00</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-text-muted uppercase" style="">Active Contracts</span>
+<div class="flex items-center gap-2">
+<span class="w-1 h-1 bg-[#44c572] rounded-full"></span>
+<span class="text-text-main tabular" style="">47 Contratos</span>
+</div>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-text-muted uppercase" style="">Safety Buffer (25%)</span>
+<span class="text-text-main tabular" style="">R$ 710.000,00</span>
+</div>
+<div class="pt-4">
+<div class="flex justify-between text-[10px] text-text-muted uppercase mb-1">
+<span class="" style="">Utilization Rate</span>
+<span class="" style="">80.00%</span>
+</div>
+<div class="h-2 bg-surface-2 flex">
+<div class="h-full bg-primary" style="width: 80%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Content -->
+<div>
+<span class="text-primary font-mono text-xs uppercase tracking-widest mb-4 block" style="">Para Investidores</span>
+<h2 class="text-4xl md:text-5xl font-geist font-bold tracking-tighter text-[#EDECE6] mb-8 leading-none" style="">
+                        O mecanismo é público e determinístico.
+                    </h2>
+<div class="space-y-8">
+<div class="flex gap-6 group">
+<div class="text-primary font-mono text-xl pt-1" style="">01</div>
+<div>
+<h4 class="text-lg font-bold font-geist tracking-tight mb-2" style="">Depositar</h4>
+<p class="text-text-muted text-sm leading-relaxed" style="">Aporte de liquidez na pool de garantias via USDC ou BRLT.</p>
+</div>
+</div>
+<div class="flex gap-6">
+<div class="text-primary font-mono text-xl pt-1" style="">02</div>
+<div>
+<h4 class="text-lg font-bold font-geist tracking-tight mb-2" style="">Receber TGA Token</h4>
+<p class="text-text-muted text-sm leading-relaxed" style="">Proof-of-yield token que representa sua cota proporcional e accrual de juros.</p>
+</div>
+</div>
+<div class="flex gap-6">
+<div class="text-primary font-mono text-xl pt-1" style="">03</div>
+<div>
+<h4 class="text-lg font-bold font-geist tracking-tight mb-2" style="">Saída via fila on-chain</h4>
+<p class="text-text-muted text-sm leading-relaxed" style="">Resgate processado por ordem de chegada com buffer de liquidez garantido.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Transparencia (Bento Grid) -->
+<section class="py-24 px-6 md:px-24 bg-background">
+<div class="mb-16">
+<span class="text-primary font-mono text-xs uppercase tracking-widest mb-2 block" style="">Verificável Agora</span>
+<h2 class="text-4xl font-geist font-bold tracking-tighter" style="">Não acredite em nós. Verifique.</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<!-- Card 1 -->
+<div class="md:col-span-8 p-10 bg-surface-1 border border-border-dim flex flex-col justify-between min-h-[320px]">
+<div class="max-w-md">
+<h3 class="text-2xl font-bold font-geist tracking-tighter mb-4" style="">Mecanismo Público</h3>
+<p class="text-text-muted leading-relaxed" style="">Toda a lógica de colateralização e liquidação é executada por smart contracts auditados na Solana. Sem intermediários, sem "black boxes" financeiras.</p>
+</div>
+<div class="flex gap-4 mt-8">
+<span class="px-3 py-1 border border-border-dim text-[10px] font-mono text-text-muted uppercase" style="">Open Source</span>
+<span class="px-3 py-1 border border-border-dim text-[10px] font-mono text-text-muted uppercase" style="">On-chain Proofs</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="md:col-span-4 p-10 bg-primary text-background flex flex-col justify-between min-h-[320px]">
+<h3 class="text-2xl font-bold font-geist tracking-tighter leading-none" style="">Saída Determinística</h3>
+<div class="space-y-4">
+<p class="font-bold text-sm leading-tight" style="">Garantia de resgate via fila de liquidez priorizada, eliminando riscos de corridas bancárias sistêmicas.</p>
+<span class="material-symbols-outlined text-4xl" style="">account_balance_wallet</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="md:col-span-4 p-10 bg-surface-1 border border-border-dim flex flex-col justify-between min-h-[320px]">
+<div>
+<h3 class="text-2xl font-bold font-geist tracking-tighter mb-4" style="">Ativo Real</h3>
+<p class="text-text-muted text-sm leading-relaxed" style="">Lastro direto em contratos de aluguel vigentes. O rendimento provém da economia real, não de emissões inflacionárias de tokens.</p>
+</div>
+<div class="h-24 w-full bg-surface-2 mt-6 overflow-hidden">
+<img class="w-full h-full object-cover grayscale opacity-50" data-alt="Modern architectural detail of glass office building with sharp shadows and high contrast editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXFdqn6qci4aAWgbjy6-W_dIi4VvorV0jhtukLacxhVdL4HqfY9nxHeSNHyahKQuSjD0SD2ZZomivCQ8zo3lWmD_L5PhYQyo4jXdHX-6rIUmyBJ_ID3fW5UB3tZeRx9gVZwKK5wXDGenW8FgJvFBuHh1Tm9ExQlC6SGXesQui-3UcFytoL6QOSFgGlHCrstp9f4pkHdFsq4UvWWLiNzr9ORaUODh-LCDGAU_2t6Ek5Dn7P5HrAd42tHPCYN8sTimOMedtwmTO0olaH" style="">
+</div>
+</div>
+<!-- Card 4 -->
+<div class="md:col-span-8 p-10 bg-surface-1 border border-border-dim flex flex-col justify-between min-h-[320px]">
+<div class="flex flex-col md:flex-row gap-10">
+<div class="flex-1">
+<h3 class="text-2xl font-bold font-geist tracking-tighter mb-4 text-primary" style="">Momento Regulatório</h3>
+<p class="text-text-muted leading-relaxed" style="">Protocolo desenhado em conformidade com as novas diretrizes de tokenização da CVM e Banco Central, focado em investidores qualificados e institucionais.</p>
+</div>
+<div class="flex-shrink-0 w-32 h-32 flex items-center justify-center border border-border-dim bg-background">
+<span class="material-symbols-outlined text-5xl text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">gavel</span>
+</div>
+</div>
+<div class="mt-8 flex items-center gap-4 text-xs font-mono text-text-muted">
+<span class="flex items-center gap-1" style=""><span class="w-2 h-2 bg-primary"></span> Legal Compliant</span>
+<span class="flex items-center gap-1" style=""><span class="w-2 h-2 bg-primary"></span> CVM Ready</span>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Final -->
+<section class="py-32 px-6 md:px-24 bg-background flex flex-col items-center text-center border-t border-border-dim">
+<h2 class="text-4xl md:text-6xl font-geist font-bold tracking-tighter mb-8 max-w-4xl" style="">
+                Acesso real ao mercado imobiliário sem a fricção do legado.
+            </h2>
+<button class="bg-primary text-background px-12 py-6 text-lg font-bold font-mono uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all mb-6" style="">
+                Entrar na whitelist
+            </button>
+<p class="text-text-muted font-mono text-xs uppercase tracking-widest mb-16" style="">
+                Nota: A whitelist fecha em 14 dias para a fase Alpha.
+            </p>
+<div class="flex flex-wrap justify-center gap-12 opacity-30 grayscale">
+<div class="flex items-center gap-2">
+<img alt="Solana" class="h-6 filter brightness-200" data-alt="Solana blockchain logo minimal white and black" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8Idv5naqsOlqafOA5rWSgEprMKu9fdP3LSi1xIaeYXIuSNDS9Yql7azhKac2FIt-2SmwKuUGhroZ74Eyh5R_f6l70tHIWd2RmCf-FzvfyraKNka7mhKwwU6M9hKiZnVsR-lu6OUdtKlGYgcqC-y54Emo-Z0DxkeAewc0NU-7q5FTXjXm-MEmTrP-OqxOl2s3ZHPMNKZICTWnrY12deXdzbKN3eu5qGT-tAoNBQUcmyohxmE2KqToNuRodVvWUHQwKP-0A8LrYTHxf" style="">
+<span class="font-geist font-bold tracking-tighter text-xl" style="">SOLANA</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl" style="">architecture</span>
+<span class="font-geist font-bold tracking-tighter text-xl" style="">COLOSSEUM</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-background border-t border-border-dim pt-16">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-12 px-6 md:px-24 pb-16">
+<div class="md:col-span-6">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: &quot;FILL&quot; 1;">diamond</span>
+<span class="text-xl font-bold tracking-tighter text-[#E8A020] uppercase font-geist" style="">TGA</span>
+</div>
+<p class="text-text-muted font-mono text-xs uppercase tracking-[0.2em] leading-relaxed max-w-xs" style="">
+                    The Sovereign Ledger Protocol for Real-World Rental Guarantees on Solana.
+                </p>
+</div>
+<div class="md:col-span-3">
+<h5 class="font-mono text-xs text-primary uppercase tracking-widest mb-6" style="">Connect</h5>
+<ul class="space-y-4 font-mono text-[10px] text-text-muted uppercase tracking-widest">
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">GitHub Repository</a></li>
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">X / Twitter</a></li>
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">Contact Email</a></li>
+</ul>
+</div>
+<div class="md:col-span-3">
+<h5 class="font-mono text-xs text-primary uppercase tracking-widest mb-6" style="">Resources</h5>
+<ul class="space-y-4 font-mono text-[10px] text-text-muted uppercase tracking-widest">
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">Colosseum Hackathon</a></li>
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">Protocol Whitepaper</a></li>
+<li class="" style=""><a class="hover:text-text-main transition-colors" href="#" style="">Security Audits</a></li>
+</ul>
+</div>
+</div>
+<!-- Bottom Bar -->
+<div class="border-t border-border-dim px-6 md:px-24 py-8 bg-[#0E0F11]">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+<p class="font-mono text-[10px] text-text-muted uppercase tracking-widest" style="">
+                    © 2024 Sovereign Ledger Protocol. Built for Solana and Colosseum Hackathon.
+                </p>
+<div class="flex md:justify-end gap-6 font-mono text-[10px] text-text-muted uppercase tracking-widest">
+<a class="hover:text-white transition-colors" href="#" style="">Documentation</a>
+<a class="hover:text-white transition-colors" href="#" style="">Risk Modules</a>
+<a class="hover:text-white transition-colors" href="#" style="">Legal Disclaimer</a>
+<a class="hover:text-white transition-colors" href="#" style="">Security Audit</a>
+</div>
+</div>
+<div class="mt-8 text-[9px] font-mono text-[#444] leading-relaxed max-w-4xl uppercase tracking-wider" style="">
+                Aviso: O investimento em ativos digitais e pools de liquidez DeFi envolve riscos significativos. Este protocolo é um protótipo experimental desenvolvido para a Solana Colosseum Hackathon e não constitui oferta pública de valores mobiliários.
+            </div>
+</div>
+</footer>
+</body></html>

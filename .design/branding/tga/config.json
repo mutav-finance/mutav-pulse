@@ -1,0 +1,29 @@
+{
+  "version": "0.7.4",
+  "project_type": "brand",
+  "brand": {
+    "name": "tga",
+    "created": "2026-04-14"
+  },
+  "brand_mode": "new",
+  "e2e": false,
+  "evolution_scope": {
+    "preserve": [],
+    "evolve": [],
+    "replace": []
+  },
+  "product_architecture": {
+    "fronts": [
+      { "id": "dashboard-imobiliarias", "label": "Dashboard Imobiliárias", "audience": "Imobiliárias, proprietários, inquilinos", "persona": "Lucas" },
+      { "id": "dashboard-investidor", "label": "Dashboard Investidor", "audience": "Investidores cripto-nativos", "persona": "Ana" },
+      { "id": "terminal", "label": "Terminal", "audience": "Gestão e controle do protocolo", "persona": "Operadores TGA" }
+    ]
+  },
+  "system_config": {
+    "tech_stack": "Solana (Anchor/Rust)",
+    "system_strategy": "generate",
+    "style_preset": "",
+    "style_base": ["minimal-dark", "terminal", "professional"]
+  },
+  "gsp_version": "0.7.2"
+}
