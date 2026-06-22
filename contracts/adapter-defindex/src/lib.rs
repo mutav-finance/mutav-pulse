@@ -51,12 +51,16 @@ impl Strategy for AdapterDefindex {
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {
+        // Read df_shares once; derive value inline to avoid a redundant cross-contract read.
         let shares = AdapterDefindex::df_shares(&e);
-        let value = Self::balance(e.clone());
-        if value <= 0 || shares <= 0 {
-            return 0;
-        }
+        if shares <= 0 { return 0; }
+        let value = AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares).get(0).unwrap();
+        if value <= 0 { return 0; }
+        // amount * shares is i128; overflows only above ~1e19 raw units — unreachable at USDC 7-decimal scale.
         let burn = if amount >= value { shares } else { (amount * shares + value - 1) / value };
+        // min_out=0: no slippage floor. The >=amount guarantee assumes the real DeFindex vault has no
+        // withdrawal fee and floor-rounds at most like our mock.
+        // TODO(testnet): set min_amounts_out to a real floor (e.g. amount) once real-vault withdraw behavior is confirmed.
         let out = AdapterDefindex::dfx(&e).withdraw(&burn, &vec![&e, 0], &e.current_contract_address());
         let received = out.get(0).unwrap();
         token::TokenClient::new(&e, &AdapterDefindex::underlying_addr(&e))
@@ -65,6 +69,7 @@ impl Strategy for AdapterDefindex {
     }
 
     fn balance(e: Env) -> i128 {
+        // Reads only df-shares; assumes the adapter holds no idle underlying between calls.
         let shares = AdapterDefindex::df_shares(&e);
         if shares <= 0 {
             return 0;

@@ -19,16 +19,19 @@ inv "$POLICY" set_vault --addr "$VAULT"
 inv "$POLICY" set_registry --addr "$REGISTRY"
 inv "$POLICY" set_coverage_ratio_bps --bps 10000
 inv "$VAULT" set_policy --policy "$POLICY"
-inv "$VAULT" add_strategy --address "$MOCK" --weight_bps 10000 --volatile false
 
-# --- DeFindex yield adapter (optional) ---
-# export DEFINDEX_VAULT=<a DeFindex testnet vault id> to use real yield.
+# --- Strategy slot (mutually exclusive) ---
+# When DEFINDEX_VAULT is set the reserve flows entirely to the DeFindex adapter at
+# weight 10000.  When it is unset the mock-strategy fills that slot instead.
+# Never add both: their weights would sum to 20000 and split the reserve 50/50.
 if [ -n "${DEFINDEX_VAULT:-}" ]; then
   ADAPTER=$(dep adapter_defindex.wasm --admin "$ADMIN" --underlying "$USDC_SAC")
   inv "$ADAPTER" set_vault --addr "$DEFINDEX_VAULT"
   inv "$VAULT" add_strategy --address "$ADAPTER" --weight_bps 10000 --volatile false
   echo "ADAPTER_DEFINDEX=$ADAPTER (DeFindex vault $DEFINDEX_VAULT)"
 else
+  # DEFINDEX_VAULT unset -> fall back to the mock-strategy for local/testnet runs.
+  inv "$VAULT" add_strategy --address "$MOCK" --weight_bps 10000 --volatile false
   echo "DEFINDEX_VAULT unset -> using mock-strategy slot only"
 fi
 

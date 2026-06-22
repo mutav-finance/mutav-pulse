@@ -1,4 +1,7 @@
+//! TEST DOUBLE — never deployed to mainnet. Intentionally omits `from.require_auth()`
+//! in deposit/withdraw so unit tests can drive it without auth setup.
 #![no_std]
+// MuxedAddress is required by the FungibleToken macro even though it is not used directly.
 use soroban_sdk::{contract, contractimpl, contracttype, token, vec, Address, Env, IntoVal, MuxedAddress, String, Val, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
 use interfaces::DefindexVault as DefindexVaultTrait;
@@ -47,6 +50,9 @@ impl DefindexVaultTrait for MockDefindex {
 
     fn withdraw(e: Env, df_amount: i128, _min_amounts_out: Vec<i128>, from: Address) -> Vec<i128> {
         let supply = Base::total_supply(&e);
+        // Defensive guard: supply==0 is unreachable after a deposit, but avoids div-by-zero.
+        if supply == 0 { return vec![&e, 0]; }
+        // Integer truncation: withdrawer may receive 1 raw unit less than the exact pro-rata value.
         let usdc_out = df_amount * Self::held(&e) / supply;
         Base::update(&e, Some(&from), None, df_amount); // burn shares
         token::TokenClient::new(&e, &Self::underlying_addr(&e))
