@@ -8,6 +8,8 @@
  *
  * This page will be replaced by the reserve dashboard in later tasks.
  */
+import { ConnectButton } from "@/components/ConnectButton";
+
 export default function Home() {
   return (
     <main
@@ -49,15 +51,18 @@ export default function Home() {
           pulse
         </span>
 
-        {/* Live dot — amber pulse (only ambient animation) */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
-          <div className="live-dot" aria-hidden="true" />
-          <span
-            className="font-mono"
-            style={{ fontSize: "12px", color: "var(--color-text-3)" }}
-          >
-            testnet
-          </span>
+        {/* Right side: network indicator + connect button */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="live-dot" aria-hidden="true" />
+            <span
+              className="font-mono"
+              style={{ fontSize: "12px", color: "var(--color-text-3)" }}
+            >
+              testnet
+            </span>
+          </div>
+          <ConnectButton />
         </div>
       </nav>
 

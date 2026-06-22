@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import { WalletProvider } from "@/components/WalletProvider";
 
 // Geist Bold (700) only — the Declaration layer font.
 // Never load other weights; TGA uses Bold exclusively for headings.
@@ -31,7 +32,9 @@ export default function RootLayout({
       data-front="investidor"
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <WalletProvider>
+          {children}
+        </WalletProvider>
       </body>
     </html>
   );
