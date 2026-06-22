@@ -143,7 +143,7 @@ export default function EarnPage() {
               marginBottom: "12px",
             }}
           >
-            MUTAV SGR RESERVE
+            MUTAV RESERVE
           </p>
           <h1
             className="font-display"
@@ -155,7 +155,7 @@ export default function EarnPage() {
               marginBottom: "24px",
             }}
           >
-            Earn Yield on the SGR Reserve
+            Earn Yield on the MUTAV Reserve
           </h1>
 
           {/* NAV stat cards */}

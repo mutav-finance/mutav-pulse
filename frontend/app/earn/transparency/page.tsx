@@ -227,7 +227,7 @@ export default function TransparencyPage() {
                 margin: "0 0 10px",
               }}
             >
-              MUTAV SGR RESERVE
+              MUTAV RESERVE
             </p>
             <h1
               className="font-display"

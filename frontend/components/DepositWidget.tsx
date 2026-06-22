@@ -131,7 +131,7 @@ export function DepositWidget({
             marginTop: "4px",
           }}
         >
-          Contribute USDC to the Mutav SGR reserve and receive mtvR shares at current NAV.
+          Contribute USDC to the MUTAV reserve and receive mtvR shares at current NAV.
         </p>
       </div>
 
