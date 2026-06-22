@@ -14,6 +14,7 @@
  */
 
 import { fmtUsd, fmtBps, truncAddr } from "@/lib/format";
+import { Mono } from "@/components/Mono";
 import type { Guarantee } from "policy";
 
 interface GuaranteeTableProps {
@@ -28,7 +29,8 @@ function StatusBadge({ active, isCurrent }: { active: boolean; isCurrent: boolea
   let label: string;
 
   if (!active) {
-    color = "var(--color-accent)"; // LIQUIDADO = amber
+    // Closed/settled state — neutral grey. Amber would read as active/warning.
+    color = "var(--color-text-3)";
     label = "LIQUIDADO";
   } else if (!isCurrent) {
     color = "var(--color-error)"; // overdue = error red
@@ -56,23 +58,6 @@ function StatusBadge({ active, isCurrent }: { active: boolean; isCurrent: boolea
         {label}
       </span>
     </div>
-  );
-}
-
-/** Mono span */
-function Mono({ children, dim = false }: { children: React.ReactNode; dim?: boolean }) {
-  return (
-    <span
-      className="font-mono"
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        color: dim ? "var(--color-text-3)" : "var(--color-text)",
-        fontSize: "13px",
-      }}
-    >
-      {children}
-    </span>
   );
 }
 

@@ -72,10 +72,26 @@ export function VerificationPanel() {
               color: "inherit",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--color-surface-2)";
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.backgroundColor = "var(--color-surface-2)";
+              const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
+              if (idSpan) idSpan.style.color = "var(--color-accent)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--color-surface)";
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.backgroundColor = "var(--color-surface)";
+              const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
+              if (idSpan) idSpan.style.color = "var(--color-text-2)";
+            }}
+            onFocus={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
+              if (idSpan) idSpan.style.color = "var(--color-accent)";
+            }}
+            onBlur={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
+              if (idSpan) idSpan.style.color = "var(--color-text-2)";
             }}
           >
             {/* Role label */}
@@ -92,15 +108,17 @@ export function VerificationPanel() {
               {role}
             </span>
 
-            {/* Contract ID — mono, truncated */}
+            {/* Contract ID — mono, truncated; neutral at rest, amber on hover/focus */}
             <span
+              data-contract-id
               className="font-mono"
               style={{
                 fontSize: "12px",
-                color: "var(--color-accent)",
+                color: "var(--color-text-2)",
                 fontFeatureSettings: '"tnum" 1',
                 letterSpacing: "0.01em",
                 wordBreak: "break-all",
+                transition: "color 150ms ease-out",
               }}
             >
               {truncAddr(id)}

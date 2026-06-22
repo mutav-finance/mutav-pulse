@@ -25,32 +25,9 @@ import { ConnectButton } from "@/components/ConnectButton";
 import { PositionPanel } from "@/components/PositionPanel";
 import { DepositWidget } from "@/components/DepositWidget";
 import { RedeemPanel } from "@/components/RedeemPanel";
+import { Mono } from "@/components/Mono";
 import { fmtNav } from "@/lib/format";
 import type { RedeemRequest } from "vault";
-
-/** Mono span for evidence-layer numbers */
-function Mono({
-  children,
-  style,
-  className = "",
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
 
 interface EarnData {
   navPerShare: bigint;
@@ -145,55 +122,6 @@ export default function EarnPage() {
         color: "var(--color-text)",
       }}
     >
-      {/* Top nav bar */}
-      <nav
-        style={{
-          height: "56px",
-          backgroundColor: "var(--color-canvas)",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 32px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-          {/* Logo — Geist Bold amber, lowercase per STYLE.md §3.6 */}
-          <a
-            href="/"
-            className="font-display"
-            style={{
-              fontSize: "16px",
-              color: "var(--color-accent)",
-              textDecoration: "none",
-              letterSpacing: "0.02em",
-            }}
-          >
-            tga
-          </a>
-          {/* Nav item — active state */}
-          <a
-            href="/earn"
-            className="font-body"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text)",
-              textDecoration: "none",
-              borderBottom: "1px solid var(--color-accent)",
-              paddingBottom: "1px",
-              letterSpacing: "0.01em",
-            }}
-            aria-current="page"
-          >
-            earn
-          </a>
-        </div>
-
-        {/* Wallet connect */}
-        <ConnectButton />
-      </nav>
-
       {/* Page content */}
       <div
         style={{

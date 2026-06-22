@@ -16,7 +16,6 @@
  * Static/presentational: no wallet or contract writes required.
  */
 
-import { ConnectButton } from "@/components/ConnectButton";
 import { VenueDirectory } from "@/components/VenueDirectory";
 
 export default function DefiPage() {
@@ -29,85 +28,6 @@ export default function DefiPage() {
         color: "var(--color-text)",
       }}
     >
-      {/* ── Nav bar ─────────────────────────────────────────────────────── */}
-      <nav
-        style={{
-          height: "56px",
-          backgroundColor: "var(--color-canvas)",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 32px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-          {/* Logo */}
-          <a
-            href="/"
-            className="font-display"
-            style={{
-              fontSize: "16px",
-              color: "var(--color-accent)",
-              textDecoration: "none",
-              letterSpacing: "0.02em",
-            }}
-          >
-            tga
-          </a>
-
-          {/* Nav: earn */}
-          <a
-            href="/earn"
-            className="font-body"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text-2)",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-            }}
-          >
-            earn
-          </a>
-
-          {/* Nav: transparency */}
-          <a
-            href="/earn/transparency"
-            className="font-body"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text-2)",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-            }}
-          >
-            transparency
-          </a>
-
-          {/* Nav: defi — active */}
-          <a
-            href="/earn/defi"
-            className="font-body"
-            aria-current="page"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text)",
-              textDecoration: "none",
-              borderBottom: "1px solid var(--color-accent)",
-              paddingBottom: "1px",
-              letterSpacing: "0.01em",
-            }}
-          >
-            defi
-          </a>
-        </div>
-
-        <ConnectButton />
-      </nav>
-
       {/* ── Page content ────────────────────────────────────────────────── */}
       <div
         style={{

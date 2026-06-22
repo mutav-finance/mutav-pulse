@@ -19,7 +19,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { reads } from "@/lib/contracts";
-import { ConnectButton } from "@/components/ConnectButton";
 import { MetricCard } from "@/components/MetricCard";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
@@ -98,12 +97,12 @@ const INITIAL: TransparencyData = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Format a share count (bigint, stroops) as a plain number with commas */
+/** Format a share count (bigint, stroops) as a plain integer with commas.
+ *  Uses exact bigint division to avoid float precision issues on large supplies. */
 function fmtShares(v: bigint): string {
-  return (Number(v) / 1e7).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
+  // 1 mtvR share = 10_000_000 stroops (7 decimal places)
+  const whole = v / 10_000_000n;
+  return whole.toLocaleString("en-US");
 }
 
 /** Format APY as percentage string */
@@ -196,68 +195,6 @@ export default function TransparencyPage() {
         color: "var(--color-text)",
       }}
     >
-      {/* ── Nav bar ─────────────────────────────────────────────────────── */}
-      <nav
-        style={{
-          height: "56px",
-          backgroundColor: "var(--color-canvas)",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 32px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-          {/* Logo */}
-          <a
-            href="/"
-            className="font-display"
-            style={{
-              fontSize: "16px",
-              color: "var(--color-accent)",
-              textDecoration: "none",
-              letterSpacing: "0.02em",
-            }}
-          >
-            tga
-          </a>
-          {/* Nav: earn */}
-          <a
-            href="/earn"
-            className="font-body"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text-2)",
-              textDecoration: "none",
-              paddingBottom: "1px",
-              letterSpacing: "0.01em",
-            }}
-          >
-            earn
-          </a>
-          {/* Nav: transparency — active */}
-          <a
-            href="/earn/transparency"
-            className="font-body"
-            aria-current="page"
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--color-text)",
-              textDecoration: "none",
-              borderBottom: "1px solid var(--color-accent)",
-              paddingBottom: "1px",
-              letterSpacing: "0.01em",
-            }}
-          >
-            transparency
-          </a>
-        </div>
-        <ConnectButton />
-      </nav>
-
       {/* ── Page content ────────────────────────────────────────────────── */}
       <div
         style={{

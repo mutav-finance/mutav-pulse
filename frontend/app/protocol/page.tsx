@@ -24,6 +24,7 @@ import { reads } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
 import { ReserveHealthHeader } from "@/components/ReserveHealthHeader";
+import { Mono } from "@/components/Mono";
 import {
   ProtocolActionForm,
   FormField,
@@ -73,27 +74,6 @@ const INITIAL: ProtocolData = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function Mono({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <span
-      className="font-mono"
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
-}
 
 /** Section label — uppercase, terminal-dim, hairline top border */
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -248,7 +228,7 @@ export default function ProtocolPage() {
   // ── Form state: Add Strategy ─────────────────────────────────────────────────
   const [asAddress, setAsAddress] = useState("");
   const [asWeightBps, setAsWeightBps] = useState("");
-  const [asVolatile, setAsVolatile] = useState(false);
+  const [isVolatile, setIsVolatile] = useState(false);
 
   // ── Form state: Remove Strategy ──────────────────────────────────────────────
   const [rsAddress, setRsAddress] = useState("");
@@ -274,99 +254,7 @@ export default function ProtocolPage() {
         color: "var(--color-text)",
       }}
     >
-      {/* ── Nav bar ─────────────────────────────────────────────────────── */}
-      <nav
-        style={{
-          height: "48px",
-          backgroundColor: "var(--color-canvas)",
-          borderBottom: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 28px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-          {/* Logo */}
-          <a
-            href="/"
-            className="font-mono"
-            style={{
-              fontSize: "13px",
-              color: "var(--color-copper)",
-              textDecoration: "none",
-              letterSpacing: "0.06em",
-              fontWeight: 500,
-            }}
-          >
-            tga
-          </a>
-          {/* Nav links */}
-          <a
-            href="/earn"
-            className="font-body"
-            style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--color-text-2)",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-            }}
-          >
-            earn
-          </a>
-          <a
-            href="/earn/transparency"
-            className="font-body"
-            style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--color-text-2)",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-            }}
-          >
-            transparency
-          </a>
-          {/* protocol — active */}
-          <a
-            href="/protocol"
-            className="font-mono"
-            aria-current="page"
-            style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--color-copper)",
-              textDecoration: "none",
-              borderBottom: "1px solid var(--color-copper)",
-              paddingBottom: "1px",
-              letterSpacing: "0.04em",
-            }}
-          >
-            protocol
-          </a>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {/* Admin badge */}
-          {isAdmin && (
-            <span
-              className="font-mono"
-              style={{
-                fontSize: "10px",
-                color: "var(--color-copper)",
-                border: "1px solid var(--color-copper)",
-                padding: "2px 8px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              ADMIN
-            </span>
-          )}
-          <ConnectButton />
-        </div>
-      </nav>
+      {/* Admin badge rendered inline near the page header; nav is in NavShell */}
 
       {/* ── Page content ────────────────────────────────────────────────── */}
       <div
@@ -415,7 +303,7 @@ export default function ProtocolPage() {
             </h1>
           </div>
 
-          {/* Refresh + last tx */}
+          {/* Right: admin badge + refresh + last tx */}
           <div
             style={{
               display: "flex",
@@ -424,6 +312,22 @@ export default function ProtocolPage() {
               gap: "6px",
             }}
           >
+            {isAdmin && (
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: "10px",
+                  color: "var(--color-copper)",
+                  border: "1px solid var(--color-copper)",
+                  padding: "2px 8px",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  alignSelf: "flex-end",
+                }}
+              >
+                ADMIN
+              </span>
+            )}
             <button
               onClick={fetchAll}
               disabled={data.loading}
@@ -702,7 +606,10 @@ export default function ProtocolPage() {
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return settleGuarantee(address, parseInt(settleId, 10));
+                  if (!settleId) throw new Error("select a guarantee first");
+                  const id = parseInt(settleId, 10);
+                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  return settleGuarantee(address, id);
                 }}
                 onSuccess={(hash) => {
                   setSettleId("");
@@ -738,7 +645,10 @@ export default function ProtocolPage() {
                 disabled={!isAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return payPremium(address, parseInt(ppId, 10));
+                  if (!ppId) throw new Error("select a guarantee first");
+                  const id = parseInt(ppId, 10);
+                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  return payPremium(address, id);
                 }}
                 onSuccess={(hash) => {
                   setPpId("");
@@ -799,7 +709,10 @@ export default function ProtocolPage() {
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return coverDefault(address, parseInt(cdId, 10));
+                  if (!cdId) throw new Error("select a guarantee first");
+                  const id = parseInt(cdId, 10);
+                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  return coverDefault(address, id);
                 }}
                 onSuccess={(hash) => {
                   setCdId("");
@@ -1087,17 +1000,20 @@ export default function ProtocolPage() {
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
+                  if (!asAddress) throw new Error("strategy address is required");
+                  const weightBps = parseInt(asWeightBps, 10);
+                  if (isNaN(weightBps)) throw new Error("weight bps must be a number");
                   return addStrategy(
                     address,
                     asAddress,
-                    parseInt(asWeightBps, 10),
-                    asVolatile,
+                    weightBps,
+                    isVolatile,
                   );
                 }}
                 onSuccess={(hash) => {
                   setAsAddress("");
                   setAsWeightBps("");
-                  setAsVolatile(false);
+                  setIsVolatile(false);
                   handleSuccess(hash);
                 }}
               >
@@ -1124,8 +1040,8 @@ export default function ProtocolPage() {
                 <FormCheckbox
                   id="as-volatile"
                   label="Volatile strategy (holds non-stable assets)"
-                  checked={asVolatile}
-                  onChange={setAsVolatile}
+                  checked={isVolatile}
+                  onChange={setIsVolatile}
                   disabled={!isVaultAdmin}
                 />
               </ProtocolActionForm>
@@ -1138,6 +1054,7 @@ export default function ProtocolPage() {
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
+                  if (!rsAddress) throw new Error("select a strategy first");
                   return removeStrategy(address, rsAddress);
                 }}
                 onSuccess={(hash) => {

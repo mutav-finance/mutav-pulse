@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# mutav-pulse frontend
 
-## Getting Started
+Next.js 16 frontend for the **Mutav Pulse** SGR reserve vault testbed. Connects to Stellar Soroban testnet contracts, Stellar Wallets Kit, and the three TGA brand fronts.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **TypeScript**
+- **Tailwind CSS v4** (OKLCH tokens, Precision Brutalism system)
+- **Bun** package manager and test runner
+- **Stellar Wallets Kit** — wallet connection (no Privy, no injected keys)
+- **Soroban contract bindings** — generated via `stellar contract bindings typescript`
+
+## Environment variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_RPC_URL` | Soroban RPC endpoint (e.g. `https://soroban-testnet.stellar.org`) |
+| `NEXT_PUBLIC_NETWORK_PASSPHRASE` | Stellar network passphrase (`Test SDF Network ; September 2015` for testnet) |
+| `NEXT_PUBLIC_EXPLORER_BASE` | Stellar Explorer base URL (e.g. `https://stellar.expert/explorer/testnet`) |
+| `NEXT_PUBLIC_VAULT_ID` | Deployed vault contract address (Stellar `C…` address) |
+| `NEXT_PUBLIC_POLICY_ID` | Deployed policy contract address |
+| `NEXT_PUBLIC_REGISTRY_ID` | Deployed registry contract address |
+| `NEXT_PUBLIC_USDC_ID` | USDC SAC address the vault settles in |
+
+All variables are prefixed `NEXT_PUBLIC_` and are safe to expose to the browser. No private keys are held by this frontend.
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bunx vitest run
+```
 
-## Learn More
+Test files live in `lib/*.test.ts` and cover format helpers, APY estimation, and queue logic.
 
-To learn more about Next.js, take a look at the following resources:
+## Build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+bun run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Runs `next build`. The build must pass before deploying.
 
-## Deploy on Vercel
+## Deploying to Vercel (team `mutav`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Create the project** on [Vercel](https://vercel.com) under team `mutav`.
+2. **Set root directory** to `frontend/` (this directory), or deploy from the monorepo root with the framework preset pointing here.
+3. **Set env vars** in the Vercel dashboard (Settings → Environment Variables) — all `NEXT_PUBLIC_*` from the table above.
+4. **Attach a domain** — e.g. `pulse.mutav.finance`. The wildcard `* ALIAS` on the Vercel DNS zone for `mutav.finance` means any subdomain resolves automatically; just attach it in the Vercel project and Vercel issues the cert.
+5. **Deploy** — push to `main`; Vercel picks up the build automatically.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> **Note:** `mutav.finance` DNS is hosted on Vercel (nameservers `ns1/ns2.vercel-dns.com`). A wildcard ALIAS covers all subdomains — no per-app DNS record needed. HTTPS is provisioned automatically by Vercel on domain attach.
+
+## Routes
+
+| Route | Front | Description |
+|---|---|---|
+| `/earn` | Investidor (dark/amber) | Deposit / Redeem — NAV hero + position + queue |
+| `/earn/transparency` | Investidor | Reserve dashboard — solvency, metrics, guarantee registry, verification |
+| `/earn/defi` | Investidor | Yield venue directory — DeFindex live, Soroswap/Blend planned |
+| `/protocol` | Terminal (dark/copper) | Admin cockpit — reserve health + all protocol write actions |
+
+## Design system
+
+Tokens sourced from `.design/branding/tga/` (vendored from `mutav-finance/brand`). Do not edit brand files inside this repo — update via `cd ../brand && bun brand:import mutav-pulse`.
+
+Key token rules:
+- **Amber (`#E8A020`)** — accent, <5% of pixels. Logo, active nav state, APY highlight, CTA only.
+- **Copper** — terminal front ops register accent.
+- **No shadows, no rounded corners, no gradients** — Precision Brutalism.
+- Three-layer typography: **Geist Bold** (declaration), **Inter** (explanation), **JetBrains Mono** (evidence/data).
