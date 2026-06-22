@@ -4,7 +4,7 @@
  * NavShell — shared top navigation bar for all pages.
  *
  * Hierarchy:
- *   MUTAV (logo) · earn · transparency · defi · protocol
+ *   MUTAV (logo) · earn · transparency · protocol
  *   Right: ConnectButton
  *
  * Active-route: current link gets an amber underline + full-brightness text
@@ -31,7 +31,6 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/earn", label: "earn", match: "exact" },
   { href: "/earn/transparency", label: "transparency", match: "exact" },
-  { href: "/earn/defi", label: "defi", match: "exact" },
   { href: "/protocol", label: "protocol", match: "prefix" },
 ];
 

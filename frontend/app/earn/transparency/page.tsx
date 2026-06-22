@@ -23,6 +23,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
 import { VerificationPanel } from "@/components/VerificationPanel";
+import { VenueDirectory } from "@/components/VenueDirectory";
 import { fmtUsd, fmtNav } from "@/lib/format";
 import { estimateApy, type NavSnap } from "@/lib/apy";
 import type { Guarantee } from "policy";
@@ -251,8 +252,8 @@ export default function TransparencyPage() {
                 maxWidth: "520px",
               }}
             >
-              Live on-chain reserve metrics, guarantee registry, and contract
-              verification. All values read directly from Soroban testnet.
+              Live on-chain reserve metrics, guarantee registry, yield venues, and
+              contract verification. All values read directly from Soroban testnet.
             </p>
           </div>
 
@@ -421,6 +422,47 @@ export default function TransparencyPage() {
             loading={loading}
             error={error ?? undefined}
           />
+        </div>
+
+        {/* ── Section label: yield venues ──────────────────────────────── */}
+        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.08em",
+              color: "var(--color-text-2)",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            YIELD VENUES
+          </p>
+          <span
+            className="font-mono"
+            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+          >
+            1 live · 2 planned
+          </span>
+        </div>
+
+        {/* ── Venue directory ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: "32px" }}>
+          <VenueDirectory />
+          <p
+            className="font-body"
+            style={{
+              fontSize: "13px",
+              color: "var(--color-text-3)",
+              lineHeight: 1.5,
+              margin: "16px 0 0",
+            }}
+          >
+            The reserve is a diversified allocator — capital earns across multiple on-chain
+            venues. DeFindex is live today; additional integrations are enabled as they reach
+            production readiness.
+          </p>
         </div>
 
         {/* ── Verification panel ────────────────────────────────────────── */}
