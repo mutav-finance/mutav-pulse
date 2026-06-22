@@ -159,6 +159,8 @@
   --color-surface:    #16181C;
   --color-surface-2:  #1E2126;
   --color-surface-3:  #252830;
+  --color-copper:     oklch(0.610 0.132 65.34);
+  --color-copper-dim: oklch(0.420 0.091 65.34);
   --color-border:     #2A2D33;
   --color-text:       #F0F0EE;
   --color-text-2:     #8A8F99;
@@ -189,12 +191,16 @@
   --color-canvas:     #0A0B0D;
   --color-surface:    #111316;
   --color-surface-2:  #181B1F;
+  --color-surface-3:  #1F2226;
   --color-border:     #2A2D33;
   --color-text:       #E8E4DC;
   --color-text-2:     #7A7870;
   --color-text-3:     #4A4844;
   --color-accent:     #E8A020;
   --color-accent-dim: #B87010;
+  /* copper = the terminal's primary OPS accent (#B87010) */
+  --color-copper:     oklch(0.610 0.132 65.34);
+  --color-copper-dim: oklch(0.420 0.091 65.34);
   --color-success:    #3DAB72;
   --color-error:      #C94040;
 }
