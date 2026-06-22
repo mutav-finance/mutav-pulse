@@ -87,7 +87,9 @@ export async function connect(): Promise<string> {
  * Disconnect the active wallet module.
  */
 export async function disconnect(): Promise<void> {
-  await StellarWalletsKit.disconnect();
+  await StellarWalletsKit.disconnect().catch((err) => {
+    console.error("[wallet] disconnect error:", err);
+  });
 }
 
 // ─── signTransaction (binding-compatible) ────────────────────────────────────
@@ -119,9 +121,15 @@ export function makeSignTransaction(
 
 // ─── signAndSubmit (raw XDR path) ────────────────────────────────────────────
 
-const _rpcServer = new StellarRpc.Server(config.rpcUrl, {
-  allowHttp: false,
-});
+let _rpcServer: StellarRpc.Server | undefined;
+
+/** Lazy getter — avoids module-scope instantiation on server-side imports. */
+function rpcServer(): StellarRpc.Server {
+  if (!_rpcServer) {
+    _rpcServer = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
+  }
+  return _rpcServer;
+}
 
 /**
  * Sign an XDR transaction via the kit and submit through stellar-sdk rpc.Server.
@@ -150,7 +158,7 @@ export async function signAndSubmit(
     config.networkPassphrase as (typeof StellarNetworks)[keyof typeof StellarNetworks],
   );
 
-  const sendResp = await _rpcServer.sendTransaction(tx);
+  const sendResp = await rpcServer().sendTransaction(tx);
 
   if (sendResp.status === "ERROR") {
     throw new Error(
@@ -159,17 +167,23 @@ export async function signAndSubmit(
   }
 
   const hash = sendResp.hash;
+  const MAX_POLLS = 30;
 
   // Poll until confirmed
-  let getResp = await _rpcServer.getTransaction(hash);
+  let getResp = await rpcServer().getTransaction(hash);
   let attempts = 0;
-  while (getResp.status === StellarRpc.Api.GetTransactionStatus.NOT_FOUND && attempts < 30) {
+  while (getResp.status === StellarRpc.Api.GetTransactionStatus.NOT_FOUND && attempts < MAX_POLLS) {
     await new Promise((r) => setTimeout(r, 1500));
-    getResp = await _rpcServer.getTransaction(hash);
+    getResp = await rpcServer().getTransaction(hash);
     attempts++;
   }
 
   if (getResp.status !== StellarRpc.Api.GetTransactionStatus.SUCCESS) {
+    if (attempts >= MAX_POLLS) {
+      throw new Error(
+        `transaction timed out after ${MAX_POLLS} polls, last status: ${getResp.status}`,
+      );
+    }
     throw new Error(
       `Transaction ${hash} did not succeed. Status: ${getResp.status}`,
     );

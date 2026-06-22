@@ -7,7 +7,7 @@
  *
  * useWallet() API (used by Tasks 4 and 7):
  *
- *   const { address, connect, disconnect, signAndSubmit } = useWallet();
+ *   const { address, connecting, connect, disconnect, signAndSubmit, error } = useWallet();
  *
  *   address: string | null          — connected public key, or null
  *   connect(): Promise<void>        — opens the Stellar Wallets Kit modal
@@ -50,6 +50,8 @@ export interface WalletContextValue {
   address: string | null;
   /** True while a connect/disconnect action is in flight. */
   connecting: boolean;
+  /** Last connect error message, or null if no error / cleared on success. */
+  error: string | null;
   /** Open the Stellar Wallets Kit modal and connect a wallet. */
   connect(): Promise<void>;
   /** Disconnect the active wallet. */
@@ -73,6 +75,7 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize kit once on mount (client-side only)
   useEffect(() => {
@@ -84,6 +87,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const addr = await kitConnect();
       setAddress(addr);
+      setError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw err;
     } finally {
       setConnecting(false);
     }
@@ -91,7 +99,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     // Fire-and-forget — kit disconnect is async but we clear state immediately
-    kitDisconnect().catch(() => {});
+    kitDisconnect().catch((err) => {
+      console.error("[WalletProvider] disconnect error:", err);
+    });
     setAddress(null);
   }, []);
 
@@ -102,7 +112,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ address, connecting, connect, disconnect, signAndSubmit }}
+      value={{ address, connecting, error, connect, disconnect, signAndSubmit }}
     >
       {children}
     </WalletContext.Provider>
