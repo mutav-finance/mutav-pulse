@@ -115,7 +115,6 @@ export default function EarnPage() {
 
   return (
     <main
-      className="texture-investidor"
       style={{
         minHeight: "100vh",
         backgroundColor: "var(--color-canvas)",

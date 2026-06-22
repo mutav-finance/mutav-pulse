@@ -189,7 +189,6 @@ export default function TransparencyPage() {
 
   return (
     <main
-      className="texture-investidor"
       style={{
         minHeight: "100vh",
         backgroundColor: "var(--color-canvas)",

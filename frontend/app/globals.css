@@ -261,13 +261,7 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Investidor texture (architectural grid — body/page canvas only) ── */
-.texture-investidor {
-  background-image:
-    linear-gradient(to right,  rgba(240, 240, 238, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(240, 240, 238, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
+/* ── Investidor: no texture (architectural grid retired per brand update — flat canvas) ── */
 
 /* ── Terminal texture (scanlines — terminal canvas only) ── */
 .texture-terminal {
