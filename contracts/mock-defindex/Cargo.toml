@@ -1,0 +1,16 @@
+[package]
+name = "mock-defindex"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-tokens = { workspace = true }
+interfaces = { path = "../interfaces" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

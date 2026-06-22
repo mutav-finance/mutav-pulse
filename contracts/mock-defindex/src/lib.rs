@@ -1,0 +1,69 @@
+#![no_std]
+use soroban_sdk::{contract, contractimpl, contracttype, token, vec, Address, Env, IntoVal, MuxedAddress, String, Val, Vec};
+use stellar_tokens::fungible::{Base, FungibleToken};
+use interfaces::DefindexVault as DefindexVaultTrait;
+
+#[contracttype]
+enum DataKey {
+    Underlying,
+}
+
+#[contract]
+pub struct MockDefindex;
+
+#[contractimpl]
+impl MockDefindex {
+    pub fn __constructor(e: &Env, underlying: Address) {
+        Base::set_metadata(e, 7, String::from_str(e, "Mock DeFindex Share"), String::from_str(e, "mDFX"));
+        e.storage().instance().set(&DataKey::Underlying, &underlying);
+    }
+
+    fn underlying_addr(e: &Env) -> Address {
+        e.storage().instance().get(&DataKey::Underlying).unwrap()
+    }
+    fn held(e: &Env) -> i128 {
+        token::TokenClient::new(e, &Self::underlying_addr(e)).balance(&e.current_contract_address())
+    }
+
+    /// Simulate yield: mint extra underlying to this vault.
+    pub fn accrue(e: &Env, amount: i128) {
+        token::StellarAssetClient::new(e, &Self::underlying_addr(e))
+            .mint(&e.current_contract_address(), &amount);
+    }
+}
+
+#[contractimpl]
+impl DefindexVaultTrait for MockDefindex {
+    fn deposit(e: Env, amounts_desired: Vec<i128>, _amounts_min: Vec<i128>, from: Address, _invest: bool) -> Val {
+        let amount = amounts_desired.get(0).unwrap();
+        let supply = Base::total_supply(&e);
+        let held_before = Self::held(&e);
+        let shares = if supply == 0 || held_before == 0 { amount } else { amount * supply / held_before };
+        token::TokenClient::new(&e, &Self::underlying_addr(&e))
+            .transfer(&from, &e.current_contract_address(), &amount);
+        Base::mint(&e, &from, shares);
+        shares.into_val(&e)
+    }
+
+    fn withdraw(e: Env, df_amount: i128, _min_amounts_out: Vec<i128>, from: Address) -> Vec<i128> {
+        let supply = Base::total_supply(&e);
+        let usdc_out = df_amount * Self::held(&e) / supply;
+        Base::update(&e, Some(&from), None, df_amount); // burn shares
+        token::TokenClient::new(&e, &Self::underlying_addr(&e))
+            .transfer(&e.current_contract_address(), &from, &usdc_out);
+        vec![&e, usdc_out]
+    }
+
+    fn get_asset_amounts_per_shares(e: Env, vault_shares: i128) -> Vec<i128> {
+        let supply = Base::total_supply(&e);
+        let value = if supply == 0 { 0 } else { vault_shares * Self::held(&e) / supply };
+        vec![&e, value]
+    }
+}
+
+#[contractimpl(contracttrait)]
+impl FungibleToken for MockDefindex {
+    type ContractType = Base;
+}
+
+mod test;
