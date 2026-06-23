@@ -22,11 +22,12 @@ import { useEffect, useState, useCallback } from "react";
 import { reads } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
-import { PositionPanel } from "@/components/PositionPanel";
 import { DepositWidget } from "@/components/DepositWidget";
 import { RedeemPanel } from "@/components/RedeemPanel";
+import { TestnetOnramp } from "@/components/TestnetOnramp";
 import { Mono } from "@/components/Mono";
-import { fmtNav } from "@/lib/format";
+import { faucetEnabled } from "@/lib/config";
+import { fmtNav, fmtUsd, fromStroops } from "@/lib/format";
 import type { RedeemRequest } from "vault";
 
 interface EarnData {
@@ -51,29 +52,31 @@ export default function EarnPage() {
   const { address } = useWallet();
   const [data, setData] = useState<EarnData>({ ...EMPTY_DATA, loading: true });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
-  // Increment refreshKey to trigger re-fetch after a tx
-  const handleSuccess = useCallback((hash: string) => {
-    setLastTxHash(hash);
+  // Bump to re-fetch reads after any tx. Per-component <TxStatus> owns the
+  // confirmation UI now, so this is a pure data-refresh trigger.
+  const handleSuccess = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
-  // Fetch all on-chain reads
+  // Fetch on-chain reads. NAV is public (loads even when disconnected so the
+  // overview always shows it); the position reads run only when connected.
   useEffect(() => {
-    if (!address) {
-      setData({ ...EMPTY_DATA, loading: false });
-      return;
-    }
-
     let cancelled = false;
     setData((prev) => ({ ...prev, loading: true, error: null }));
 
     async function fetchAll() {
       try {
-        const [navPerShare, balance, pendingIds] = await Promise.all([
-          reads.vaultNavPerShare(),
-          reads.vaultBalance(address!),
+        const navPerShare = await reads.vaultNavPerShare();
+        if (cancelled) return;
+
+        if (!address) {
+          setData({ ...EMPTY_DATA, navPerShare, loading: false });
+          return;
+        }
+
+        const [balance, pendingIds] = await Promise.all([
+          reads.vaultBalance(address),
           reads.vaultPendingRequests(),
         ]);
 
@@ -289,23 +292,88 @@ export default function EarnPage() {
                 </Mono>
               </div>
             </div>
-          </div>
 
-          {/* Last tx confirmation */}
-          {lastTxHash && (
-            <p
-              className="font-mono"
-              style={{
-                fontSize: "11px",
-                color: "var(--color-success)",
-                marginTop: "8px",
-                letterSpacing: "0.01em",
-                lineHeight: 1.4,
-              }}
-            >
-              TX confirmed: <Mono>{lastTxHash.slice(0, 12)}…{lastTxHash.slice(-8)}</Mono>
-            </p>
-          )}
+            {/* My position — appears once connected, so the overview reads as
+                NAV + my position in one band. */}
+            {address && (
+              <>
+                <div style={{ backgroundColor: "var(--color-surface)", padding: "20px 24px" }}>
+                  <p
+                    className="font-body"
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      letterSpacing: "0.08em",
+                      color: "var(--color-text-2)",
+                      textTransform: "uppercase",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    MY MTVR
+                  </p>
+                  <p
+                    className="font-display"
+                    style={{ fontSize: "32px", color: "var(--color-text)", letterSpacing: "-0.02em", lineHeight: 1 }}
+                  >
+                    <Mono>
+                      {fromStroops(data.balance).toLocaleString("en-US", {
+                        minimumFractionDigits: 4,
+                        maximumFractionDigits: 4,
+                      })}
+                    </Mono>
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--color-text-3)",
+                      marginTop: "4px",
+                      fontFamily: "var(--font-mono)",
+                      fontFeatureSettings: '"tnum" 1',
+                    }}
+                  >
+                    shares held
+                  </p>
+                </div>
+
+                <div style={{ backgroundColor: "var(--color-surface)", padding: "20px 24px" }}>
+                  <p
+                    className="font-body"
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      letterSpacing: "0.08em",
+                      color: "var(--color-text-2)",
+                      textTransform: "uppercase",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    POSITION VALUE
+                  </p>
+                  <p
+                    className="font-display"
+                    style={{ fontSize: "32px", color: "var(--color-text)", letterSpacing: "-0.02em", lineHeight: 1 }}
+                  >
+                    <Mono>
+                      {data.navPerShare > 0n
+                        ? fmtUsd((data.balance * data.navPerShare) / 10_000_000n)
+                        : "—"}
+                    </Mono>
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--color-text-3)",
+                      marginTop: "4px",
+                      fontFamily: "var(--font-mono)",
+                      fontFeatureSettings: '"tnum" 1',
+                    }}
+                  >
+                    at current NAV
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Wallet gate */}
@@ -387,38 +455,35 @@ export default function EarnPage() {
               </div>
             )}
 
-            {/* Main content grid */}
+            {/* Testnet on-ramp — full-width section (trustline + faucet).
+                Never renders on mainnet (faucetEnabled is false off testnet). */}
+            {faucetEnabled && (
+              <div style={{ marginBottom: "24px" }}>
+                <TestnetOnramp address={address} onSuccess={handleSuccess} />
+              </div>
+            )}
+
+            {/* Deposit | Withdraw — side by side; stacks below 720px */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
                 gap: "24px",
                 alignItems: "start",
               }}
             >
-              {/* Left column: Position + Deposit */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                <PositionPanel
-                  balance={data.balance}
-                  navPerShare={data.navPerShare}
-                />
-                <DepositWidget
-                  address={address}
-                  navPerShare={data.navPerShare}
-                  onSuccess={handleSuccess}
-                />
-              </div>
-
-              {/* Right column: Redeem + Queue */}
-              <div>
-                <RedeemPanel
-                  address={address}
-                  balance={data.balance}
-                  requestIds={data.pendingIds}
-                  requests={data.requests}
-                  onSuccess={handleSuccess}
-                />
-              </div>
+              <DepositWidget
+                address={address}
+                navPerShare={data.navPerShare}
+                onSuccess={handleSuccess}
+              />
+              <RedeemPanel
+                address={address}
+                balance={data.balance}
+                requestIds={data.pendingIds}
+                requests={data.requests}
+                onSuccess={handleSuccess}
+              />
             </div>
           </>
         )}
