@@ -17,7 +17,7 @@
  * Design: Precision Brutalism, Investidor front (dark/amber).
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { reads } from "@/lib/contracts";
 import { MetricCard } from "@/components/MetricCard";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
@@ -25,46 +25,10 @@ import { SolvencyChip } from "@/components/SolvencyChip";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { VenueDirectory } from "@/components/VenueDirectory";
 import { fmtUsd, fmtNav } from "@/lib/format";
-import { estimateApy, type NavSnap } from "@/lib/apy";
+import { computeEconomics } from "@/lib/economics";
+import { RESERVES, LIVE_RESERVES, PRIMARY_RESERVE } from "@/lib/reserves";
+import { ReserveCard } from "@/components/ReserveCard";
 import type { Guarantee } from "policy";
-
-// ── localStorage key for NAV snapshots ──────────────────────────────────────
-const NAV_SNAP_KEY = "mtv_nav_snaps";
-const MAX_SNAPS = 90; // keep ~90 days of daily snapshots
-
-function loadSnaps(): NavSnap[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(NAV_SNAP_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Array<{ navScaled: string; t: number }>;
-    return parsed.map((s) => ({ navScaled: BigInt(s.navScaled), t: s.t }));
-  } catch {
-    return [];
-  }
-}
-
-function appendSnap(navScaled: bigint): NavSnap[] {
-  const snaps = loadSnaps();
-  const last = snaps[snaps.length - 1];
-  const now = Date.now();
-
-  // Deduplicate: only push if nav changed OR > 1h since last snap
-  if (last && last.navScaled === navScaled && now - last.t < 3_600_000) {
-    return snaps;
-  }
-
-  const next = [...snaps, { navScaled, t: now }].slice(-MAX_SNAPS);
-  try {
-    localStorage.setItem(
-      NAV_SNAP_KEY,
-      JSON.stringify(next.map((s) => ({ navScaled: String(s.navScaled), t: s.t }))),
-    );
-  } catch {
-    // storage full — proceed without persisting
-  }
-  return next;
-}
 
 // ── Data shape ───────────────────────────────────────────────────────────────
 
@@ -77,7 +41,6 @@ interface TransparencyData {
   stableAssets: bigint;
   coverageRequired: bigint;
   guarantees: Array<{ id: bigint; guarantee: Guarantee; isCurrent: boolean }>;
-  apy: number;
   loading: boolean;
   error: string | null;
 }
@@ -91,7 +54,6 @@ const INITIAL: TransparencyData = {
   stableAssets: 0n,
   coverageRequired: 0n,
   guarantees: [],
-  apy: 0,
   loading: true,
   error: null,
 };
@@ -106,9 +68,19 @@ function fmtShares(v: bigint): string {
   return whole.toLocaleString("en-US");
 }
 
-/** Format APY as percentage string */
+/** Format a rate (0.2493) as a percentage string ("24.93%") */
 function fmtApy(v: number): string {
   return (v * 100).toFixed(2) + "%";
+}
+
+/** Format a signed rate with an explicit + sign for the spread contribution */
+function fmtSignedPct(v: number): string {
+  return (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
+}
+
+/** Format a multiple ("4.9×") */
+function fmtMult(v: number): string {
+  return Number.isFinite(v) ? v.toFixed(1) + "×" : "∞";
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -141,10 +113,6 @@ export default function TransparencyPage() {
         reads.registryActiveIds(),
       ]);
 
-      // Persist NAV snapshot + compute APY
-      const snaps = appendSnap(navPerShare);
-      const apy = estimateApy(snaps);
-
       // Phase 2: guarantee details (parallel per ID)
       const guarantees = await Promise.all(
         activeIds.map(async (id) => {
@@ -166,7 +134,6 @@ export default function TransparencyPage() {
         stableAssets,
         coverageRequired,
         guarantees,
-        apy,
         loading: false,
         error: null,
       });
@@ -186,6 +153,22 @@ export default function TransparencyPage() {
 
   const loading = data.loading;
   const error = data.error;
+
+  // Model-backed economics derived from the live book, under the live reserve's
+  // currency peg (lib/economics.ts + lib/reserves.ts).
+  const econ = useMemo(
+    () =>
+      computeEconomics(
+        {
+          guarantees: data.guarantees,
+          coverageRequired: data.coverageRequired,
+          totalAssets: data.totalAssets,
+        },
+        PRIMARY_RESERVE.assumptions,
+      ),
+    [data.guarantees, data.coverageRequired, data.totalAssets],
+  );
+  const hasBook = !loading && data.totalAssets > 0n;
 
   return (
     <main
@@ -285,6 +268,58 @@ export default function TransparencyPage() {
           </div>
         </div>
 
+        {/* ── Multi-currency reserves overview ──────────────────────────── */}
+        <div
+          style={{
+            marginBottom: "12px",
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.08em",
+              color: "var(--color-text-2)",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            RESERVES
+          </p>
+          <span
+            className="font-mono"
+            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+          >
+            {LIVE_RESERVES.length} live · {RESERVES.length - LIVE_RESERVES.length} planned · total
+            AUM {loading ? "…" : fmtUsd(data.totalAssets)} (USD-equiv)
+          </span>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1px",
+            backgroundColor: "var(--color-border)",
+            border: "1px solid var(--color-border)",
+            marginBottom: "32px",
+          }}
+        >
+          {RESERVES.map((r) => (
+            <ReserveCard
+              key={r.id}
+              reserve={r}
+              loading={loading}
+              aum={r.status === "live" ? fmtUsd(data.totalAssets) : undefined}
+            />
+          ))}
+        </div>
+
         {/* ── Error banner ──────────────────────────────────────────────── */}
         {error && (
           <div
@@ -301,6 +336,38 @@ export default function TransparencyPage() {
             </p>
           </div>
         )}
+
+        {/* ── Live reserve detail header ────────────────────────────────── */}
+        <div
+          style={{
+            marginBottom: "16px",
+            paddingTop: "4px",
+            borderTop: "1px solid var(--color-border)",
+          }}
+        >
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.08em",
+              color: "var(--color-text-2)",
+              textTransform: "uppercase",
+              margin: "16px 0 4px",
+            }}
+          >
+            {PRIMARY_RESERVE.currency}
+            {PRIMARY_RESERVE.tag ? ` (${PRIMARY_RESERVE.tag})` : ""} RESERVE · LIVE DETAIL
+          </p>
+          <p
+            className="font-body"
+            style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
+          >
+            On-chain metrics for the deployed {PRIMARY_RESERVE.currency} reserve —{" "}
+            {PRIMARY_RESERVE.underlying}. Other currencies share this contract shape,
+            pegged to their own underlying and default market.
+          </p>
+        </div>
 
         {/* ── Solvency chip ─────────────────────────────────────────────── */}
         <div style={{ marginBottom: "24px" }}>
@@ -351,12 +418,12 @@ export default function TransparencyPage() {
             error={error ?? undefined}
           />
 
-          {/* 3. Net APY — amber accent */}
+          {/* 3. Modeled APY — amber accent */}
           <MetricCard
-            label="Net APY"
-            value={loading ? "—" : (data.apy > 0 ? fmtApy(data.apy) : "—")}
-            unit={data.apy > 0 ? "estimated since launch" : "awaiting snapshots"}
-            tooltip="Annualized NAV growth estimated from snapshots stored locally since your first visit."
+            label="Modeled APY"
+            value={hasBook ? fmtApy(econ.modeledApy) : "—"}
+            unit={`${fmtApy(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} u/w`}
+            tooltip={`Underlying yield (${fmtApy(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South). See docs/whitepaper.md.`}
             accentValue
             loading={loading}
             error={error ?? undefined}
@@ -410,6 +477,86 @@ export default function TransparencyPage() {
           />
           </div>
         </div>
+
+        {/* ── Section label: underwriting economics ────────────────────── */}
+        <div style={{ marginBottom: "12px" }}>
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.08em",
+              color: "var(--color-text-2)",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            UNDERWRITING ECONOMICS
+          </p>
+        </div>
+
+        {/* ── Underwriting decomposition: 4 cards ───────────────────────── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "1px",
+            backgroundColor: "var(--color-border)",
+            border: "1px solid var(--color-border)",
+            marginBottom: "12px",
+          }}
+        >
+          <MetricCard
+            label="Underlying Yield"
+            value={fmtApy(econ.underlyingYield)}
+            unit="modeled base rate"
+            tooltip="The reserve's risk-free/underlying yield, pegged to the guarantee currency (BRL Selic ~14% vs USD stablecoin DeFi ~5.5%). A stated assumption, not an on-chain read."
+            loading={loading}
+            error={error ?? undefined}
+          />
+          <MetricCard
+            label="Underwriting Spread"
+            value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
+            unit="premiums − expected defaults"
+            tooltip="The protocol's edge over the base rate: annualized premium run-rate minus expected default payout, divided by total reserve. Computed from the live book."
+            loading={loading}
+            error={error ?? undefined}
+          />
+          <MetricCard
+            label="Loss Ratio"
+            value={hasBook ? fmtApy(econ.lossRatio) : "—"}
+            unit="expected payout ÷ premiums"
+            tooltip="Expected annual default payout as a share of premium income. Below 100% means premiums cover expected defaults; insurer-healthy books run well under 50%."
+            loading={loading}
+            error={error ?? undefined}
+          />
+          <MetricCard
+            label="Cushion"
+            value={hasBook ? fmtMult(econ.cushion) : "—"}
+            unit="vs break-even delinquency"
+            tooltip={`How far delinquency can rise before premiums stop covering defaults. Break-even is ${fmtApy(econ.breakevenRho)} monthly delinquency vs the ${fmtApy(econ.rho)} modeled.`}
+            loading={loading}
+            error={error ?? undefined}
+          />
+        </div>
+
+        {/* ── Assumptions caption ───────────────────────────────────────── */}
+        <p
+          className="font-mono"
+          style={{
+            fontSize: "11px",
+            color: "var(--color-text-3)",
+            lineHeight: 1.5,
+            margin: "0 0 32px",
+            maxWidth: "720px",
+          }}
+        >
+          Modeled at {fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South
+          region, 60+ days overdue) and {fmtApy(econ.underlyingYield)} underlying yield
+          ({PRIMARY_RESERVE.currency} peg). The spread is computed from the live
+          guarantee book; default and yield rates are stated assumptions. Method:
+          docs/whitepaper.md.
+        </p>
 
         {/* ── Section label: guarantee registry ────────────────────────── */}
         <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

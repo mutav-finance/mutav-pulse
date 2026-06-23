@@ -573,15 +573,15 @@ export default function ProtocolPage() {
                 >
                   <FormField
                     id="sg-fee-bps"
-                    label="Fee (bps)"
+                    label="Fee (bps / period)"
                     type="number"
                     min="0"
                     step="1"
-                    placeholder="500"
+                    placeholder="1200"
                     value={sgFeeBps}
                     onChange={setSgFeeBps}
                     disabled={!isPolicyAdmin}
-                    hint="Annual premium in basis points (500 = 5%)"
+                    hint="Premium per period = rent × bps/10000 (1200 = 12%/period, NOT annual)"
                   />
                   <FormField
                     id="sg-period"
@@ -593,7 +593,7 @@ export default function ProtocolPage() {
                     value={sgPeriodDays}
                     onChange={setSgPeriodDays}
                     disabled={!isPolicyAdmin}
-                    hint="Premium period length in days"
+                    hint="Premium cadence — fee_bps is charged once per this period"
                   />
                 </div>
               </ProtocolActionForm>

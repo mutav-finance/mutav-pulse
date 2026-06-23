@@ -55,8 +55,11 @@ function extractHash(hash: string | undefined): string {
  * @param landlord      - Landlord/beneficiary Stellar address
  * @param monthlyAmount - Monthly rental amount in stroops (bigint, i128)
  * @param monthsCovered - Number of months to cover (u32)
- * @param feeBps        - Annual premium fee in basis points (u32)
- * @param periodSecs    - Period length in seconds (u64, as bigint)
+ * @param feeBps        - Premium fee in basis points charged PER PERIOD (u32);
+ *                        each pay_premium pulls monthly_amount * feeBps/10000.
+ *                        e.g. 1200 = 12% of the monthly rent every period.
+ * @param periodSecs    - Period length in seconds (u64, as bigint); the premium
+ *                        cadence (e.g. 30 days). NOT annual — feeBps is per-period.
  * @returns             - Confirmed transaction hash
  */
 export async function signGuarantee(
