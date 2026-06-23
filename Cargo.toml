@@ -13,6 +13,7 @@ stellar-tokens = "0.7.2"
 # Audited fixed-point math (same release train as stellar-tokens). Used by the
 # vault's SEP-0056 convert/preview to reuse OZ's overflow-checked rounding.
 stellar-contract-utils = "0.7.2"
+soroban-poseidon = { git = "https://github.com/stellar/rs-soroban-poseidon", rev = "b4bf706" }
 
 [profile.release]
 opt-level = "z"

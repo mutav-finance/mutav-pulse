@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractclient, contracttype, Address, Env, Val, Vec};
+use soroban_sdk::{contractclient, contracttype, Address, BytesN, Env, Val, Vec};
 
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
 /// storage, keyed by id — never here.
@@ -35,6 +35,8 @@ pub trait Registry {
     fn put(env: Env, g: Guarantee);
     fn get(env: Env, id: u32) -> Guarantee;
     fn active_ids(env: Env) -> Vec<u32>;
+    /// Poseidon-Merkle root das garantias ativas — o "selo da lista" (peça B do ZK).
+    fn guarantees_root(env: Env) -> BytesN<32>;
 }
 
 /// Minimal client for a DeFindex vault (single-asset use). The rich `deposit`

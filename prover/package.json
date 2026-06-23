@@ -1,0 +1,13 @@
+{
+  "name": "mutav-pulse-prover",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Reconstrução off-chain e prover do selo de solvência ZK (peça B em diante).",
+  "scripts": {
+    "derisk:merkle": "node derisk-merkle.mjs"
+  },
+  "dependencies": {
+    "circomlibjs": "^0.1.7"
+  }
+}

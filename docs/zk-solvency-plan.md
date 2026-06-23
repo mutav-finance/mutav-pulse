@@ -34,7 +34,7 @@ Reservas (vault on-chain + A banco + C carteiras)  ≥  Obrigações (B lista de
 A pesquisa mudou a recomendação. Existem **peças prontas da Stellar/Nethermind em Circom** que cobrem quase exatamente o nosso caso — em especial a peça B (lista ancorada num Merkle root), que é a parte mais difícil e a mais importante.
 
 ### ✅ Trilha A — Circom + snarkjs + circom2soroban (RECOMENDADA)
-- **Por quê:** a peça B é **prova de inclusão em Merkle tree** — e o repo `stellar-private-payments` já tem **exatamente** esse circuito (`main.circom`: recebe siblings + root, recomputa a root e exige igualdade), com **Poseidon**, a ferramenta **`circom2soroban`** (converte chave de verificação/prova/inputs em Rust para o contrato) e o **`coinutils`** (reconstrói a Merkle tree). E o `soroban-examples/groth16_verifier` é um **verificador Groth16 oficial pronto** pra usar de base.
+- **Por quê:** a peça B é uma **árvore Merkle com Poseidon** (no nosso caso o circuito **recompõe a raiz inteira** de todas as folhas — ver 6.2 — não inclusão de 1 folha) — e o repo `stellar-private-payments` já traz esses blocos prontos (`main.circom` + **Poseidon**, dos quais reusamos o hashing da árvore), a ferramenta **`circom2soroban`** (converte chave de verificação/prova/inputs em Rust para o contrato) e o **`coinutils`** (reconstrói a Merkle tree). E o `soroban-examples/groth16_verifier` é um **verificador Groth16 oficial pronto** pra usar de base.
 - **Custo:** escrever verificação de assinatura (peças A/C) em Circom dá mais trabalho → usamos **EdDSA do circomlib** (`eddsaposeidon`), amigável a circuito. (A chave-oráculo é nossa/simulada de qualquer jeito, então não precisa ser a ed25519 da Stellar.)
 
 ### 🅱️ Trilha B — RISC Zero (FALLBACK)
@@ -87,7 +87,7 @@ frontend lê reads.solvencyAttestation() ←────────────
 - `nonce` — anti-replay / frescor.
 
 **Sinais privados** (witness, nunca saem):
-- Peça **B**: para cada folha, `(id, amount, status)` + `path_siblings[]` + `path_indices[]`. O circuito recomputa a root com Poseidon e **exige `== guarantees_root`**; soma `amount` das ativas → `obligations`.
+- Peça **B**: o circuito recebe **todas as folhas ativas** `(id, obrigação)` e **recompõe a raiz inteira** (depth-8, Poseidon), **exigindo `== guarantees_root`**; soma **todas** as `obrigações` → `obligations`. _Anti-omissão: omitir uma folha muda a raiz, que então não bate com a on-chain. **Não** usa provas de inclusão por-folha (que não impediriam omissão)._
 - Peça **A**: `bank_balance` + assinatura EdDSA do oráculo-banco (chave pública embutida). Verifica a assinatura → soma em `reserves`.
 - Peça **C** (stretch): `wallet_balances[]` + assinatura EdDSA do oráculo-custódia. Soma em `reserves`.
 
@@ -113,13 +113,13 @@ last_attestation() -> Attestation                          // read público p/ o
 A chave de verificação (`verification_key.json`) é **embutida no contrato** em tempo de build via o `build.rs` + crate `circuit-keys` da Nethermind (env `VERIFIER_VK_JSON` → `vk.rs`); não é parâmetro — garante que só provas do nosso circuito passam.
 
 ### 6.4 `registry` — novo `guarantees_root()` (peça B)
-- Manter um acumulador **Poseidon-Merkle** das garantias ativas (folha = `Poseidon(id, amount, status)`), atualizado nas transições (criar/expirar/quitar) — respeitando "só `policy` escreve". Hash on-chain via crate **`soroban-poseidon`** (`poseidon_hash::<3, Bn254Fr>`), que bate com o `poseidon.circom` do circomlib usado no circuito.
+- Manter um acumulador **Poseidon-Merkle** das garantias ativas (folha = `Poseidon(id, obrigação)`, com `obrigação = monthly_amount*(months_covered-months_used)`; o `active` é implícito porque só ativas viram folha), atualizado nas transições (criar/expirar/quitar) — respeitando "só `policy` escreve". Hash on-chain via crate **`soroban-poseidon`** (`poseidon_hash::<3, Bn254Fr>`), que bate com o `poseidon.circom` do circomlib usado no circuito.
 - Expor `guarantees_root() -> BytesN<32>` (leitura pública). É o "selo da lista" que o circuito e o attestor cruzam.
-- Manter a árvore reconstrutível off-chain (o `coinutils` do private-payments serve de referência) para o prover montar os `path_siblings`.
+- Manter a árvore reconstrutível off-chain (o `coinutils` do private-payments serve de referência) para o prover montar a **lista completa de folhas** (na ordem de `active_ids()`) que o circuito recompõe.
 
 ### 6.5 Prover service (off-chain, Node/TS + snarkjs)
 1. Lê on-chain: garantias + `guarantees_root`, `vault.stable_assets`.
-2. Junta privados: atestação de banco assinada (A), snapshot de carteiras assinado (C), lista + Merkle paths (B).
+2. Junta privados: atestação de banco assinada (A), snapshot de carteiras assinado (C), **lista completa de folhas** (B).
 3. `snarkjs groth16 fullProve` (ou WASM no browser, como no private-payments) → `proof.json` + `public.json`.
 4. Submete `solvency_attestor.attest(proof, public)`.
 > No hackathon, as chaves-oráculo (banco/custódia) são nossas e o serviço pode rodar via cron/manual. README deixa explícito o que é simulado.
@@ -200,21 +200,36 @@ isoladamente (root on-chain sozinha; prova local com snarkjs sem chain).
 >    via env `VERIFIER_VK_JSON` → gera `vk.rs` embutido).
 > 3. Poseidon on-chain = crate `soroban-poseidon` (org Stellar), circomlib-compatível.
 
-### Stage 1 — Peça B: âncora da lista no `registry`
-- **1.1** Definir folha = `Poseidon(id, amount, status)` + formato da árvore (altura fixa, ordenação).
-- **1.2** Acumulador Poseidon-Merkle no storage do `registry`; recompute nas transições
-  (criar/expirar/quitar), respeitando "só `policy` escreve".
-- **1.3** `guarantees_root() -> BytesN<32>` (leitura pública).
-- **1.4** Reconstrução off-chain da árvore (ref. `coinutils`) — helper TS que reproduz a
-  root para o prover montar os `path_siblings`.
-- **1.5** Teste: root on-chain `==` root off-chain para o mesmo conjunto.
-- **Saída:** selo da lista on-chain, reconstruível off-chain, sem expor a lista.
-  _Demoável sozinho:_ a root muda quando a lista muda.
+### Stage 1 — Peça B: âncora da lista no `registry` ✅ CONCLUÍDO
+- **1.1** ✅ Folha = `Poseidon(id, obrigação)`, `obrigação = monthly_amount*(months_covered-months_used)`
+  (mesma conta da `coverage_required`). Árvore binária de **profundidade fixa 8** (até 256
+  garantias), folhas à esquerda, sibling ausente = 0, pai = `Poseidon(esq, dir)`. Ordem das
+  folhas = ordem de `active_ids()`. Só garantias **ativas** são folhas.
+  _Simplificação consciente:_ não filtra `paid_until > now` (conta todas as ativas) → obrigação
+  provada é limite superior = lado seguro; na demo (garantias em dia) bate exato.
+- **1.2** ✅ `registry` recalcula a raiz a cada `put()` via `soroban-poseidon`
+  (`poseidon_hash::<3, Bn254Fr>`), respeitando o writer-gating.
+- **1.3** ✅ `guarantees_root() -> BytesN<32>` (no `interfaces` + `RegistryClient`, leitura pública).
+- **1.4** ✅ Reconstrução off-chain em `prover/merkle.mjs` (circomlibjs): `computeRoot` sobre a
+  **lista completa de folhas** (ordem de `active_ids()`). Sem provas de inclusão por-folha — a
+  anti-omissão vem de recompor a raiz inteira (ver 6.2). `prover/derisk-merkle.mjs` imprime as
+  raízes de referência (n=2, n=3) usadas nos cross-checks.
+- **1.5** ✅ Cross-check on-chain `==` off-chain: teste `root_matches_offchain_circomlibjs` afirma
+  que a raiz do `registry` (soroban-poseidon) bate com a do circomlibjs — **duas implementações
+  Poseidon independentes concordando**. Testes: `cargo +stable-x86_64-pc-windows-gnu test -p registry --lib` (4/4).
+- **Saída:** selo da lista on-chain, reconstruível off-chain, sem expor a lista. _Demoável sozinho._
+
+> **Nota de ambiente (Windows):** esta máquina não tem o linker MSVC; o `rust-toolchain.toml`
+> força MSVC e o build padrão quebra. Para **testes de host**: usar o toolchain gnu e só a lib —
+> `cargo +stable-x86_64-pc-windows-gnu test -p <crate> --lib`. O build wasm/`cdylib` para **deploy**
+> (Stage 4) precisará do MSVC (o gnu estoura "export ordinal too large" no cdylib).
 
 ### Stage 2 — Circuito `solvency.circom`
 Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
-- **2.1** Esqueleto: só inclusão Merkle B (reuso `main.circom` do private-payments) —
-  recomputa root, exige `== guarantees_root`, soma `obligations`.
+- **2.1** Esqueleto: **recomposição da raiz inteira** (B) — recebe TODAS as folhas `(id, obrigação)`,
+  recompõe a raiz depth-8 (reusa o Poseidon/hashing do `main.circom` do private-payments), exige
+  `== guarantees_root` e soma TODAS as obrigações. (Anti-omissão por construção; depth tem que
+  casar com `TREE_DEPTH` do `registry`.)
 - **2.2** + reservas: `vault_stable_assets` (sinal público) + comparação de faixa
   (`reserves*10000 >= obligations*ratio_bps`).
 - **2.3** + peça A: EdDSA-Poseidon (circomlib) do oráculo-banco → soma `bank_balance`.
@@ -293,7 +308,7 @@ Conferido: há poucos minutos
 
 ## 11. Componentes a construir (mapa)
 - `contracts/registry`: + acumulador Poseidon-Merkle + `guarantees_root()`.
-- `circuits/solvency.circom`: inclusão Merkle (B) + EdDSA (A/C) + soma + comparação de faixa. _(reusa `main.circom` do private-payments + `eddsaposeidon` do circomlib.)_
+- `circuits/solvency.circom`: recomposição da raiz Merkle inteira (B) + EdDSA (A/C) + soma + comparação de faixa. _(reusa o Poseidon/hashing do `main.circom` do private-payments + `eddsaposeidon` do circomlib.)_
 - `prover/` (Node/TS + snarkjs): lê testnet + atestações; gera `proof.json`/`public.json`; chama `attest`.
 - `contracts/solvency_attestor` (Soroban, base `groth16_verifier`): verifica Groth16, checa root/stable/frescor, grava `last_attestation`.
 - `frontend`: `ZkSolvencyBadge` + `reads.solvencyAttestation()` em `transparency/page.tsx`.

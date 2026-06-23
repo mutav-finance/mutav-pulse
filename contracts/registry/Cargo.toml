@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
+soroban-poseidon = { workspace = true }
 interfaces = { path = "../interfaces" }
 
 [dev-dependencies]

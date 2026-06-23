@@ -1197,6 +1197,7 @@ name = "registry"
 version = "0.1.0"
 dependencies = [
  "interfaces",
+ "soroban-poseidon",
  "soroban-sdk",
 ]
 
@@ -1509,6 +1510,14 @@ dependencies = [
  "soroban-env-common",
  "soroban-env-host",
  "thiserror",
+]
+
+[[package]]
+name = "soroban-poseidon"
+version = "26.0.0"
+source = "git+https://github.com/stellar/rs-soroban-poseidon?rev=b4bf706#b4bf706b7d0d602f9389280d259c0fb9f19983bf"
+dependencies = [
+ "soroban-sdk",
 ]
 
 [[package]]
