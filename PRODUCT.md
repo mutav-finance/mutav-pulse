@@ -1,8 +1,6 @@
 # Product
 
-## Register
-
-product
+Mutav Pulse — the testnet proof of concept of mutav's decentralized rental-guarantee system (SGR). An onchain *fiador institucional* for Brazil: a solvency-gated, tokenized USDC reserve on Stellar/Soroban that backs rental *fianças*, pays out tenant defaults, and earns DeFi yield on idle reserve. See [`README.md`](README.md) for the full overview.
 
 ## Users
 

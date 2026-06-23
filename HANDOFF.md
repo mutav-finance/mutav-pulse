@@ -16,7 +16,7 @@ in `docs/specs/` and `docs/plans/` (one spec + plan per phase).
    surplus-gated redemption queue, strategy allocator, policy-gated
    `disburse`/`collect_premium`), `policy` (swappable premium-gated underwriting
    brain), `strategy` trait + `adapter-defindex` (real DeFindex yield) +
-   `mock-strategy`/`mock-policy`/`mock-defindex` test doubles. ~31 tests pass.
+   `mock-strategy`/`mock-policy`/`mock-defindex` test doubles. 23 unit tests pass.
 2. **Frontend** (`frontend/`, Next.js 16) — investor app (`/earn`,
    `/earn/transparency`, `/earn/defi`) + admin-gated `/protocol` cockpit. TGA
    brand, Stellar Wallets Kit, typed bindings from the deployed contracts. Build
