@@ -97,13 +97,14 @@ export function NavShell() {
                 href={link.href}
                 role="listitem"
                 aria-current={active ? "page" : undefined}
-                className={terminal ? "font-mono" : "font-body"}
+                className="font-mono"
                 style={{
-                  fontSize: terminal ? "13px" : "14px",
+                  fontSize: "13px",
                   fontWeight: 500,
                   color: active ? "var(--color-text)" : "var(--color-text-2)",
                   textDecoration: "none",
-                  letterSpacing: terminal ? "0.04em" : "0.01em",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
                   // Active underline — amber for investidor, copper for terminal
                   borderBottom: active
                     ? `1px solid ${accentVar}`
