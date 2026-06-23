@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en" data-front="investidor">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MUTAV · Onchain Rental Guarantee · Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ───────────────────────────────────────────────────────────────────────────
+   MUTAV pitch deck · TGA brand · "Precision Brutalism" · Investidor front
+   v2: lean rebuild. One idea per slide, only what issue #11 asks for.
+   Visual + content to be refined later. Tokens from .design/branding/tga.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --color-canvas:    #0E0F11;
+  --color-surface:   #16181C;
+  --color-surface-2: #1E2126;
+  --color-border:    #2A2D33;
+  --color-text:      #F0F0EE;
+  --color-text-2:    #8A8F99;
+  --color-text-3:    #555B66;
+  --color-accent:    #E8A020;
+  --color-success:   #3DAB72;
+  --color-error:     #C94040;
+
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; background: #000; color: var(--color-text); font-family: var(--font-body); overflow: hidden; }
+
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+.amber { color: var(--color-accent); }
+.tx2 { color: var(--color-text-2); }
+
+/* ── Stage + slides ──────────────────────────────────────────────────────── */
+#stage { position: fixed; inset: 0; display: grid; place-items: center; }
+
+.slide {
+  position: absolute; width: 1280px; height: 720px;
+  background: var(--color-canvas);
+  background-image:
+    linear-gradient(to right,  rgba(240,240,238,0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(240,240,238,0.022) 1px, transparent 1px);
+  background-size: 32px 32px;
+  transform: scale(var(--scale,1)); transform-origin: center center;
+  opacity: 0; visibility: hidden; transition: opacity 180ms ease-out; overflow: hidden;
+}
+.slide.active { opacity: 1; visibility: visible; }
+
+.pad { position: absolute; inset: 0; padding: 60px 76px; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; justify-content: space-between; height: 26px; flex: 0 0 auto; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { height: 22px; width: auto; display: block; }
+.brand .wm { font-family: var(--font-display); font-weight: 700; letter-spacing: .14em; font-size: 15px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; color: var(--color-text-2); text-transform: uppercase; }
+.eyebrow b { color: var(--color-accent); font-weight: 500; }
+.pageno { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-3); letter-spacing: .1em; }
+
+.body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-height: 0; gap: 4px; }
+
+.kicker { font-family: var(--font-mono); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 22px; }
+h1.display { font-family: var(--font-display); font-weight: 700; line-height: 1.02; letter-spacing: -.01em; font-size: 66px; text-transform: uppercase; }
+h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06; letter-spacing: -.005em; font-size: 46px; max-width: 20ch; text-transform: uppercase; }
+.lead { font-size: 20px; line-height: 1.5; color: var(--color-text-2); max-width: 56ch; margin-top: 20px; }
+
+/* ── Minimal point list (one idea, few points) ───────────────────────────── */
+.points { display: flex; flex-direction: column; gap: 0; margin-top: 36px; max-width: 70ch; }
+.point { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--color-border); padding: 16px 0; }
+.point:last-child { border-bottom: 1px solid var(--color-border); }
+.point .pk { font-family: var(--font-mono); font-size: 13px; color: var(--color-accent); width: 26px; flex: 0 0 auto; }
+.point .pt { font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+.point .pd { font-size: 14px; color: var(--color-text-2); margin-left: auto; text-align: right; max-width: 42ch; }
+
+/* ── Two minimal pillars ─────────────────────────────────────────────────── */
+.pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+.pillar { border: 1px solid var(--color-border); background: var(--color-surface); padding: 24px; }
+.pillar h4 { font-family: var(--font-display); font-weight: 700; font-size: 20px; }
+.pillar p { font-size: 13.5px; color: var(--color-text-2); line-height: 1.5; margin-top: 10px; }
+
+/* ── Traction (signing-on stats) ─────────────────────────────────────────── */
+.traction-h { font-family: var(--font-display); font-weight: 700; font-size: 42px; color: var(--color-accent); text-transform: uppercase; letter-spacing: .015em; text-align: center; }
+.traction-stats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 920px; margin-top: 64px; }
+.tstat { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 22px; padding: 0 28px; border-right: 1px solid var(--color-border); text-align: center; }
+.tstat:last-child { border-right: 0; }
+.tstat .tval { font-family: var(--font-mono); font-weight: 500; font-size: 58px; line-height: 1; color: var(--color-text); }
+.tstat .tval svg { display: block; }
+.tstat .tlbl { font-family: var(--font-body); font-size: 15px; color: var(--color-text-2); }
+
+/* ── Live badge ──────────────────────────────────────────────────────────── */
+.live-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-success); margin-top: 28px; }
+.live-tag::before { content:""; width: 6px; height: 6px; background: var(--color-success); animation: pulse 2s linear infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* ── Stellar slide: embedded vault-flow diagram ──────────────────────────── */
+.slide.stellar .pad { padding: 50px 60px; }
+.stellar-head { margin-top: 18px; }
+.stellar-head .title { margin-top: 6px; }
+.stellar-sub { font-size: 14px; color: var(--color-text-2); margin-top: 10px; max-width: 70ch; }
+.vault-flow { position: relative; width: 1160px; height: 380px; margin: -8px auto 0; }
+.vwires { position: absolute; inset: 0; width: 1160px; height: 380px; overflow: visible; }
+.vnode { position: absolute; border: 1px solid var(--color-border); background: var(--color-surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.vnode .nt { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
+.vnode .ns { font-size: 12px; color: var(--color-text-2); line-height: 1.4; }
+.vnode .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; }
+.vnode .tag.amber { color: var(--color-accent); }
+.vnode .tag.green { color: var(--color-success); }
+.vnode .tag.green::before { content: ""; width: 6px; height: 6px; background: var(--color-success); }
+.vnode .tag.amber::before { content: ""; width: 6px; height: 6px; background: var(--color-accent); }
+.vnode.vault { border-color: var(--color-accent); background: var(--color-surface-2); padding: 20px 22px; }
+.vnode.vault .nt { color: var(--color-accent); font-size: 28px; }
+.vnode.vault .ns { font-size: 13px; }
+.vchip { position: absolute; transform: translate(-50%,-50%); background: var(--color-canvas); padding: 3px 9px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em; color: var(--color-text-2); white-space: nowrap; }
+.vchip.green { color: var(--color-success); }
+.vchip.grey { color: var(--color-text-3); }
+.vlegend { display: flex; align-items: center; gap: 22px; margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--color-text-3); letter-spacing: .04em; }
+.vlegend span { display: inline-flex; align-items: center; gap: 8px; }
+.vlegend i { width: 18px; border-top: 1px solid currentColor; display: inline-block; }
+.vlegend .cap { color: var(--color-text-2); }
+.vlegend .yld { color: var(--color-success); }
+.vlegend .live-tag { margin-left: auto; margin-top: 0; }
+
+/* ── Cover ───────────────────────────────────────────────────────────────── */
+#cover .content { position: absolute; inset: 0; padding: 60px 76px; display: flex; flex-direction: column; justify-content: space-between; }
+#cover .cover-top { display: flex; align-items: center; justify-content: space-between; }
+#cover h1 { font-size: 62px; max-width: 17ch; }
+#cover .tagline { margin-top: 22px; font-size: 21px; color: var(--color-text); max-width: 42ch; line-height: 1.45; }
+#cover .tagline b { color: var(--color-accent); font-weight: 600; }
+
+/* ── Team (minimal) ──────────────────────────────────────────────────────── */
+.team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 36px; }
+.member .photo { width: 90%; aspect-ratio: 5/4; object-fit: cover; filter: grayscale(1) contrast(1.05); border: 1px solid var(--color-border); display: block; }
+.member .role { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); margin-top: 14px; }
+.member .name { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin-top: 4px; }
+.member .bio { font-size: 13px; color: var(--color-text-2); line-height: 1.45; margin-top: 8px; }
+.member.advisor { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.member.advisor .role { margin-top: 0; }
+.member.advisor .name { margin-top: 4px; }
+.member.advisor .adv-num { font-family: var(--font-display); font-weight: 700; font-size: 132px; line-height: .85; color: var(--color-accent); margin-top: 18px; }
+.member.advisor .adv-lbl { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-2); line-height: 1.4; margin-top: 10px; }
+
+/* ── Thank you ───────────────────────────────────────────────────────────── */
+#thanks h1 { font-size: 92px; line-height: .98; }
+#thanks .contact { margin-top: 28px; font-family: var(--font-mono); font-size: 16px; color: var(--color-text-2); }
+#thanks .contact b { color: var(--color-accent); font-weight: 500; }
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+#progress { position: fixed; left: 0; bottom: 0; height: 2px; background: var(--color-accent); width: 0; transition: width 180ms ease-out; z-index: 30; }
+#nav { position: fixed; right: 18px; bottom: 16px; z-index: 30; display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-3); opacity: .55; transition: opacity 150ms ease-out; }
+#nav:hover { opacity: 1; }
+#nav button { font: inherit; color: var(--color-text-2); background: transparent; border: 1px solid var(--color-border); width: 30px; height: 30px; cursor: pointer; }
+#nav button:hover { border-color: var(--color-accent); color: var(--color-text); }
+#counter b { color: var(--color-text); font-weight: 500; }
+
+@media print { #nav, #progress { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- COVER ──────────────────────────────────────────────────────────────── -->
+  <section class="slide active" id="cover">
+    <div class="content">
+      <div class="cover-top">
+        <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
+        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · 2026</span>
+      </div>
+      <div>
+        <h1 class="display">The onchain rental guarantee for Brazil.</h1>
+        <p class="tagline">Rental agencies finally have a rent guarantor <b>on their side</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- a · PROBLEM ────────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="01 · PROBLEM">
+    <div class="pad"><div class="body">
+      <div class="kicker">The problem</div>
+      <h2 class="title">Rental agencies are <span class="amber">absorbing the risk</span>.</h2>
+      <p class="lead">Every existing guarantee modality is hard to approve, expensive for tenants, and opaque, leaving agencies and landlords exposed.</p>
+    </div></div>
+  </section>
+
+  <!-- b · SOLUTION ───────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="02 · SOLUTION">
+    <div class="pad"><div class="body">
+      <div class="kicker">The solution</div>
+      <h2 class="title">An institutional guarantor, backed onchain.</h2>
+      <div class="pillars">
+        <div class="pillar"><h4 class="amber">Institutional guarantor</h4><p>We become the rent guarantor. Tenant defaults, we cover. Agency-first, not a competitor.</p></div>
+        <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><p>A transparent technical reserve on Stellar. Auditable in real time, not an opaque promise.</p></div>
+        <div class="pillar"><h4 class="amber">Open to crypto investors</h4><p>The tokenized vault opens this market to any qualified investor: real asset, real yield from rents and Brazilian treasury, self-custodial and uncorrelated to crypto.</p></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- c · DIFFERENTIATION ────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="03 · DIFFERENTIATION">
+    <div class="pad"><div class="body">
+      <div class="kicker">vs. incumbents</div>
+      <h2 class="title">Transparent where they are opaque.</h2>
+      <div class="points">
+        <div class="point"><span class="pk mono">01</span><span class="pt">Auditable onchain reserve</span><span class="pd">Incumbents run opaque or zero technical reserves.</span></div>
+        <div class="point"><span class="pk mono">02</span><span class="pt">Agency-first distribution</span><span class="pd">We work with agencies, not around them.</span></div>
+        <div class="point"><span class="pk mono">03</span><span class="pt">Risk-based pricing</span><span class="pd">Three tiers by tenant score, priced to last, not to fail.</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- d · STELLAR INTEGRATION DEPTH ──────────────────────────────────────── -->
+  <section class="slide stellar" data-eyebrow="04 · STELLAR">
+    <div class="pad">
+      <div class="stellar-head">
+        <div class="kicker">Built on Stellar · Soroban</div>
+        <h2 class="title">The reserve is the protocol.</h2>
+        <p class="stellar-sub">Modular Soroban contracts: one solvency-gated reserve, pluggable onchain yield.</p>
+      </div>
+
+      <div class="vault-flow">
+        <svg class="vwires" viewBox="0 0 1160 380" preserveAspectRatio="none">
+          <defs>
+            <marker id="aGrey" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="#8A8F99"/></marker>
+            <marker id="aGreen" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="#3DAB72"/></marker>
+          </defs>
+          <!-- Investor <-> Vault -->
+          <path d="M210,168 H440" stroke="#8A8F99" stroke-width="1" fill="none" marker-end="url(#aGrey)"/>
+          <path d="M440,192 H210" stroke="#3DAB72" stroke-width="1" fill="none" marker-end="url(#aGreen)"/>
+          <!-- Vault <-> DeFindex : green = yield in, grey = capital out -->
+          <path d="M690,176 H950" stroke="#3D4148" stroke-width="1" fill="none" marker-start="url(#aGreen)" marker-end="url(#aGrey)"/>
+          <!-- Agencies -> Vault -->
+          <path d="M565,290 V242" stroke="#8A8F99" stroke-width="1" fill="none" marker-end="url(#aGrey)"/>
+        </svg>
+
+        <div class="vnode" style="left:20px;top:120px;width:190px;">
+          <span class="nt">Investor</span>
+          <span class="ns">Deposits capital, holds tokenized shares.</span>
+          <span class="tag amber">Self-custodial</span>
+        </div>
+        <div class="vnode vault" style="left:440px;top:110px;width:250px;">
+          <span class="nt">VAULT</span>
+          <span class="ns">Tokenized shares · NAV · solvency-gated reserve.</span>
+          <span class="tag amber">Soroban · Stellar</span>
+        </div>
+        <div class="vnode" style="left:950px;top:128px;width:190px;">
+          <span class="nt">DeFindex</span>
+          <span class="ns">Onchain yield allocator.</span>
+          <span class="tag green">Yield</span>
+        </div>
+        <div class="vnode" style="left:440px;top:290px;width:250px;">
+          <span class="nt">Agencies</span>
+          <span class="ns">Premiums in, claims paid.</span>
+        </div>
+
+        <div class="vchip grey" style="left:325px;top:160px;">deposit</div>
+        <div class="vchip green" style="left:325px;top:200px;">shares + yield</div>
+        <div class="vchip" style="left:820px;top:164px;">allocate · yield</div>
+        <div class="vchip" style="left:645px;top:266px;">premiums · claims</div>
+      </div>
+
+      <div class="vlegend">
+        <span class="cap"><i></i> capital out</span>
+        <span class="yld"><i></i> yield in</span>
+        <span class="live-tag">Live on Stellar testnet</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- e · ECOSYSTEM IMPACT ───────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="05 · ECOSYSTEM">
+    <div class="pad"><div class="body">
+      <div class="kicker">Ecosystem impact</div>
+      <h2 class="title">Real-world volume onto Stellar.</h2>
+      <div class="points">
+        <div class="point"><span class="pk mono">→</span><span class="pt">RWA, not emissions</span><span class="pd">Reserve backed by tokenized Brazilian treasury.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Non-crypto users on-ramped</span><span class="pd">Real-estate agencies &amp; tenants, through a product they need.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated TVL</span><span class="pd">Value tracks rents and bonds, not token cycles.</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="06 · TRACTION">
+    <div class="pad"><div class="body" style="align-items:center;justify-content:center">
+      <h2 class="traction-h">Agencies are signing on</h2>
+      <div class="traction-stats">
+        <div class="tstat">
+          <span class="tval mono">+10</span>
+          <span class="tlbl">Agencies in contact</span>
+        </div>
+        <div class="tstat">
+          <span class="tval mono">4 LOIs</span>
+          <span class="tlbl">Agencies LOIs Secured</span>
+        </div>
+        <div class="tstat">
+          <span class="tval"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" stroke-linejoin="miter"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="8 6 18 6 18 16"/></svg></span>
+          <span class="tlbl">More LOIs in progress</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- g · TEAM ───────────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="07 · TEAM">
+    <div class="pad"><div class="body">
+      <h2 class="title" style="white-space:nowrap;max-width:none;margin-top:36px">Brand, infrastructure, market.</h2>
+      <div class="team">
+        <div class="member">
+          <img class="photo" src="assets/team-draau.png" alt="Matheus de Pauli" />
+          <div class="role">Cofounder · CEO</div>
+          <div class="name">Matheus "Draau" de Pauli</div>
+          <div class="bio">5 years building brands &amp; blockchain products. Direct line into the Southern-Brazil real-estate network.</div>
+        </div>
+        <div class="member">
+          <img class="photo" src="assets/team-julia.png" alt="Julia Hoffmann Buratto" />
+          <div class="role">Cofounder · CTO</div>
+          <div class="name">Julia Hoffmann Buratto</div>
+          <div class="bio">Built Brazilian onchain financial infra (RWA / CVM-88). Chainless 0 → 30k users.</div>
+        </div>
+        <div class="member advisor">
+          <div class="role">Strategic Advisor</div>
+          <div class="name">Cinara Bigóis</div>
+          <span class="adv-num mono">+30</span>
+          <span class="adv-lbl">years at the rental market</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- THANK YOU ──────────────────────────────────────────────────────────── -->
+  <section class="slide" id="thanks">
+    <div class="pad">
+      <div class="topbar">
+        <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
+        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · BRAZIL · 2026</span>
+      </div>
+      <div class="body">
+        <h1 class="display amber">Thank you!</h1>
+        <div class="contact">CONTACT US · <b>mutav.finance@gmail.com</b> · www.mutav.finance</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="progress"></div>
+<div id="nav">
+  <span id="counter" class="mono"><b>01</b> / 9</span>
+  <button id="prev" aria-label="Previous">‹</button>
+  <button id="next" aria-label="Next">›</button>
+</div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let i = 0;
+
+  slides.forEach((s, idx) => {
+    if (s.id === 'cover' || s.id === 'thanks') return;
+    const pad = s.querySelector('.pad'); if (!pad) return;
+    const eb = s.dataset.eyebrow || '';
+    const sec = eb.split('·');
+    const ebHTML = sec.length === 2 ? `<b>${sec[0].trim()}</b> · ${sec[1].trim()}` : eb;
+    const bar = document.createElement('div');
+    bar.className = 'topbar';
+    bar.innerHTML =
+      `<div class="brand"><img src="assets/logo-mark.png" alt="MUTAV"/><span class="wm">MUTAV</span></div>` +
+      `<span class="eyebrow">${ebHTML}</span>` +
+      `<span class="pageno">${String(idx + 1).padStart(2,'0')} / ${total}</span>`;
+    pad.insertBefore(bar, pad.firstChild);
+  });
+
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+
+  function render() {
+    slides.forEach((s, n) => s.classList.toggle('active', n === i));
+    counter.innerHTML = `<b>${String(i + 1).padStart(2, '0')}</b> / ${total}`;
+    progress.style.width = ((i + 1) / total * 100) + '%';
+    location.hash = i + 1;
+  }
+  function go(n) { i = Math.max(0, Math.min(total - 1, n)); render(); }
+  const next = () => go(i + 1), prev = () => go(i - 1);
+
+  function fit() {
+    const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    document.documentElement.style.setProperty('--scale', scale);
+  }
+  window.addEventListener('resize', fit); fit();
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(total - 1);
+    else if (/^[1-9]$/.test(e.key)) go(parseInt(e.key, 10) - 1);
+  });
+  document.getElementById('stage').addEventListener('click', (e) => {
+    (e.clientX > window.innerWidth / 2) ? next() : prev();
+  });
+
+  const start = parseInt((location.hash || '').replace('#', ''), 10);
+  if (start >= 1 && start <= total) i = start - 1;
+  render();
+})();
+</script>
+</body>
+</html>
