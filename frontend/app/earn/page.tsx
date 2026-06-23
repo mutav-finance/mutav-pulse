@@ -119,11 +119,33 @@ export default function EarnPage() {
         minHeight: "100vh",
         backgroundColor: "var(--color-canvas)",
         color: "var(--color-text)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      {/* Decorative brand mark — flush right, behind content */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/earn-bg.png"
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          height: "100%",
+          width: "auto",
+          opacity: 0.1,
+          pointerEvents: "none",
+          userSelect: "none",
+          zIndex: 0,
+        }}
+      />
       {/* Page content */}
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           maxWidth: "1440px",
           margin: "0 auto",
           padding: "40px 32px 64px",
@@ -131,19 +153,42 @@ export default function EarnPage() {
       >
         {/* NAV/APY Hero — Declaration layer */}
         <div style={{ marginBottom: "40px" }}>
-          <p
-            className="font-body"
+          <div
             style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-2)",
-              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "12px",
+              flexWrap: "wrap",
               marginBottom: "12px",
             }}
           >
-            MUTAV RESERVE
-          </p>
+            <p
+              className="font-body"
+              style={{
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                color: "var(--color-text-2)",
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              MUTAV RESERVE
+            </p>
+            <p
+              className="font-body"
+              style={{
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                color: "var(--color-accent)",
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              Real Asset. Real Yield.
+            </p>
+          </div>
           <h1
             className="font-display"
             style={{
@@ -154,7 +199,7 @@ export default function EarnPage() {
               marginBottom: "24px",
             }}
           >
-            Earn Yield on the MUTAV Reserve
+            EARN YIELD ON THE MUTAV RESERVE
           </h1>
 
           {/* NAV stat cards */}
@@ -186,7 +231,7 @@ export default function EarnPage() {
                   marginBottom: "8px",
                 }}
               >
-                NAV / mtvR
+                NAV / MTVR
               </p>
               <p
                 className="font-display"
@@ -210,7 +255,7 @@ export default function EarnPage() {
                   fontFeatureSettings: '"tnum" 1',
                 }}
               >
-                USDC per mtvR share
+                USDC per MTVR share
               </p>
             </div>
 
@@ -284,7 +329,7 @@ export default function EarnPage() {
                 letterSpacing: "-0.01em",
               }}
             >
-              Connect your wallet to earn
+              CONNECT YOUR WALLET TO EARN
             </p>
             <p
               className="font-body"
@@ -295,7 +340,7 @@ export default function EarnPage() {
                 lineHeight: 1.5,
               }}
             >
-              Connect a Stellar wallet to deposit USDC, receive mtvR shares,
+              Connect a Stellar wallet to deposit USDC, receive MTVR shares,
               and manage your redemption queue.
             </p>
             <ConnectButton />
