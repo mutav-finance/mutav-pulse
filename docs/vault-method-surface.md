@@ -4,42 +4,42 @@ The complete `vault` contract method surface after SEP-0056 conformance, with ea
 method's **standard origin** and **implementation source**. For *why* each choice
 was made, see the [decision log](./sep0056-conformance-decisions.md).
 
-**Decision (D5 + D2):** adopt OZ's `FungibleVault` extension for the share token +
-all pure math + deposit/mint settlement, and **override the divergences** —
-`total_assets` (→ cash + strategies), `max_withdraw`/`max_redeem` (→ 0), and
-`withdraw`/`redeem` (→ revert). Synchronous withdrawals are **disabled** (D2,
-attack-surface reduction); redemptions go through the async queue. OZ's vault
-methods are overridable defaults that delegate share-price math through
-`Self::ContractType::total_assets`, so injecting our `total_assets` keeps
-convert/preview/deposit/mint correct. This shrinks our hand-rolled surface to 4
-overrides + the async queue, with **no new synchronous money-out path**.
-*(Caveat: confirm OZ override ergonomics against the pinned `stellar-tokens`
-version; fallback is a pure hand-roll on `Base` — identical external surface.)*
+**Decision (D5 verified + D2):** OZ's `FungibleVault` extension is **NOT used** —
+verification of `stellar-tokens 0.7.2` showed its `total_assets` is hardcoded to
+the vault's *idle* balance with no injection point, incompatible with our strategy
+allocator (see the decision log's D5 verification outcome). We **hand-roll** the
+SEP-0056 surface on OZ `Base` (the share token, already in use), **reusing OZ's
+audited arithmetic** `mul_div_with_rounding` + `Rounding` from
+`stellar-contract-utils 0.7.2` for the convert/preview math. The formulas are
+identical to OZ's `Vault` with `decimals_offset = 0` (our `VIRTUAL_OFFSET = 1`);
+the only divergence from the audited reference is the `total_assets` source
+(cash + strategies) and the disabled `withdraw`/`redeem` (D2 — synchronous
+withdrawals disabled for attack-surface reduction; redeem via the async queue).
 
-**Impl-source legend:** **OZ** = used as-is from OZ `FungibleVault`/`Base`;
-**OZ override** = OZ default replaced with our implementation via the override hook;
-**OZ + auth** = OZ settlement wrapped with our `operator.require_auth()`/allowance;
-**hand-rolled** = wraps OZ settle with our gate, or fully custom (no OZ analog).
+**Impl-source legend:** **OZ `Base`** = the share-token layer, used as-is;
+**audited math** = hand-rolled, but the arithmetic is OZ's audited
+`mul_div_with_rounding`; **hand-rolled** = our logic on `Base` (auth/pull,
+`total_assets`, disabled paths, or fully custom — no OZ analog).
 
 | Method (signature) | Standard | Impl source | Auth | Notes |
 |---|---|---|---|---|
-| `query_asset() -> Address` | SEP-0056 | **OZ** | — | returns OZ-stored asset; replaces `underlying()` |
-| `total_assets() -> i128` | SEP-0056 | **OZ override** | — | → `cash + Σ strategy.balance()`; the NAV anchor |
+| `query_asset() -> Address` | SEP-0056 | hand-rolled | — | reads `DataKey::Underlying`; replaces `underlying()` |
+| `total_assets() -> i128` | SEP-0056 | hand-rolled | — | `cash + Σ strategy.balance()`; the NAV anchor (sole divergence from audited math) |
 | `total_supply() -> i128` | SEP-0056 | **OZ `Base`** | — | shares token |
-| `convert_to_shares(assets) -> i128` | SEP-0056 | **OZ** | — | floor; correct once `total_assets` injected |
-| `convert_to_assets(shares) -> i128` | SEP-0056 | **OZ** | — | floor |
-| `max_deposit(receiver) -> i128` | SEP-0056 | **OZ** | — | `i128::MAX` |
-| `max_mint(receiver) -> i128` | SEP-0056 | **OZ** | — | `i128::MAX` |
-| `max_withdraw(owner) -> i128` | SEP-0056 | **OZ override** | — | returns `0` — synchronous withdrawals disabled (D2) |
-| `max_redeem(owner) -> i128` | SEP-0056 | **OZ override** | — | returns `0` — synchronous withdrawals disabled (D2) |
-| `preview_deposit(assets) -> i128` | SEP-0056 | **OZ** | — | floor |
-| `preview_mint(shares) -> i128` | SEP-0056 | **OZ** | — | ceil |
-| `preview_withdraw(assets) -> i128` | SEP-0056 | **OZ** | — | ceil |
-| `preview_redeem(shares) -> i128` | SEP-0056 | **OZ** | — | floor |
-| `deposit(assets, receiver, from, operator) -> i128` | SEP-0056 | **OZ + auth** | operator | replaces `deposit(from, amount)`; emits `Deposit` |
-| `mint(shares, receiver, from, operator) -> i128` | SEP-0056 | **OZ + auth** | operator | new; emits `Deposit` |
-| `withdraw(assets, receiver, owner, operator) -> i128` | SEP-0056 | **OZ override** | — | **reverts** — synchronous withdrawals disabled; redeem via the queue (D2) |
-| `redeem(shares, receiver, owner, operator) -> i128` | SEP-0056 | **OZ override** | — | **reverts** — synchronous withdrawals disabled; redeem via the queue (D2) |
+| `convert_to_shares(assets) -> i128` | SEP-0056 | audited math | — | floor |
+| `convert_to_assets(shares) -> i128` | SEP-0056 | audited math | — | floor |
+| `max_deposit(receiver) -> i128` | SEP-0056 | hand-rolled | — | `i128::MAX` |
+| `max_mint(receiver) -> i128` | SEP-0056 | hand-rolled | — | `i128::MAX` |
+| `max_withdraw(owner) -> i128` | SEP-0056 | hand-rolled | — | returns `0` — synchronous withdrawals disabled (D2) |
+| `max_redeem(owner) -> i128` | SEP-0056 | hand-rolled | — | returns `0` — synchronous withdrawals disabled (D2) |
+| `preview_deposit(assets) -> i128` | SEP-0056 | audited math | — | floor |
+| `preview_mint(shares) -> i128` | SEP-0056 | audited math | — | ceil |
+| `preview_withdraw(assets) -> i128` | SEP-0056 | audited math | — | ceil |
+| `preview_redeem(shares) -> i128` | SEP-0056 | audited math | — | floor |
+| `deposit(assets, receiver, from, operator) -> i128` | SEP-0056 | hand-rolled (audited math + `Base::mint`) | operator | replaces `deposit(from, amount)`; emits `Deposit` |
+| `mint(shares, receiver, from, operator) -> i128` | SEP-0056 | hand-rolled (audited math + `Base::mint`) | operator | new; emits `Deposit` |
+| `withdraw(assets, receiver, owner, operator) -> i128` | SEP-0056 | hand-rolled | — | **reverts** — synchronous withdrawals disabled; redeem via the queue (D2) |
+| `redeem(shares, receiver, owner, operator) -> i128` | SEP-0056 | hand-rolled | — | **reverts** — synchronous withdrawals disabled; redeem via the queue (D2) |
 | `balance(id)`, `transfer`, `transfer_from`, `approve`, `allowance`, `decimals`, `name`, `symbol` | SEP-41 (shares) | **OZ `Base`** | holder/spender | standard fungible-token surface for the shares |
 | `request_redeem(owner, shares) -> u32` | Custom — queue | hand-rolled; `Base::update` escrow | owner | escrows shares, enqueues |
 | `cancel_redeem(id)` | Custom — queue | hand-rolled; `Base::update` | owner | returns escrowed shares |

@@ -137,6 +137,34 @@ pinned `stellar-tokens` version before locking the plan. **Fallback:** if the OZ
 override path proves painful, revert to the pure hand-roll (the surface is
 identical either way, so conformance is unaffected).
 
+#### Verification outcome (implemented 2026-06-23) — OZ `FungibleVault` NOT used
+
+Reading `stellar-tokens 0.7.2` source settled the caveat: **the OZ hybrid is not
+feasible, so we took the fallback.** Why:
+
+- `Vault::total_assets` (storage.rs) is hardcoded to `token.balance(self)` — the
+  vault's *idle* balance — and the inherent `Vault::convert_to_shares`/`deposit`/
+  `withdraw` call that same `Self::total_assets` internally. **No injection point.**
+- The trait bound is `FungibleVault: FungibleToken<ContractType = Vault>` — it
+  *requires* OZ's concrete `Vault` struct as `ContractType`; you cannot substitute
+  a custom type whose `total_assets` counts strategy positions.
+- Our vault deploys capital to strategies (`rebalance`), so idle balance ≠ total.
+  OZ's share-price math would therefore be wrong for us on every operation.
+
+**As implemented:** hand-rolled SEP-0056 on OZ `Base` (the share token, already in
+use) — BUT reusing OZ's **audited arithmetic** `mul_div_with_rounding` +
+`Rounding` from `stellar-contract-utils 0.7.2` (a pure, overflow-checked, I256-
+backed primitive with no `total_assets` dependency). The convert/preview formulas
+are identical to OZ's `Vault` with `decimals_offset = 0` (our `VIRTUAL_OFFSET = 1`).
+**The only divergence from the audited reference is the `total_assets` source**
+(cash + strategies) and the disabled `withdraw`/`redeem` (D2). `deposit`/`mint`
+are thin auth+pull wrappers over `Base::mint` (OZ mandates callers add auth). The
+`Deposit` event uses the modern `#[contractevent]` macro with SEP topics
+`["deposit", operator, from, receiver]`, data `[assets, shares]`.
+
+Result: 13 vault unit tests (incl. 7 new SEP tests) green; `stellar contract
+build` exports the full standard surface; `underlying()` renamed to `query_asset()`.
+
 ---
 
 ## Key findings (line of thought)
@@ -168,23 +196,31 @@ identical either way, so conformance is unaffected).
 
 ## Open items
 
-- [ ] Confirm OZ `FungibleVault` override ergonomics against the pinned
-      `stellar-tokens` version (D5 caveat).
-- [ ] Write the formal design spec
-      (`docs/specs/2026-06-23-mutav-pulse-sep0056-conformance-design.md`),
-      folding in D1–D5 and the business-model alignment narrative.
-- [ ] Implementation plan after spec review.
+- [x] Confirm OZ `FungibleVault` override ergonomics against the pinned
+      `stellar-tokens` version (D5 caveat). → **Resolved: not feasible; took the
+      hand-roll fallback reusing audited `mul_div_with_rounding`.** See D5
+      verification outcome.
+- [x] Contract implementation (vault SEP-0056 surface + tests + wasm build).
+- [ ] **Frontend (couple with redeploy):** update `lib/tx.ts` deposit call to the
+      new `(assets, receiver, from, operator)` signature and regenerate
+      `bindings/vault` from the rebuilt wasm. **Do this together with redeploying
+      the new vault to testnet** — the binding has a baked-in `contractId` for the
+      current deployment (still the old vault), so updating the frontend before
+      redeploy would desync it (new signature vs. old deployed `deposit`). The
+      signature + storage changes mean an in-place `upgrade()` won't work; expect
+      redeploy + re-wire via `bootstrap.sh`.
+- [ ] (Optional) formal design spec / implementation-plan docs — largely
+      superseded by this log + the shipped implementation.
 
 ## 🧪 Test further on this hackathon
 
 **The D2 queue-only conformance approach is provisional — validate it during the
 hackathon before treating it as settled.** Specifically:
 
-- [ ] **Override actually disables cleanly** — confirm overriding OZ's
-      `withdraw`/`redeem` to revert and `max_withdraw`/`max_redeem` to `0` is
-      supported by the OZ `FungibleVault` override surface (ties into the D5
-      ergonomics caveat). If OZ's defaults can't be cleanly suppressed, revert to
-      the pure hand-roll fallback.
+- [x] ~~Override actually disables cleanly~~ — moot: we don't use OZ
+      `FungibleVault` (infeasible — see D5 verification). `withdraw`/`redeem` are
+      our own functions that revert; `max_*` are our own returning `0`. No OZ
+      default to suppress.
 - [ ] **Integrator behavior with `max_* = 0` + reverting `withdraw`/`redeem`** —
       test how ERC-4626/SEP-0056 tooling and DeFindex-style consumers react to a
       "withdrawals disabled" vault (graceful handling vs. hard failure). This is

@@ -97,7 +97,7 @@ fn adapter_drops_into_vault_allocator_and_earns_yield() {
     // Investor deposits; admin rebalances reserve into DeFindex.
     let alice = Address::generate(&e);
     token_admin.mint(&alice, &10_000);
-    vault.deposit(&alice, &10_000);
+    vault.deposit(&10_000, &alice, &alice, &alice);
     vault.rebalance();
     assert_eq!(vault.total_assets(), 10_000);
 

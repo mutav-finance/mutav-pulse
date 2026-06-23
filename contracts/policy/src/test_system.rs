@@ -42,7 +42,7 @@ fn full_demo_flow_holds_solvency_invariant() {
     s.token_admin.mint(&alice, &20_000);
     s.token_admin.mint(&agency, &10_000);
 
-    s.vault.deposit(&alice, &20_000);
+    s.vault.deposit(&20_000, &alice, &alice, &alice);
     let sid = s.e.register(MockStrategy, (s.underlying.clone(),));
     s.vault.add_strategy(&sid, &10_000, &false);
     s.vault.rebalance();
@@ -73,7 +73,7 @@ fn policy_swap_preserves_data_and_funds() {
     let landlord = Address::generate(&s.e);
     s.token_admin.mint(&alice, &10_000);
     s.token_admin.mint(&agency, &10_000);
-    s.vault.deposit(&alice, &10_000);
+    s.vault.deposit(&10_000, &alice, &alice, &alice);
     let gid = s.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
     s.policy.pay_premium(&agency, &gid);
     let assets_before = s.vault.total_assets();

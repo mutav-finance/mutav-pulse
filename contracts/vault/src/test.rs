@@ -1,5 +1,5 @@
 #![cfg(test)]
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Events as _};
 use soroban_sdk::{token, Address, Env};
 use mock_strategy::{MockStrategy, MockStrategyClient};
 use mock_policy::{MockPolicy, MockPolicyClient};
@@ -44,7 +44,7 @@ fn deposit_and_nav_and_free_capital() {
     let c = setup();
     let alice = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
-    assert_eq!(c.vault.deposit(&alice, &1_000), 1_000);
+    assert_eq!(c.vault.deposit(&1_000, &alice, &alice, &alice), 1_000);
     assert_eq!(c.vault.nav_per_share(), 10_000_000);
 
     let s1 = add_mock(&c, 10_000);
@@ -62,7 +62,7 @@ fn redemption_gated_by_free_capital() {
     let c = setup();
     let alice = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
-    c.vault.deposit(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     c.policy.set_coverage(&800); // free capital = 200
     let rid = c.vault.request_redeem(&alice, &1_000);
@@ -84,7 +84,7 @@ fn disburse_and_collect_are_policy_gated() {
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
     c.token_admin.mint(&agency, &1_000);
-    c.vault.deposit(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     // collect_premium via the policy: no shares minted, NAV rises.
     let supply_before = c.vault.total_supply();
@@ -116,11 +116,11 @@ fn inflation_attack_does_not_zero_out_second_depositor() {
     c.token_admin.mint(&victim, &10_000);
 
     // Attacker seeds 1 unit then donates 10_000 straight to the vault id.
-    c.vault.deposit(&attacker, &1);
+    c.vault.deposit(&1, &attacker, &attacker, &attacker);
     c.token_admin.mint(&c.vault_id, &10_000); // direct donation inflates assets
 
     // With the virtual offset, the victim still receives non-zero shares.
-    let victim_shares = c.vault.deposit(&victim, &10_000);
+    let victim_shares = c.vault.deposit(&10_000, &victim, &victim, &victim);
     assert!(victim_shares > 0, "victim was inflated out of shares");
 }
 
@@ -132,7 +132,7 @@ fn cancel_redeem_returns_escrowed_shares() {
     let c = setup();
     let alice = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
-    c.vault.deposit(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     let rid = c.vault.request_redeem(&alice, &400);
     assert_eq!(c.vault.balance(&alice), 600); // 400 escrowed to vault
@@ -141,4 +141,94 @@ fn cancel_redeem_returns_escrowed_shares() {
     c.vault.cancel_redeem(&rid);
     assert_eq!(c.vault.balance(&alice), 1_000); // shares returned
     assert_eq!(c.vault.pending_requests().len(), 0);
+}
+
+// ───────────────────────────── SEP-0056 conformance ─────────────────────────────
+
+#[test]
+fn sep_query_asset_is_underlying() {
+    let c = setup();
+    assert_eq!(c.vault.query_asset(), c.underlying);
+}
+
+#[test]
+fn sep_preview_matches_deposit_and_converts_round_trip() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    // At unit NAV the preview must equal the realized share count.
+    let previewed = c.vault.preview_deposit(&1_000);
+    assert_eq!(c.vault.deposit(&1_000, &alice, &alice, &alice), previewed);
+    // Round-trip never mints value: assets→shares→assets <= original (floor).
+    let shares = c.vault.convert_to_shares(&500);
+    assert!(c.vault.convert_to_assets(&shares) <= 500);
+}
+
+#[test]
+fn sep_preview_rounding_directions() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // Push NAV above 1.0 via a donation so rounding actually bites.
+    c.token_admin.mint(&c.vault_id, &500);
+    // "in" previews round up, "out"/convert round down — ceil >= floor.
+    assert!(c.vault.preview_withdraw(&300) >= c.vault.convert_to_shares(&300));
+    assert!(c.vault.preview_mint(&300) >= c.vault.convert_to_assets(&300));
+}
+
+#[test]
+fn sep_max_views_reflect_queue_only_policy() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    assert_eq!(c.vault.max_deposit(&alice), i128::MAX);
+    assert_eq!(c.vault.max_mint(&alice), i128::MAX);
+    // D2: synchronous withdrawals disabled.
+    assert_eq!(c.vault.max_withdraw(&alice), 0);
+    assert_eq!(c.vault.max_redeem(&alice), 0);
+}
+
+#[test]
+fn sep_withdraw_and_redeem_are_disabled() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    assert!(c.vault.try_withdraw(&1, &alice, &alice, &alice).is_err());
+    assert!(c.vault.try_redeem(&1, &alice, &alice, &alice).is_err());
+}
+
+#[test]
+fn sep_mint_mints_exact_shares() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    let assets = c.vault.mint(&500, &alice, &alice, &alice);
+    assert_eq!(c.vault.balance(&alice), 500); // exact shares minted
+    assert_eq!(assets, c.vault.preview_mint(&500)); // returns assets consumed (idempotent at this NAV)
+    assert_eq!(c.token.balance(&alice), 1_000 - assets);
+}
+
+#[test]
+fn sep_deposit_operator_delegation_via_allowance() {
+    let c = setup();
+    let owner = Address::generate(&c.e);   // provides assets (`from`)
+    let operator = Address::generate(&c.e); // delegated caller
+    let receiver = Address::generate(&c.e); // gets the shares
+    c.token_admin.mint(&owner, &1_000);
+    // owner grants the operator an allowance on the underlying.
+    c.token.approve(&owner, &operator, &1_000, &1_000);
+    let shares = c.vault.deposit(&1_000, &receiver, &owner, &operator);
+    assert!(shares > 0);
+    assert_eq!(c.vault.balance(&receiver), shares); // receiver holds the shares
+    assert_eq!(c.token.balance(&owner), 0);         // assets pulled from owner
+}
+
+#[test]
+fn sep_deposit_emits_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // The vault emits a Deposit event (only deposit/mint emit from the vault id).
+    let vault_events = c.e.events().all().filter_by_contract(&c.vault_id);
+    assert!(!vault_events.events().is_empty());
 }

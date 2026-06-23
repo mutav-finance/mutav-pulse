@@ -51,7 +51,7 @@ fn premium_gated_coverage_and_default() {
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
     c.token_admin.mint(&agency, &1_000);
-    c.vault.deposit(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
     assert_eq!(c.policy.coverage_required(), 0); // unpaid -> uncovered
@@ -79,7 +79,7 @@ fn cover_default_halted_and_coverage_lapses_over_time() {
     let landlord = Address::generate(&c.e);
     c.token_admin.mint(&alice, &1_000);
     c.token_admin.mint(&agency, &1_000);
-    c.vault.deposit(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     // Unpaid: cover_default is halted, is_current is false.
     let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &100); // 100-sec period
