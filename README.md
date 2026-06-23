@@ -27,6 +27,8 @@ Mutav is a **fiador institucional** — an institutional guarantor. Instead of f
 
 **Mutav Pulse is a proof of concept of that decentralized guarantee system** — the **SGR** (*Sistema de Garantia Registrada* — Registered Guarantee System). It implements the financial core on Stellar testnet: the tokenized **reserve** that backs the *fiança*, makes its solvency verifiable onchain, and pays out defaults — proving the guarantee can run transparently and trust-minimized, instead of on an opaque institutional balance sheet.
 
+> **Naming:** *SGR* is the protocol; the product presents it to users as **MUTAV** — the **MUTAV Reserve** investor app and the **MUTAV Protocol** operator cockpit.
+
 ## The solution
 
 A reserve of USDC on Stellar — held by the `vault` contract — that is **provably always able to cover the *fianças* Mutav has written**:
@@ -81,7 +83,7 @@ See `docs/specs/` and `docs/plans/` for the full design history (one spec + one 
 
 ### Frontend (`frontend/`, Next.js 16)
 
-Investor app (`/earn` deposit·redeem, `/earn/transparency` proof dashboard, `/earn/defi` yield venues) + an admin-gated `/protocol` operator cockpit. Stellar Wallets Kit for signing; typed bindings generated directly from the deployed contracts. See [`frontend/README.md`](frontend/README.md).
+The **MUTAV Reserve** investor app (`/earn` deposit·redeem, `/earn/transparency` proof dashboard — which now also hosts the yield-venue directory) + the admin-gated **MUTAV Protocol** operator cockpit (`/protocol`). Stellar Wallets Kit for signing; typed bindings generated directly from the deployed contracts. See [`frontend/README.md`](frontend/README.md).
 
 ---
 
@@ -162,7 +164,7 @@ PULSO Hackathon · Brazil track · team of 2 (both based in Brazil 🇧🇷).
 The strategy allocator is a trait, so new yield venues plug in without touching custody:
 
 - **DeFindex (live wiring)** — deploy the built `adapter-defindex` onto a DeFindex testnet vault and make it the active strategy, so real yield flows into NAV (the slot runs a mock today).
-- **Soroswap / Blend** — additional adapters against the same `Strategy` trait (listed as Planned in `/earn/defi`); add a `max_volatile_bps` cap when the first volatile venue lands.
+- **Soroswap / Blend** — additional adapters against the same `Strategy` trait (listed as Planned in the venue directory on `/earn/transparency`); add a `max_volatile_bps` cap when the first volatile venue lands.
 - **Mainnet path** — set a real slippage floor on the DeFindex adapter (`min_amounts_out` is `[0]` for the demo) before any mainnet deploy.
 
 ## License
