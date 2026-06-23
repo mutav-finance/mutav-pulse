@@ -23,7 +23,7 @@ import type { RedeemRequest } from "vault";
 interface RedeemPanelProps {
   /** Connected wallet public key */
   address: string;
-  /** User's current mtvR share balance in stroops */
+  /** User's current MTVR share balance in stroops */
   balance: bigint;
   /** All pending request IDs from vaultPendingRequests() */
   requestIds: number[];
@@ -187,7 +187,7 @@ export function RedeemPanel({
 
   return (
     <section
-      aria-label="Redeem mtvR shares"
+      aria-label="Redeem MTVR shares"
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
@@ -218,7 +218,7 @@ export function RedeemPanel({
             margin: 0,
           }}
         >
-          Redeem mtvR — Queue USDC
+          Redeem MTVR — Queue USDC
         </h2>
         <p
           className="font-body"
@@ -253,7 +253,7 @@ export function RedeemPanel({
           {/* Balance hint */}
           <p style={{ fontSize: "11px", color: "var(--color-text-3)", marginBottom: "6px" }}>
             <Mono>
-              Available: {shareBalanceDisplay.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} mtvR
+              Available: {shareBalanceDisplay.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} MTVR
             </Mono>
           </p>
 
@@ -282,7 +282,7 @@ export function RedeemPanel({
                 fontVariantNumeric: "tabular-nums",
                 outline: "none",
               }}
-              aria-label="mtvR shares to redeem"
+              aria-label="MTVR shares to redeem"
             />
             <span
               className="font-body"
@@ -297,7 +297,7 @@ export function RedeemPanel({
                 letterSpacing: "0.02em",
               }}
             >
-              mtvR
+              MTVR
             </span>
           </div>
         </div>
@@ -438,7 +438,7 @@ export function RedeemPanel({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                         <Mono style={{ fontSize: "13px", color: "var(--color-text)" }}>
-                          {fmtNav(req.shares)} mtvR
+                          {fmtNav(req.shares)} MTVR
                         </Mono>
                         {status === "claimable" && req.claimable > 0n && (
                           <Mono style={{ fontSize: "11px", color: "var(--color-success)" }}>

@@ -66,8 +66,7 @@ Runs `next build`. The build must pass before deploying.
 | Route | Front | Description |
 |---|---|---|
 | `/earn` | Investidor (dark/amber) | Deposit / Redeem — NAV hero + position + queue |
-| `/earn/transparency` | Investidor | Reserve dashboard — solvency, metrics, guarantee registry, verification |
-| `/earn/defi` | Investidor | Yield venue directory — DeFindex live, Soroswap/Blend planned |
+| `/earn/transparency` | Investidor | Reserve dashboard — solvency, metrics, guarantee registry, yield venues, verification |
 | `/protocol` | Terminal (dark/copper) | Admin cockpit — reserve health + all protocol write actions |
 
 ## Design system

@@ -287,7 +287,7 @@ export default function ProtocolPage() {
                 marginBottom: "6px",
               }}
             >
-              MUTAV SGR — RESERVE MANAGER
+              MUTAV PROTOCOL — RESERVE MANAGER
             </p>
             <h1
               className="font-display"

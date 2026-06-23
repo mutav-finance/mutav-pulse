@@ -4,12 +4,12 @@
  * NavShell — shared top navigation bar for all pages.
  *
  * Hierarchy:
- *   tga (logo, amber) · earn · transparency · defi · protocol
+ *   MUTAV (logo) · earn · transparency · protocol
  *   Right: ConnectButton
  *
  * Active-route: current link gets an amber underline + full-brightness text
- * (investidor front). On the terminal front (/protocol) the logo switches to
- * copper and the active link gets a copper underline.
+ * (investidor front). On the terminal front (/protocol) the active link gets a
+ * copper underline. The logo is a fixed-color brand mark — identical on both fronts.
  *
  * Front detection: reads `data-front` from the nearest ancestor, or defaults
  * to "investidor". The layout passes the front to <html>, so NavShell can
@@ -31,7 +31,6 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/earn", label: "earn", match: "exact" },
   { href: "/earn/transparency", label: "transparency", match: "exact" },
-  { href: "/earn/defi", label: "defi", match: "exact" },
   { href: "/protocol", label: "protocol", match: "prefix" },
 ];
 
@@ -70,20 +69,19 @@ export function NavShell() {
     >
       {/* Left: logo + nav links */}
       <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
-        {/* Logo — amber (investidor) / copper (terminal) */}
+        {/* Logo — fixed-color brand mark, identical on both fronts */}
         <a
           href="/"
-          className={terminal ? "font-mono" : "font-display"}
-          style={{
-            fontSize: terminal ? "13px" : "16px",
-            color: accentVar,
-            textDecoration: "none",
-            letterSpacing: terminal ? "0.06em" : "0.02em",
-            fontWeight: 500,
-          }}
-          aria-label="tga — home"
+          aria-label="MUTAV — home"
+          style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
         >
-          tga
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo-mutav.svg"
+            alt="MUTAV"
+            height={28}
+            style={{ display: "block", height: "28px", width: "auto" }}
+          />
         </a>
 
         {/* Nav links */}
@@ -99,13 +97,14 @@ export function NavShell() {
                 href={link.href}
                 role="listitem"
                 aria-current={active ? "page" : undefined}
-                className={terminal ? "font-mono" : "font-body"}
+                className="font-mono"
                 style={{
-                  fontSize: terminal ? "13px" : "14px",
+                  fontSize: "13px",
                   fontWeight: 500,
                   color: active ? "var(--color-text)" : "var(--color-text-2)",
                   textDecoration: "none",
-                  letterSpacing: terminal ? "0.04em" : "0.01em",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
                   // Active underline — amber for investidor, copper for terminal
                   borderBottom: active
                     ? `1px solid ${accentVar}`

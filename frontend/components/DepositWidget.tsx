@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * DepositWidget — USDC amount input with live mtvR preview and deposit CTA.
+ * DepositWidget — USDC amount input with live MTVR preview and deposit CTA.
  *
  * UX flow:
  *   1. User enters USDC amount (decimal input)
- *   2. Preview shows "you receive N mtvR at NAV" in real-time
+ *   2. Preview shows "you receive N MTVR at NAV" in real-time
  *   3. On submit: calls deposit() write helper → refreshes position on success
  *
  * Design: Precision Brutalism. Investidor front. Amber CTA — border only,
@@ -121,7 +121,7 @@ export function DepositWidget({
             margin: 0,
           }}
         >
-          Deposit USDC — Earn mtvR
+          Deposit USDC — Earn MTVR
         </h2>
         <p
           className="font-body"
@@ -131,7 +131,7 @@ export function DepositWidget({
             marginTop: "4px",
           }}
         >
-          Contribute USDC to the Mutav SGR reserve and receive mtvR shares at current NAV.
+          Contribute USDC to the MUTAV reserve and receive MTVR shares at current NAV.
         </p>
       </div>
 
@@ -198,7 +198,7 @@ export function DepositWidget({
           </div>
         </div>
 
-        {/* mtvR preview — evidence layer */}
+        {/* MTVR preview — evidence layer */}
         <div
           style={{
             padding: "12px",
@@ -239,7 +239,7 @@ export function DepositWidget({
                   marginLeft: "6px",
                 }}
               >
-                mtvR
+                MTVR
               </span>
             </span>
           </div>
@@ -260,7 +260,7 @@ export function DepositWidget({
               at NAV
             </span>
             <Mono style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
-              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} USDC/mtvR
+              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} USDC/MTVR
             </Mono>
           </div>
         </div>

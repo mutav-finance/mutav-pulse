@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * VenueDirectory — table of yield venues the SGR reserve allocates across.
+ * VenueDirectory — table of yield venues the MUTAV reserve allocates across.
  *
  * Columns: Protocol · Role · Status · Action
  *
@@ -58,7 +58,7 @@ const VENUES: Venue[] = [
   {
     name: "DeFindex",
     role: "Yield",
-    description: "Multi-strategy vault allocator. Reserve capital earns yield via the DeFindex adapter wired to the SGR vault.",
+    description: "Multi-strategy vault allocator. Reserve capital earns yield via the DeFindex adapter wired to the MUTAV vault.",
     status: "live",
     href: adapterLink.href,
     actionLabel: adapterLink.label,

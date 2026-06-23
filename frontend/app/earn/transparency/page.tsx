@@ -23,6 +23,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
 import { VerificationPanel } from "@/components/VerificationPanel";
+import { VenueDirectory } from "@/components/VenueDirectory";
 import { fmtUsd, fmtNav } from "@/lib/format";
 import { estimateApy, type NavSnap } from "@/lib/apy";
 import type { Guarantee } from "policy";
@@ -188,7 +189,6 @@ export default function TransparencyPage() {
 
   return (
     <main
-      className="texture-investidor"
       style={{
         minHeight: "100vh",
         backgroundColor: "var(--color-canvas)",
@@ -223,11 +223,10 @@ export default function TransparencyPage() {
                 letterSpacing: "0.08em",
                 color: "var(--color-text-2)",
                 textTransform: "uppercase",
-                marginBottom: "10px",
-                margin: "0 0 10px",
+                margin: "0 0 8px",
               }}
             >
-              MUTAV SGR RESERVE
+              MUTAV RESERVE
             </p>
             <h1
               className="font-display"
@@ -239,7 +238,7 @@ export default function TransparencyPage() {
                 margin: 0,
               }}
             >
-              Reserve Transparency
+              RESERVE TRANSPARENCY
             </h1>
             <p
               className="font-body"
@@ -251,8 +250,8 @@ export default function TransparencyPage() {
                 maxWidth: "520px",
               }}
             >
-              Live on-chain reserve metrics, guarantee registry, and contract
-              verification. All values read directly from Soroban testnet.
+              Live on-chain reserve metrics, guarantee registry, yield venues, and
+              contract verification. All values read directly from Soroban testnet.
             </p>
           </div>
 
@@ -313,31 +312,41 @@ export default function TransparencyPage() {
           />
         </div>
 
-        {/* ── Metric grid: 7 cards ──────────────────────────────────────── */}
+        {/* ── Metric grid: 4 top / 3 bottom ─────────────────────────────── */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1px",
             backgroundColor: "var(--color-border)",
             border: "1px solid var(--color-border)",
             marginBottom: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1px",
           }}
         >
+          {/* Top row — 4 cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "1px",
+              backgroundColor: "var(--color-border)",
+            }}
+          >
           {/* 1. Reserve Value */}
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtUsd(data.totalAssets)}
             unit="total assets · USDC"
+            accentValue
             loading={loading}
             error={error ?? undefined}
           />
 
           {/* 2. NAV per mtvR */}
           <MetricCard
-            label="NAV / mtvR"
+            label="NAV / MTVR"
             value={loading ? "—" : fmtNav(data.navPerShare)}
-            unit="USDC per mtvR share"
+            unit="USDC per MTVR share"
             loading={loading}
             error={error ?? undefined}
           />
@@ -361,7 +370,17 @@ export default function TransparencyPage() {
             loading={loading}
             error={error ?? undefined}
           />
+          </div>
 
+          {/* Bottom row — 3 cards (centered/balanced) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1px",
+              backgroundColor: "var(--color-border)",
+            }}
+          >
           {/* 5. Liquidity Buffer */}
           <MetricCard
             label="Liquidity Buffer"
@@ -385,10 +404,11 @@ export default function TransparencyPage() {
           <MetricCard
             label="Shares Outstanding"
             value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit="mtvR shares issued"
+            unit="MTVR shares issued"
             loading={loading}
             error={error ?? undefined}
           />
+          </div>
         </div>
 
         {/* ── Section label: guarantee registry ────────────────────────── */}
@@ -421,6 +441,47 @@ export default function TransparencyPage() {
             loading={loading}
             error={error ?? undefined}
           />
+        </div>
+
+        {/* ── Section label: yield venues ──────────────────────────────── */}
+        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.08em",
+              color: "var(--color-text-2)",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            YIELD VENUES
+          </p>
+          <span
+            className="font-mono"
+            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+          >
+            1 live · 2 planned
+          </span>
+        </div>
+
+        {/* ── Venue directory ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: "32px" }}>
+          <VenueDirectory />
+          <p
+            className="font-body"
+            style={{
+              fontSize: "13px",
+              color: "var(--color-text-3)",
+              lineHeight: 1.5,
+              margin: "16px 0 0",
+            }}
+          >
+            The reserve is a diversified allocator — capital earns across multiple on-chain
+            venues. DeFindex is live today; additional integrations are enabled as they reach
+            production readiness.
+          </p>
         </div>
 
         {/* ── Verification panel ────────────────────────────────────────── */}

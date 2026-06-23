@@ -233,7 +233,7 @@ export function ProtocolActionForm({
                   : "transparent",
               color:
                 canSubmit && isHovered
-                  ? "#0A0B0D"
+                  ? "var(--color-canvas)"
                   : canSubmit
                     ? "var(--color-copper)"
                     : "var(--color-text-3)",
