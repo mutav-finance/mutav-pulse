@@ -50,7 +50,7 @@ This mirrors the other consumers (`mutav`, `mutav-app`, `mutav-fund`, `mutav-ste
 - `identity/palettes.json` — OKLCH scales. Primary accent **amber `#E8A020`** (scarce, <5% of
   pixels); **copper** terminal accent; `amberLight #C47E10` for light surfaces.
 - `identity/typography.md` — three-typeface system: **Geist Bold** (authority/headings),
-  **Inter** (clarity/body), **JetBrains Mono** (data/numbers). ALL CAPS only for data labels (NAV, APY, TGA).
+  **Inter** (clarity/body), **JetBrains Mono** (data/numbers). ALL CAPS only for data labels (NAV, APY, MUTAV).
 - `identity/color-system.md`, `patterns/STYLE.md`, `patterns/tga.yml` — full design system.
 - Aesthetic: **"Precision Brutalism"** — minimal-dark, terminal, professional.
 - `config.json` defines three product fronts that map to our audiences:
@@ -61,4 +61,4 @@ This mirrors the other consumers (`mutav`, `mutav-app`, `mutav-fund`, `mutav-ste
 
 Stellar Wallets Kit + the three brand fronts wired to the testnet deploy. Use the
 **`impeccable`** skill (installed at `.claude/skills/impeccable`) for design quality, and
-the TGA brand tokens above — do not invent colors/type.
+the MUTAV brand tokens above — do not invent colors/type.

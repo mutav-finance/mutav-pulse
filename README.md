@@ -9,7 +9,7 @@
 
 ## TL;DR for judges
 
-- **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of mutav's decentralized guarantee system (SGR).
+- **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, premium, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
 - **Live on testnet:** vault/policy/registry deployed + seeded; 23 contract unit tests + 10 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
@@ -25,9 +25,7 @@ In Brazil, you cannot sign a lease without a rental guarantee (*garantia locatí
 
 Mutav is a **fiador institucional** — an institutional guarantor. Instead of forcing a tenant to find a personal *fiador* or lock up a multi-month deposit, **Mutav provides the *fiança* itself**: it stands as guarantor on the lease and pays the landlord if the tenant defaults. *Fiança* is one of the legally-recognized forms and the **lightest to launch** — unlike SUSEP-regulated *seguro-fiança* insurance, it needs no insurance license. It's the entry point; the model can expand into adjacent guarantee products later. The twist: Mutav's *fiança* is backed by an **onchain, solvency-verifiable reserve** — a landlord can confirm in real time that the guarantor behind their lease is solvent, which no personal *fiador* or opaque insurer can offer.
 
-**Mutav Pulse is a proof of concept of that decentralized guarantee system** — the **SGR** (*Sistema de Garantia Registrada* — Registered Guarantee System). It implements the financial core on Stellar testnet: the tokenized **reserve** that backs the *fiança*, makes its solvency verifiable onchain, and pays out defaults — proving the guarantee can run transparently and trust-minimized, instead of on an opaque institutional balance sheet.
-
-> **Naming:** *SGR* is the protocol; the product presents it to users as **MUTAV** — the **MUTAV Reserve** investor app and the **MUTAV Protocol** operator cockpit.
+**Mutav Pulse is a proof of concept of that decentralized guarantee system.** It implements MUTAV's financial core on Stellar testnet: the tokenized **reserve** that backs the *fiança*, makes its solvency verifiable onchain, and pays out defaults — proving the guarantee can run transparently and trust-minimized, instead of on an opaque institutional balance sheet. Two surfaces sit on top: the **MUTAV Reserve** investor app and the **MUTAV Protocol** operator cockpit.
 
 ## The solution
 
@@ -40,6 +38,8 @@ A reserve of USDC on Stellar — held by the `vault` contract — that is **prov
 - Idle reserve capital is **put to work earning DeFi yield** through a pluggable strategy allocator — a DeFindex adapter today, with Soroswap / Blend designed against the same interface.
 
 **The proof is public.** The `/earn/transparency` dashboard shows a live solvency chip, coverage metrics, and the full guarantee registry — and every number on screen links back to its onchain source. Nothing to take on trust.
+
+> **Why "Pulse":** the reserve runs on a constant pulse of liquidity — premiums in, default payouts out, redemptions clearing from surplus — metered beat by beat through the redemption queue.
 
 ---
 
@@ -109,9 +109,9 @@ USDC settles in SAC `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`.
 
 ## Customer discovery
 
-SGR is built directly against the two sides of the Brazilian rental market it serves:
+MUTAV is built directly against the two sides of the Brazilian rental market it serves:
 
-- **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt onchain SGR. -->
+- **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt an onchain guarantee. -->
 - **Investors (DeFi / yield)** — interviews in progress. <!-- TODO: add findings on appetite for solvency-verifiable rental-guarantee yield. -->
 
 Full write-ups in [`docs/customer-discovery.md`](docs/customer-discovery.md). <!-- TODO: create this file with the agency interviews + investor interviews. -->
@@ -173,4 +173,4 @@ The strategy allocator is a trait, so new yield venues plug in without touching 
 
 ---
 
-*Mutav Pulse is a hackathon proof of concept of mutav's decentralized guarantee system (SGR), on Stellar testnet — not coupled to mutav's audited production `mutav-stellar` Fund. Built to demonstrate the integration and the trust-minimized guarantee model.*
+*Mutav Pulse is a hackathon proof of concept of MUTAV's decentralized guarantee system, on Stellar testnet — not coupled to mutav's audited production `mutav-stellar` Fund. Built to demonstrate the integration and the trust-minimized guarantee model.*

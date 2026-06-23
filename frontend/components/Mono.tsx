@@ -2,7 +2,7 @@
  * Mono — shared Evidence-layer span (JetBrains Mono, tabular nums).
  *
  * Use for all on-chain numbers, addresses, hashes, and terminal data values.
- * Layer 3 of the TGA three-layer typography system.
+ * Layer 3 of the MUTAV three-layer typography system.
  */
 
 import React from "react";

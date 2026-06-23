@@ -5,7 +5,7 @@ import { WalletProvider } from "@/components/WalletProvider";
 import { NavShell } from "@/components/NavShell";
 
 // Geist Bold (700) only — the Declaration layer font.
-// Never load other weights; TGA uses Bold exclusively for headings.
+// Never load other weights; MUTAV uses Bold exclusively for headings.
 const geist = Geist({
   weight: ["700"],
   subsets: ["latin"],
