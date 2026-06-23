@@ -7,7 +7,7 @@ export * as rpc from "@stellar/stellar-sdk/rpc";
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CDWNA4N4C6CTJL2KHKZASDNKKH3YPXX3TP5JX5GKHNVMRF5V5CCNFGST";
+        readonly contractId: "CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR";
     };
 };
 export interface RedeemRequest {
@@ -23,6 +23,20 @@ export interface StrategyAlloc {
     volatile: boolean;
     weight_bps: u32;
 }
+export declare const SorobanFixedPointError: {
+    /**
+     * Arithmetic overflow occurred
+     */
+    1500: {
+        message: string;
+    };
+    /**
+     * Division by zero
+     */
+    1501: {
+        message: string;
+    };
+};
 export declare const FungibleTokenError: {
     /**
      * Indicates an error related to the current balance of account from which
@@ -121,6 +135,17 @@ export declare const FungibleTokenError: {
 };
 export interface Client {
     /**
+     * Construct and simulate a mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * SEP-0056 mint: mint exactly `shares` to `receiver`, pulling the required
+     * (ceil-rounded) assets from `from`. Returns assets consumed.
+     */
+    mint: ({ shares, receiver, from, operator }: {
+        shares: i128;
+        receiver: string;
+        from: string;
+        operator: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a name transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      * Returns the name for this token.
      *
@@ -143,6 +168,16 @@ export interface Client {
      * Construct and simulate a policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     policy: (options?: MethodOptions) => Promise<AssembledTransaction<string>>;
+    /**
+     * Construct and simulate a redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * SEP-0056 redeem — DISABLED (D2). Redeem via `request_redeem`.
+     */
+    redeem: ({ shares, receiver, owner, operator }: {
+        shares: i128;
+        receiver: string;
+        owner: string;
+        operator: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a symbol transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      * Returns the symbol for this token.
@@ -199,10 +234,14 @@ export interface Client {
     }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * SEP-0056 deposit: `from` provides `assets`, `receiver` gets the minted
+     * shares, `operator` authorizes (allowance-delegated when `operator != from`).
      */
-    deposit: ({ from, amount }: {
+    deposit: ({ assets, receiver, from, operator }: {
+        assets: i128;
+        receiver: string;
         from: string;
-        amount: i128;
+        operator: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a request transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -233,6 +272,12 @@ export interface Client {
         amount: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a max_mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    max_mint: ({ receiver }: {
+        receiver: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a transfer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      * Transfers `amount` of tokens from `from` to `to`.
      *
@@ -260,6 +305,16 @@ export interface Client {
         amount: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a withdraw transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * SEP-0056 withdraw — DISABLED (D2). Redeem via `request_redeem`.
+     */
+    withdraw: ({ assets, receiver, owner, operator }: {
+        assets: i128;
+        receiver: string;
+        owner: string;
+        operator: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a allowance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      * Returns the amount of tokens a `spender` is allowed to spend on behalf
      * of an `owner`.
@@ -285,6 +340,13 @@ export interface Client {
         new_admin: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a max_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * 0 — synchronous withdrawals are disabled; redeem via the queue (D2).
+     */
+    max_redeem: ({ owner }: {
+        owner: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a set_policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     set_policy: ({ policy }: {
@@ -295,9 +357,16 @@ export interface Client {
      */
     strategies: (options?: MethodOptions) => Promise<AssembledTransaction<Array<StrategyAlloc>>>;
     /**
-     * Construct and simulate a underlying transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Construct and simulate a max_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    underlying: (options?: MethodOptions) => Promise<AssembledTransaction<string>>;
+    max_deposit: ({ receiver }: {
+        receiver: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
+     * Construct and simulate a query_asset transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * SEP-0056: address of the underlying asset the vault manages.
+     */
+    query_asset: (options?: MethodOptions) => Promise<AssembledTransaction<string>>;
     /**
      * Construct and simulate a add_strategy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -310,6 +379,19 @@ export interface Client {
      * Construct and simulate a free_capital transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     free_capital: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
+     * Construct and simulate a max_withdraw transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * 0 — synchronous withdrawals are disabled; redeem via the queue (D2).
+     */
+    max_withdraw: ({ owner }: {
+        owner: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
+     * Construct and simulate a preview_mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    preview_mint: ({ shares }: {
+        shares: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a total_assets transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -381,6 +463,12 @@ export interface Client {
      */
     premium_income: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
+     * Construct and simulate a preview_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    preview_redeem: ({ shares }: {
+        shares: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a request_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     request_redeem: ({ owner, shares }: {
@@ -395,6 +483,12 @@ export interface Client {
         amount: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a preview_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    preview_deposit: ({ assets }: {
+        assets: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
      * Construct and simulate a remove_strategy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     remove_strategy: ({ address }: {
@@ -404,6 +498,24 @@ export interface Client {
      * Construct and simulate a pending_requests transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     pending_requests: (options?: MethodOptions) => Promise<AssembledTransaction<Array<u32>>>;
+    /**
+     * Construct and simulate a preview_withdraw transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    preview_withdraw: ({ assets }: {
+        assets: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
+     * Construct and simulate a convert_to_assets transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    convert_to_assets: ({ shares }: {
+        shares: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
+    /**
+     * Construct and simulate a convert_to_shares transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    convert_to_shares: ({ assets }: {
+        assets: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a process_redemptions transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -430,10 +542,12 @@ export declare class Client extends ContractClient {
     }): Promise<AssembledTransaction<T>>;
     constructor(options: ContractClientOptions);
     readonly fromJSON: {
+        mint: (json: string) => AssembledTransaction<bigint>;
         name: (json: string) => AssembledTransaction<string>;
         admin: (json: string) => AssembledTransaction<string>;
         claim: (json: string) => AssembledTransaction<null>;
         policy: (json: string) => AssembledTransaction<string>;
+        redeem: (json: string) => AssembledTransaction<bigint>;
         symbol: (json: string) => AssembledTransaction<string>;
         approve: (json: string) => AssembledTransaction<null>;
         balance: (json: string) => AssembledTransaction<bigint>;
@@ -442,15 +556,21 @@ export declare class Client extends ContractClient {
         upgrade: (json: string) => AssembledTransaction<null>;
         decimals: (json: string) => AssembledTransaction<number>;
         disburse: (json: string) => AssembledTransaction<null>;
+        max_mint: (json: string) => AssembledTransaction<bigint>;
         transfer: (json: string) => AssembledTransaction<null>;
+        withdraw: (json: string) => AssembledTransaction<bigint>;
         allowance: (json: string) => AssembledTransaction<bigint>;
         rebalance: (json: string) => AssembledTransaction<null>;
         set_admin: (json: string) => AssembledTransaction<null>;
+        max_redeem: (json: string) => AssembledTransaction<bigint>;
         set_policy: (json: string) => AssembledTransaction<null>;
         strategies: (json: string) => AssembledTransaction<StrategyAlloc[]>;
-        underlying: (json: string) => AssembledTransaction<string>;
+        max_deposit: (json: string) => AssembledTransaction<bigint>;
+        query_asset: (json: string) => AssembledTransaction<string>;
         add_strategy: (json: string) => AssembledTransaction<null>;
         free_capital: (json: string) => AssembledTransaction<bigint>;
+        max_withdraw: (json: string) => AssembledTransaction<bigint>;
+        preview_mint: (json: string) => AssembledTransaction<bigint>;
         total_assets: (json: string) => AssembledTransaction<bigint>;
         total_supply: (json: string) => AssembledTransaction<bigint>;
         cancel_redeem: (json: string) => AssembledTransaction<null>;
@@ -459,10 +579,15 @@ export declare class Client extends ContractClient {
         transfer_from: (json: string) => AssembledTransaction<null>;
         available_held: (json: string) => AssembledTransaction<bigint>;
         premium_income: (json: string) => AssembledTransaction<bigint>;
+        preview_redeem: (json: string) => AssembledTransaction<bigint>;
         request_redeem: (json: string) => AssembledTransaction<number>;
         collect_premium: (json: string) => AssembledTransaction<null>;
+        preview_deposit: (json: string) => AssembledTransaction<bigint>;
         remove_strategy: (json: string) => AssembledTransaction<null>;
         pending_requests: (json: string) => AssembledTransaction<number[]>;
+        preview_withdraw: (json: string) => AssembledTransaction<bigint>;
+        convert_to_assets: (json: string) => AssembledTransaction<bigint>;
+        convert_to_shares: (json: string) => AssembledTransaction<bigint>;
         process_redemptions: (json: string) => AssembledTransaction<null>;
     };
 }

@@ -20,6 +20,14 @@ solvency `stable_assets >= coverage_required` held by the policy reducing covera
 calling `vault.disburse` at ratio >= 100% (the vault CANNOT call `policy.coverage_required`
 during a default — Soroban re-entrancy). Premiums mint no shares (accrue to NAV).
 
+**Lifecycle:** every deployed contract (`vault`/`policy`/`registry`/`adapter-defindex`)
+has an admin-gated `upgrade(wasm_hash)`; all cross-contract connections are setter-wired
+(`set_policy`/`set_vault`/`set_registry`/`set_writer`, plus the vault's `add_strategy`/
+`remove_strategy`), never constructor-baked — the one immutable is the vault's `underlying`
+asset. This is what lets the monetary model be swapped without moving funds (see the
+migration story in the modular-architecture spec). In-place `upgrade()` requires a
+preserved storage layout; layout-changing edits need redeploy + re-wire via `bootstrap.sh`.
+
 **Build/test:** `cargo test` (whole workspace); `stellar contract build` for wasm
 (NOT raw `cargo build --release` — soroban-sdk 26.1 spec-shaking needs the CLI).
 Tests use `e.mock_all_auths_allowing_non_root_auth()`. Deploy/wire: `bootstrap.sh`.

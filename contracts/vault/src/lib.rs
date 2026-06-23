@@ -1,6 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
+use soroban_sdk::{contract, contractevent, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
+use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
 use strategy::StrategyClient;
 use interfaces::{PolicyClient, Vault as VaultTrait};
 
@@ -8,6 +9,21 @@ mod types;
 use types::{DataKey, RedeemRequest, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
+
+/// SEP-0056 `Deposit` event — topics `["deposit", operator, from, receiver]`,
+/// data `[assets, shares]`. Emitted by `deposit` and `mint`. (The SEP `Withdraw`
+/// event has no emitter: synchronous `withdraw`/`redeem` are disabled — see D2.)
+#[contractevent]
+pub struct Deposit {
+    #[topic]
+    pub operator: Address,
+    #[topic]
+    pub from: Address,
+    #[topic]
+    pub receiver: Address,
+    pub assets: i128,
+    pub shares: i128,
+}
 
 #[contract]
 pub struct Vault;
@@ -30,7 +46,8 @@ impl Vault {
     }
 
     pub fn admin(e: &Env) -> Address { e.storage().instance().get(&DataKey::Admin).unwrap() }
-    pub fn underlying(e: &Env) -> Address { e.storage().instance().get(&DataKey::Underlying).unwrap() }
+    /// SEP-0056: address of the underlying asset the vault manages.
+    pub fn query_asset(e: &Env) -> Address { e.storage().instance().get(&DataKey::Underlying).unwrap() }
     pub fn policy(e: &Env) -> Address { e.storage().instance().get(&DataKey::Policy).expect("policy not set") }
     pub fn premium_income(e: &Env) -> i128 { e.storage().instance().get(&DataKey::PremiumIncome).unwrap_or(0) }
 
@@ -43,7 +60,7 @@ impl Vault {
         e.storage().instance().get(&DataKey::ReservedForClaims).unwrap_or(0)
     }
     fn token_client(e: &Env) -> token::TokenClient<'_> {
-        token::TokenClient::new(e, &Self::underlying(e))
+        token::TokenClient::new(e, &Self::query_asset(e))
     }
     pub fn available_held(e: &Env) -> i128 {
         Self::token_client(e).balance(&e.current_contract_address()) - Self::reserved_for_claims(e)
@@ -111,17 +128,105 @@ impl Vault {
         if supply == 0 { return NAV_SCALE; }
         Self::total_assets(e) * NAV_SCALE / supply
     }
-    pub fn deposit(e: &Env, from: Address, amount: i128) -> i128 {
-        from.require_auth();
-        assert!(amount > 0, "amount must be positive");
-        let supply = Base::total_supply(e);
-        let assets_before = Self::total_assets(e);
-        Self::token_client(e).transfer(&from, &e.current_contract_address(), &amount);
-        let shares = amount * (supply + VIRTUAL_OFFSET) / (assets_before + VIRTUAL_OFFSET);
+
+    // ───────────────────────── SEP-0056 (Tokenized Vault Standard) ─────────────────────────
+    //
+    // Hand-rolled on OZ `Base` (the share token), reusing OZ's audited
+    // fixed-point arithmetic. OZ's `FungibleVault` extension (stellar-tokens
+    // 0.7.2) anchors its share-price math to the vault's *idle* token balance
+    // with no override hook, which is incompatible with our strategy allocator
+    // (assets are deployed off-contract). So we keep `Base` for the shares and
+    // compute NAV here off `total_assets()` (cash + strategy positions). The
+    // arithmetic itself is the audited `mul_div_with_rounding` from
+    // stellar-contract-utils — identical to what OZ's `Vault` uses, with a
+    // virtual offset of 1 (`VIRTUAL_OFFSET`, i.e. OZ decimals_offset = 0). The
+    // only divergence from the audited vault is the `total_assets` source.
+    // See docs/sep0056-conformance-decisions.md.
+    //
+    // Redemptions are queue-only (D2, attack-surface reduction): synchronous
+    // `withdraw`/`redeem` are disabled (revert) and `max_withdraw`/`max_redeem`
+    // return 0 — the conformant signal for "withdrawals currently disabled".
+    // Investors redeem via `request_redeem` → `process_redemptions` → `claim`.
+
+    /// assets → shares at current NAV, via the audited primitive (virtual offset).
+    fn to_shares(e: &Env, assets: i128, rounding: Rounding) -> i128 {
+        assert!(assets >= 0, "negative assets");
+        if assets == 0 { return 0; }
+        mul_div_with_rounding(e, assets, Base::total_supply(e) + VIRTUAL_OFFSET, Self::total_assets(e) + VIRTUAL_OFFSET, rounding)
+    }
+    /// shares → assets at current NAV, via the audited primitive (virtual offset).
+    fn to_assets(e: &Env, shares: i128, rounding: Rounding) -> i128 {
+        assert!(shares >= 0, "negative shares");
+        if shares == 0 { return 0; }
+        mul_div_with_rounding(e, shares, Self::total_assets(e) + VIRTUAL_OFFSET, Base::total_supply(e) + VIRTUAL_OFFSET, rounding)
+    }
+
+    pub fn convert_to_shares(e: &Env, assets: i128) -> i128 { Self::to_shares(e, assets, Rounding::Floor) }
+    pub fn convert_to_assets(e: &Env, shares: i128) -> i128 { Self::to_assets(e, shares, Rounding::Floor) }
+    pub fn preview_deposit(e: &Env, assets: i128) -> i128 { Self::to_shares(e, assets, Rounding::Floor) }
+    pub fn preview_mint(e: &Env, shares: i128) -> i128 { Self::to_assets(e, shares, Rounding::Ceil) }
+    pub fn preview_withdraw(e: &Env, assets: i128) -> i128 { Self::to_shares(e, assets, Rounding::Ceil) }
+    pub fn preview_redeem(e: &Env, shares: i128) -> i128 { Self::to_assets(e, shares, Rounding::Floor) }
+    pub fn max_deposit(_e: &Env, _receiver: Address) -> i128 { i128::MAX }
+    pub fn max_mint(_e: &Env, _receiver: Address) -> i128 { i128::MAX }
+    /// 0 — synchronous withdrawals are disabled; redeem via the queue (D2).
+    pub fn max_withdraw(_e: &Env, _owner: Address) -> i128 { 0 }
+    /// 0 — synchronous withdrawals are disabled; redeem via the queue (D2).
+    pub fn max_redeem(_e: &Env, _owner: Address) -> i128 { 0 }
+
+    /// Pull `assets` of underlying from `from` into the vault, honoring operator
+    /// delegation: self-transfer when `operator == from`, else allowance-based.
+    fn pull(e: &Env, from: &Address, operator: &Address, assets: i128) {
+        let t = Self::token_client(e);
+        if operator == from {
+            t.transfer(from, &e.current_contract_address(), &assets);
+        } else {
+            t.transfer_from(operator, from, &e.current_contract_address(), &assets);
+        }
+    }
+    fn emit_deposit(e: &Env, operator: &Address, from: &Address, receiver: &Address, assets: i128, shares: i128) {
+        Deposit { operator: operator.clone(), from: from.clone(), receiver: receiver.clone(), assets, shares }
+            .publish(e);
+    }
+
+    /// SEP-0056 deposit: `from` provides `assets`, `receiver` gets the minted
+    /// shares, `operator` authorizes (allowance-delegated when `operator != from`).
+    pub fn deposit(e: &Env, assets: i128, receiver: Address, from: Address, operator: Address) -> i128 {
+        operator.require_auth();
+        assert!(assets > 0, "amount must be positive");
+        assert!(assets <= Self::max_deposit(e, receiver.clone()), "exceeds max deposit");
+        // Shares priced off pre-transfer NAV (ERC-4626 semantics).
+        let shares = Self::preview_deposit(e, assets);
         assert!(shares > 0, "zero shares minted");
-        Base::mint(e, &from, shares);
+        Self::pull(e, &from, &operator, assets);
+        Base::mint(e, &receiver, shares);
+        Self::emit_deposit(e, &operator, &from, &receiver, assets, shares);
         shares
     }
+
+    /// SEP-0056 mint: mint exactly `shares` to `receiver`, pulling the required
+    /// (ceil-rounded) assets from `from`. Returns assets consumed.
+    pub fn mint(e: &Env, shares: i128, receiver: Address, from: Address, operator: Address) -> i128 {
+        operator.require_auth();
+        assert!(shares > 0, "shares must be positive");
+        assert!(shares <= Self::max_mint(e, receiver.clone()), "exceeds max mint");
+        let assets = Self::preview_mint(e, shares);
+        assert!(assets > 0, "zero assets");
+        Self::pull(e, &from, &operator, assets);
+        Base::mint(e, &receiver, shares);
+        Self::emit_deposit(e, &operator, &from, &receiver, assets, shares);
+        assets
+    }
+
+    /// SEP-0056 withdraw — DISABLED (D2). Redeem via `request_redeem`.
+    pub fn withdraw(_e: &Env, _assets: i128, _receiver: Address, _owner: Address, _operator: Address) -> i128 {
+        panic!("synchronous withdrawals disabled; use request_redeem")
+    }
+    /// SEP-0056 redeem — DISABLED (D2). Redeem via `request_redeem`.
+    pub fn redeem(_e: &Env, _shares: i128, _receiver: Address, _owner: Address, _operator: Address) -> i128 {
+        panic!("synchronous withdrawals disabled; use request_redeem")
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────────
 
     pub fn free_capital(e: &Env) -> i128 {
         let coverage = PolicyClient::new(e, &Self::policy(e)).coverage_required();

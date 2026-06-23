@@ -47,23 +47,32 @@ in `docs/specs/` and `docs/plans/` (one spec + plan per phase).
 - `adapter-defindex` uses `min_amounts_out=[0]` (no slippage floor) — fine for
   the demo, set a real floor before mainnet (flagged in code).
 
-## Testnet deploy (live, realistic-seed — 2026-06-22)
+## Testnet deploy (live, SEP-0056 + realistic-seed — 2026-06-23)
 
 Network: testnet. RPC `https://soroban-testnet.stellar.org`. Underlying USDC SAC:
-`CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`.
+`CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6` (admin = `pulse-admin`,
+so it mints the demo USDC). This deploy runs the **SEP-0056-conformant vault**.
 
 | Contract | ID |
 | --- | --- |
-| vault | `CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO` |
-| policy | `CC7YTVCJESGJXMWHR7AWG7NKIT2BTATFQVZ4ZIMDGA3C3BOT2GUEM5WF` |
-| registry | `CDGEI5SHSDHEFCYDU3IHE6WB26NC6CE5ZHZWI5F4LKRWFDNUYBFHVJA4` |
-| mock-strategy | `CAL3GVC7DQ7WHLRMLQU7BDHKYZAJFRKHSYB2JBMUDL3RKKJW7563HCG4` |
+| vault | `CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR` |
+| policy | `CA7SROLJVJXMPCUG7DLI5EUOWFMYCT2SJSKHXG35PV2I36KXSNA3BTHO` |
+| registry | `CCFYHEAI5SBPAE44ZGV5QNDHIMCLZSIMTBT26NBYQDEDMJGPRMB2PAZ6` |
+| mock-strategy | `CDULHUYDOO7W3FKHACBC4ER7EMDJMBKZJRKXGT4XTCXGFWMHJKW5RXPJ` |
 
 These are in `frontend/.env.example` (copy to `.env.local`). Admin wallet
 (`/protocol` actions): `GBE3QZQSNKZQU7ESFUXFYT5ECZYRM5QM72QW2VKTPHH7TAHFEEPTWED3`
 (local key alias `pulse-admin` — keys live in the local `stellar keys` keychain,
 not in the repo). Seeded state: ~$50.4k reserve, NAV 1.0084, 4 guarantees
-(3 active, 1 lapsed), $420 premiums. `bootstrap.sh` redeploys + wires from scratch.
+(3 active, 1 lapsed), $420 premiums.
+
+Redeploy + reseed from scratch:
+```bash
+SOURCE=pulse-admin USDC_SAC=CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6 ./bootstrap.sh
+VAULT=<id> POLICY=<id> USDC=CALOXSNQ… ./seed.sh   # restores the realistic demo state
+```
+After a redeploy, regenerate the vault TS binding (its method surface is baked in):
+`stellar contract bindings typescript --network testnet --contract-id <VAULT> --output-dir frontend/bindings/vault --overwrite && (cd frontend/bindings/vault && bun install && bun run build)`, then update `frontend/.env.example` IDs. (policy/registry bindings are unchanged — only the IDs.)
 
 ## Run it
 
@@ -89,7 +98,12 @@ Deploy: Vercel team `mutav` (see `frontend/README.md`). Repo:
   volatile adapter lands.
 - **SEP-0056 (Tokenized Vault Standard) conformance** for the vault (rename
   `query_asset`, add convert/preview/max + events; reconcile the async redemption
-  queue via `max_withdraw`/`max_redeem`). See the modular-architecture spec notes.
+  queue via `max_withdraw`/`max_redeem`). Design decisions captured in
+  `docs/sep0056-conformance-decisions.md` (+ method table in
+  `docs/vault-method-surface.md`). **🧪 Provisional — test further this hackathon:**
+  the queue-only choice (D2: `withdraw`/`redeem` revert, `max_* = 0`) and the OZ
+  `FungibleVault` override ergonomics both need validation — see that doc's
+  "Test further on this hackathon" section before locking the spec.
 - **Deferred minor cleanups** (non-blocking): `fmtUsd` ICU note; consolidate the
   remaining duplicated inline `Mono` components; client-side queue owner filter;
   document the USDC SAC provenance.

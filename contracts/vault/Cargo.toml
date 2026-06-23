@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 soroban-sdk = { workspace = true }
 stellar-tokens = { workspace = true }
+stellar-contract-utils = { workspace = true }
 strategy = { path = "../strategy" }
 interfaces = { path = "../interfaces" }
 

@@ -1795,6 +1795,7 @@ dependencies = [
  "mock-policy",
  "mock-strategy",
  "soroban-sdk",
+ "stellar-contract-utils",
  "stellar-tokens",
  "strategy",
 ]

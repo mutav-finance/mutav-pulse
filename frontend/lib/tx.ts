@@ -40,7 +40,14 @@ function vaultWriter(address: string): VaultClient {
  */
 export async function deposit(from: string, amount: bigint): Promise<string> {
   const client = vaultWriter(from);
-  const tx = await client.deposit({ from, amount });
+  // SEP-0056 deposit: a self-deposit — the connected wallet is the asset source
+  // (`from`), the share recipient (`receiver`), and the authorizing `operator`.
+  const tx = await client.deposit({
+    assets: amount,
+    receiver: from,
+    from,
+    operator: from,
+  });
   const sent = await tx.signAndSend();
   const hash = sent.sendTransactionResponse?.hash;
   if (!hash) throw new Error("transaction did not return a hash");
