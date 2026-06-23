@@ -222,9 +222,13 @@ isoladamente (root on-chain sozinha; prova local com snarkjs sem chain).
 - **Saída:** selo da lista on-chain, reconstruível off-chain, sem expor a lista. _Demoável sozinho._
 
 > **Nota de ambiente (Windows):** esta máquina não tem o linker MSVC; o `rust-toolchain.toml`
-> força MSVC e o build padrão quebra. Para **testes de host**: usar o toolchain gnu e só a lib —
-> `cargo +stable-x86_64-pc-windows-gnu test -p <crate> --lib`. O build wasm/`cdylib` para **deploy**
-> (Stage 4) precisará do MSVC (o gnu estoura "export ordinal too large" no cdylib).
+> força MSVC e o build padrão quebra. **Tudo roda com o toolchain gnu** (que tem linker funcional):
+> - **Testes de host:** `cargo +stable-x86_64-pc-windows-gnu test -p <crate> --lib` (só a lib —
+>   `cargo test --workspace` estoura "export ordinal too large" no **cdylib nativo**).
+> - **Build wasm p/ deploy:** `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
+>   uma vez, depois `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. **Não
+>   precisa de MSVC** — o "export ordinal too large" é específico do cdylib nativo, não do alvo wasm.
+>   _(Confirmado no Stage 2.5: os 7 wasm buildaram e o registry deployou na testnet.)_
 
 ### Stage 2 — Circuito `solvency.circom`
 Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
@@ -250,24 +254,38 @@ Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
 - **2.4** _(stretch — primeiro a cortar)_ peça C: somar `wallet_balances[]` assinados (mesmo padrão da A).
 - **Saída:** ✅ MVP **A+B** completo — `proof.json`/`public.json`/`verification_key.json` gerados.
 
-### Stage 2.5 — Deploy na testnet (pré-requisito do Stage 3 e do Stage 4)
+### Stage 2.5 — Deploy na testnet (pré-requisito do Stage 3 e do Stage 4) ✅ CONCLUÍDO
 Tudo até aqui rodou **local** (o Stage 0 adiou o deploy de propósito). Tanto o prover
 (Stage 3 lê estado on-chain real) quanto o attestor (Stage 4 mora on-chain) precisam de
 um deploy vivo. Por isso esta etapa entra **antes** do Stage 3.
-- **2.5.1** Build wasm dos contratos com `stellar contract build` (NÃO `cargo build --release`
-  — spec-shaking da soroban-sdk 26.1). ⚠️ **Windows:** o `cdylib` exige a toolchain **MSVC**
-  (o gnu usado nos testes de host estoura "export ordinal too large"); sem MSVC nesta máquina,
-  buildar/deployar de um ambiente com MSVC ou WSL.
-- **2.5.2** Deploy + wiring via `bootstrap.sh`: `registry`/`vault`/`policy`/`adapter-defindex`
-  com os setters (`set_writer`/`set_policy`/`set_vault`/`set_registry`/`add_strategy`). O
-  `solvency_attestor` ainda não existe (sai do Stage 4) — entra no bootstrap depois.
-- **2.5.3** Seed de demo: fundear o `vault`, criar N garantias via `policy` para que
-  `registry.guarantees_root()` e `vault.stable_assets()` retornem valores não-triviais — é o
-  que o prover (3.1) vai ler e o circuito amarrar.
-- **2.5.4** Conferir os reads ao vivo: `guarantees_root()` e `stable_assets()` batem com a
-  reconstrução off-chain (`prover/merkle.mjs`) sobre o mesmo conjunto. Anotar os contract IDs.
-- **Saída:** core deployado e semeado na testnet; IDs + estado prontos para o prover (Stage 3)
-  e para o deploy do attestor (Stage 4).
+
+**Decisão (registry-only):** o core de 2026-06-22 (`vault`/`policy`/`registry`) já estava
+vivo e seedado, mas o **admin é `GBE3QZQS…` — chave que não temos** (só `mutav-test` =
+`GCG2L74G…`), então o `registry` vivo (sem `guarantees_root`) **não pôde ser `upgrade()`-ado**.
+Saída escolhida: deployar um **registry novo** sob nosso admin e **reusar o vault existente**
+(que só precisamos *ler* — `stable_assets` é permissionless). O registry novo fica desacoplado
+da `policy` antiga (writer = nós); seed direto via `put()`.
+
+- **2.5.1** ✅ Build wasm com `stellar contract build` (NÃO `cargo build --release` — spec-shaking
+  da soroban-sdk 26.1). ⚠️ **Windows:** **NÃO precisa de MSVC** — basta o toolchain **gnu** com o
+  target wasm instalado: `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
+  e então `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. (O gnu tem linker
+  funcional p/ os proc-macros do host; o "export ordinal too large" só afeta o **cdylib nativo** de
+  `cargo test --workspace`, não o target `wasm32v1-none`. A nota anterior de que "o build wasm
+  precisa de MSVC" estava errada — corrigida aqui.)
+- **2.5.2** ✅ Deploy do `registry` novo (admin = `mutav-test`) + `set_writer(mutav-test)`. Vault
+  reusado (sem re-wire). **Contract IDs (testnet):**
+  - **REGISTRY (novo, com `guarantees_root`):** `CCIIYG572C5HUJKPDVSCYWAJNUUPOEEXKXIURA3DMAPTMETE3HHOU3FC`
+  - **VAULT (existente, read-only):** `CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO`
+  - **USDC SAC:** `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`
+  - (registry/vault/policy antigos administrados por `GBE3QZQS…`; o `solvency_attestor` entra no Stage 4.)
+- **2.5.3** ✅ Seed: 4 garantias `[0,1,2,3]` espelhando o livro real do deploy antigo
+  (obrigações 18.000 + 12.000 + 4.800 + 14.400 = **49.200 USDC**). Vault `stable_assets` =
+  **50.420 USDC** → solvente (~**102,5%**).
+- **2.5.4** ✅ Cross-check ao vivo: `guarantees_root()` on-chain ==
+  `prover/merkle.mjs` off-chain == `0x2962a3bbb708bf58677b8a51a5605c5d45d03c87981e11b790606ff4d3342231`.
+- **Saída:** ✅ registry novo deployado e semeado na testnet; `guarantees_root` + `stable_assets`
+  prontos para o prover (Stage 3) e para o attestor (Stage 4).
 
 ### Stage 3 — Prover service (Node/TS + snarkjs)
 - **3.1** Ler on-chain: garantias + `guarantees_root` + `vault.stable_assets`.
