@@ -21,7 +21,7 @@
 ## 📦 Required submission artifacts
 
 - [x] **Clear `README.md`** — judge-facing, written (TODO markers remain, see below)
-- [ ] **Open-source license** — add LICENSE (MIT suggested). *Required for "open-source repo".*
+- [x] **Open-source license** — MIT `LICENSE` added.
 - [ ] **Pitch deck** — problem / solution / differentiation / impact. Must be beautiful (may pitch IRL on 07-06).
 - [ ] **Demo video (1–2 min)** — clearly show the prototype working + the real-world problem. Not heavily produced; you needn't be on camera.
 - [ ] **Deployed live demo URL** — Vercel (team `mutav`), e.g. `pulse.mutav.finance`.

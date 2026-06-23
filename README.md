@@ -169,7 +169,7 @@ The strategy allocator is a trait, so new yield venues plug in without touching 
 
 ## License
 
-<!-- TODO: add an OSI license (e.g. MIT or Apache-2.0) — the hackathon requires an open-source repo. -->
+[MIT](LICENSE) © 2026 Mutav (mutav-finance).
 
 ---
 
