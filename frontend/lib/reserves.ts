@@ -33,6 +33,8 @@ export interface Reserve {
   tag?: string;
   /** Currency peg: underlying yield + local delinquency. Drives modeled APY. */
   assumptions: ModelAssumptions;
+  /** Vault contract address — the canonical reserve ID. Present on live reserves only. */
+  address?: string;
   /** Deployed contract set — present only when status === "live". */
   contracts?: { vault: string; policy: string; registry: string };
 }
@@ -48,6 +50,7 @@ export const RESERVES: Reserve[] = [
     tag: "Testnet",
     // USD stablecoin yield; Brazilian (South) rental delinquency.
     assumptions: { underlyingYield: 0.055, delinquency: 0.0246 },
+    address: config.contracts.vault,
     contracts: {
       vault: config.contracts.vault,
       policy: config.contracts.policy,
