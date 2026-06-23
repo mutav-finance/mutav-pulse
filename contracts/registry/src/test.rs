@@ -6,7 +6,7 @@ use interfaces::Guarantee;
 use soroban_poseidon::poseidon_hash;
 use crate::{Registry, RegistryClient};
 
-const TREE_DEPTH: u32 = 8;
+const TREE_DEPTH: u32 = 5;
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
     Guarantee {
@@ -151,7 +151,7 @@ fn root_matches_offchain_circomlibjs() {
     r.put(&g(&e, id1, &landlord, true));
 
     let expected: BytesN<32> =
-        bytesn!(&e, 0x1a241b3c773aa1324ddb88322e2adf2ec3d4c41f506c94057ef35c4629d73eae);
+        bytesn!(&e, 0x2fc574f6cbc7b7c81c22b1680398106c66c1f59066c5eeca5387bf1720f4af4d);
     assert_eq!(r.guarantees_root(), expected, "raiz on-chain deve casar com circomlibjs");
 }
 
@@ -177,7 +177,7 @@ fn root_matches_offchain_circomlibjs_odd() {
     r.put(&g(&e, id2, &landlord, true));
 
     let expected: BytesN<32> =
-        bytesn!(&e, 0x2eeeaf377018d33fdc4808040db610d485fd5053f476b0339ce522a257b74d66);
+        bytesn!(&e, 0x29165219251eb7206499ee0daa3626be631a2eea6478c5be1ef5534a0f0804ae);
     assert_eq!(r.guarantees_root(), expected, "raiz on-chain (n=3) deve casar com circomlibjs");
 }
 

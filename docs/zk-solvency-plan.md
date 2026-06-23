@@ -116,6 +116,8 @@ A chave de verificação (`verification_key.json`) é **embutida no contrato** e
 - Manter um acumulador **Poseidon-Merkle** das garantias ativas (folha = `Poseidon(id, obrigação)`, com `obrigação = monthly_amount*(months_covered-months_used)`; o `active` é implícito porque só ativas viram folha), atualizado nas transições (criar/expirar/quitar) — respeitando "só `policy` escreve". Hash on-chain via crate **`soroban-poseidon`** (`poseidon_hash::<3, Bn254Fr>`), que bate com o `poseidon.circom` do circomlib usado no circuito.
 - Expor `guarantees_root() -> BytesN<32>` (leitura pública). É o "selo da lista" que o circuito e o attestor cruzam.
 - Manter a árvore reconstrutível off-chain (o `coinutils` do private-payments serve de referência) para o prover montar a **lista completa de folhas** (na ordem de `active_ids()`) que o circuito recompõe.
+- **Profundidade:** `TREE_DEPTH = 5` (32 garantias) no MVP — tem que casar com o circuito. Trocável depois via upgrade coordenado (registry + circuito/VK + attestor), sem mover fundos.
+- **⚠️ Escalabilidade (v2, pós-MVP):** o desenho atual é **full-recompute O(n)** por `put()` e por prova — não escala além de ~milhares de garantias. Para 100k+ (ex.: 200k contratos em ~5 anos), migrar para **Merkle Sum Tree incremental**: cada nó guarda a soma das obrigações abaixo (o **total fica na raiz**, lido O(1)) e cada escrita atualiza só o caminho da folha (O(profundidade), não O(n)). A prova ZK passa a provar o lado das **reservas** contra o total comprovado na raiz. A Nethermind tem um `smt/` de referência. A modularidade (registry trocável + `upgrade()`) permite essa migração sem mover dinheiro.
 
 ### 6.5 Prover service (off-chain, Node/TS + snarkjs)
 1. Lê on-chain: garantias + `guarantees_root`, `vault.stable_assets`.
@@ -226,16 +228,27 @@ isoladamente (root on-chain sozinha; prova local com snarkjs sem chain).
 
 ### Stage 2 — Circuito `solvency.circom`
 Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
-- **2.1** Esqueleto: **recomposição da raiz inteira** (B) — recebe TODAS as folhas `(id, obrigação)`,
-  recompõe a raiz depth-8 (reusa o Poseidon/hashing do `main.circom` do private-payments), exige
-  `== guarantees_root` e soma TODAS as obrigações. (Anti-omissão por construção; depth tem que
-  casar com `TREE_DEPTH` do `registry`.)
-- **2.2** + reservas: `vault_stable_assets` (sinal público) + comparação de faixa
-  (`reserves*10000 >= obligations*ratio_bps`).
-- **2.3** + peça A: EdDSA-Poseidon (circomlib) do oráculo-banco → soma `bank_balance`.
-  _Fallback:_ commitment Poseidon do saldo se a EdDSA travar.
-- **2.4** _(stretch)_ peça C: somar `wallet_balances[]` assinados.
-- **Saída:** `proof.json`/`public.json` gerados localmente em cada sub-passo.
+- **2.0** ✅ Elo do Poseidon verificado: `circuits/leaf_check.circom` (circomlib `Poseidon(2)`)
+  produz `Poseidon(0,600)` == `0x247c2fa2…` — **idêntico** à folha do `registry` (soroban-poseidon)
+  e à off-chain (circomlibjs). Os três Poseidon batem.
+- **2.1** ✅ `circuits/solvency_b.circom`: recompõe a raiz depth-5 das 32 folhas `(id, obrigação, ativo)`
+  e soma as obrigações. **Verificado:** raiz do circuito == raiz do `registry` (`0x2fc574f6…`) e soma = 1200
+  no caso n=2. ~32k constraints (prova leve). Folha inativa = 0; árvore perfeita (sem padding ímpar).
+  _Binding anti-omissão:_ a raiz é sinal público; o attestor (Stage 4) confere `== guarantees_root` on-chain.
+- **2.2** ✅ `circuits/solvency.circom`: raiz amarrada (`b.root === guarantees_root`) + reservas
+  (`vault_stable_assets`) + comparação de faixa (`reserves*10000 >= obligations*ratio_bps`, via
+  `GreaterEqThan(200)`). **Verificado:** aceita solvente; rejeita insolvente, raiz adulterada e
+  faixa 120% insuficiente.
+- **2.3** ✅ peça A: `EdDSAPoseidonVerifier` (circomlib) verifica a assinatura do oráculo-banco
+  sobre `M = Poseidon(saldo, nonce)` → soma `bank_balance` às reservas (saldo nunca sai). Públicos:
+  `nonce`, `oracle_Ax/Ay`. **Verificado:** banco cobre sozinho / combinado aceitam; insolvente e
+  saldo adulterado pós-assinatura rejeitam. Gerador de assinatura: `circuits/gen_input.mjs` (chave
+  do oráculo simulada/fixa). Circuito ~41k constraints.
+- **finale** ✅ Prova Groth16 real gerada e **verificada off-chain** (`snarkjs groth16 verify` = OK):
+  powers-of-tau 2^16 → `solvency_final.zkey` → `proof.json`/`public.json`/`verification_key.json`.
+  A VK vai embutida no attestor (Stage 4).
+- **2.4** _(stretch — primeiro a cortar)_ peça C: somar `wallet_balances[]` assinados (mesmo padrão da A).
+- **Saída:** ✅ MVP **A+B** completo — `proof.json`/`public.json`/`verification_key.json` gerados.
 
 ### Stage 3 — Prover service (Node/TS + snarkjs)
 - **3.1** Ler on-chain: garantias + `guarantees_root` + `vault.stable_assets`.

@@ -18,7 +18,7 @@
 
 import { buildPoseidon } from "circomlibjs";
 
-export const TREE_DEPTH = 8;
+export const TREE_DEPTH = 5;
 
 /** Constrói o hasher Poseidon (t=3 / 2 entradas). Retorna h2(a,b) -> bigint. */
 export async function makeHasher() {

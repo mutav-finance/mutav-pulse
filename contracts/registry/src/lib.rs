@@ -4,9 +4,11 @@ use soroban_sdk::{contract, contractimpl, contracttype, vec, Address, Bytes, Byt
 use interfaces::{Guarantee, Registry as RegistryTrait};
 use soroban_poseidon::poseidon_hash;
 
-/// Profundidade fixa da árvore Merkle das garantias (2^8 = 256 garantias ativas no MVP).
+/// Profundidade fixa da árvore Merkle das garantias (2^5 = 32 garantias ativas no MVP).
 /// O circuito (peça B) tem que usar a MESMA profundidade.
-const TREE_DEPTH: u32 = 8;
+/// MVP: full-recompute O(n) por escrita. Para escala (100k+), migrar para Merkle Sum Tree
+/// incremental (atualização O(profundidade) + total de obrigações comprovado na raiz).
+const TREE_DEPTH: u32 = 5;
 
 #[contracttype]
 enum DataKey {

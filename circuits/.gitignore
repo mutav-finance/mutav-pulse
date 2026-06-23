@@ -1,0 +1,23 @@
+# Artefatos ZK regeneráveis (pesados) — NAO versionar.
+# Reconstrutiveis com a toolchain do plano (circom + snarkjs) a partir dos .circom + .mjs.
+node_modules/
+# witness calculators gerados pelo circom
+*_js/
+# powers-of-tau (~25-75 MB)
+*.ptau
+# proving keys (~19 MB)
+*.zkey
+# witnesses binarios
+*.wtns
+# constraint systems
+*.r1cs
+# tabelas de simbolos
+*.sym
+# dumps de debug grandes
+witness.json
+sb_witness.json
+
+# Versionados (fonte + evidencia leve da prova):
+#   *.circom, gen_input.mjs, package.json, package-lock.json
+#   proof.json, public.json, verification_key.json  (judges rodam `snarkjs groth16 verify`)
+#   *_input.json  (inputs de exemplo)
