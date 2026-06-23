@@ -287,12 +287,19 @@ da `policy` antiga (writer = nós); seed direto via `put()`.
 - **Saída:** ✅ registry novo deployado e semeado na testnet; `guarantees_root` + `stable_assets`
   prontos para o prover (Stage 3) e para o attestor (Stage 4).
 
-### Stage 3 — Prover service (Node/TS + snarkjs)
-- **3.1** Ler on-chain: garantias + `guarantees_root` + `vault.stable_assets`.
-- **3.2** Montar witness — B: lista+paths via helper do 1.4; A/C: atestações simuladas assinadas.
-- **3.3** `snarkjs groth16 fullProve` → `proof.json`/`public.json` de dados reais do testnet.
+### Stage 3 — Prover service (Node/TS + snarkjs) ✅ 3.1–3.3 (3.4 aguarda Stage 4)
+Implementado em **`prover/prove.mjs`** (`npm run prove [bank_balance] [ratio_bps]`).
+- **3.1** ✅ Lê on-chain (testnet, via `stellar contract invoke`): `registry.active_ids()` +
+  `get(id)` por garantia + `guarantees_root()`; `vault.stable_assets()`.
+- **3.2** ✅ Monta o witness — B: folhas reais na ordem de `active_ids`, padding a 2^5; recompõe a
+  raiz off-chain (`merkle.mjs`) e **fail-fast se != raiz on-chain**. A (opção B): atestação de banco
+  **simulada** com saldo, assinada EdDSA-Poseidon por chave-oráculo fixa (mesma do `gen_input.mjs`).
+- **3.3** ✅ `snarkjs groth16 fullProve` (wasm + `solvency_final.zkey` do Stage 2) → `prover/out/`
+  `proof.json`/`public.json`/`input.json` de **dados reais**. Re-verifica off-chain + confere os
+  públicos (`root`==on-chain, `stable`==on-chain, `ratio`). _Run real:_ obrig. 49.200 + reservas
+  vault 50.420 + banco sim. 10.000 → **cobertura 122,8%**, prova verde.
 - **3.4** Submeter ao attestor _(gate de integração — depende do Stage 4)_.
-- **Saída:** prova gerada de dados reais do vault.
+- **Saída:** ✅ prova gerada de dados reais do vault (falta só 3.4, o submit on-chain).
 
 ### Stage 4 — `solvency_attestor` (Soroban, base `groth16_verifier`)
 - **4.1** `groth16_verify` (BN254 `pairing_check`) com VK **embutida** via `circom2soroban`.
