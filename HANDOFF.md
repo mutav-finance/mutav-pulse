@@ -89,7 +89,12 @@ Deploy: Vercel team `mutav` (see `frontend/README.md`). Repo:
   volatile adapter lands.
 - **SEP-0056 (Tokenized Vault Standard) conformance** for the vault (rename
   `query_asset`, add convert/preview/max + events; reconcile the async redemption
-  queue via `max_withdraw`/`max_redeem`). See the modular-architecture spec notes.
+  queue via `max_withdraw`/`max_redeem`). Design decisions captured in
+  `docs/sep0056-conformance-decisions.md` (+ method table in
+  `docs/vault-method-surface.md`). **🧪 Provisional — test further this hackathon:**
+  the queue-only choice (D2: `withdraw`/`redeem` revert, `max_* = 0`) and the OZ
+  `FungibleVault` override ergonomics both need validation — see that doc's
+  "Test further on this hackathon" section before locking the spec.
 - **Deferred minor cleanups** (non-blocking): `fmtUsd` ICU note; consolidate the
   remaining duplicated inline `Mono` components; client-side queue owner filter;
   document the USDC SAC provenance.
