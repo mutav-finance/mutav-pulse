@@ -1,6 +1,6 @@
 # mutav-pulse frontend
 
-Next.js 16 frontend for the **Mutav Pulse** SGR reserve vault testbed. Connects to Stellar Soroban testnet contracts, Stellar Wallets Kit, and the three TGA brand fronts.
+Next.js 16 frontend for the **Mutav Pulse** reserve vault testbed. Connects to Stellar Soroban testnet contracts, Stellar Wallets Kit, and the three MUTAV brand fronts.
 
 ## Stack
 

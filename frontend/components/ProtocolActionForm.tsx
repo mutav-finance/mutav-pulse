@@ -251,7 +251,7 @@ export function ProtocolActionForm({
                   width: "6px",
                   height: "6px",
                   backgroundColor: "var(--color-copper)",
-                  animation: "tga-pulse 2s linear infinite",
+                  animation: "mutav-pulse 2s linear infinite",
                 }}
                 aria-hidden="true"
               />

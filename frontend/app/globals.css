@@ -2,7 +2,7 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
-/* ─── TGA Brand Theme ─────────────────────────────────────────────────────── */
+/* ─── MUTAV Brand Theme ───────────────────────────────────────────────────── */
 /* Source: .design/branding/tga/identity/palettes.json + patterns/STYLE.md    */
 /* Aesthetic: Precision Brutalism — no gradients, no shadows, no rounded corners */
 
@@ -274,8 +274,8 @@ p {
   background-size: 100% 3px;
 }
 
-/* ── The pulse animation (only ambient animation in TGA) ── */
-@keyframes tga-pulse {
+/* ── The pulse animation (only ambient animation in MUTAV) ── */
+@keyframes mutav-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
@@ -285,7 +285,7 @@ p {
   width: 6px;
   height: 6px;
   background-color: var(--color-accent);
-  animation: tga-pulse 2s linear infinite;
+  animation: mutav-pulse 2s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
