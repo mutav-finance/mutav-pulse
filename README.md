@@ -114,7 +114,7 @@ MUTAV is built directly against the two sides of the Brazilian rental market it 
 - **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt an onchain guarantee. -->
 - **Investors (DeFi / yield)** — interviews in progress. <!-- TODO: add findings on appetite for solvency-verifiable rental-guarantee yield. -->
 
-Full write-ups in [`docs/customer-discovery.md`](docs/customer-discovery.md). <!-- TODO: create this file with the agency interviews + investor interviews. -->
+Full write-ups, methodology, and the investor interview guide are in [`docs/customer-discovery.md`](docs/customer-discovery.md).
 
 ---
 

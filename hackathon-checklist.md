@@ -15,7 +15,7 @@
 - [ ] **≥3 customer-discovery interviews with evidence** (intro text said 5 — aim for 5).
   - [x] Real-estate agencies (*imobiliárias*) — interviews done
   - [ ] Investors (DeFi/yield) — **in progress** ← discovery gap
-  - [ ] Written up as submission evidence → `docs/customer-discovery.md`
+  - [~] Written up as submission evidence → `docs/customer-discovery.md` (scaffold + investor interview guide in place; fill from real notes)
 - [x] **Team of 2–4 people, residents of BR/AR/CO** — Julia ([@jubscodes](https://github.com/jubscodes)) & Draau ([@draaujpeg](https://github.com/draaujpeg)), both in Brazil 🇧🇷.
 
 ## 📦 Required submission artifacts
@@ -49,7 +49,7 @@
 - [ ] Demo video link
 - [ ] Agency interview findings summary
 - [ ] Investor interview findings
-- [ ] Create `docs/customer-discovery.md`
+- [x] Create `docs/customer-discovery.md` (scaffold + investor guide; findings TBD)
 - [ ] Add LICENSE
 
 ---
