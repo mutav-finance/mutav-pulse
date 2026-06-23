@@ -250,6 +250,25 @@ Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
 - **2.4** _(stretch — primeiro a cortar)_ peça C: somar `wallet_balances[]` assinados (mesmo padrão da A).
 - **Saída:** ✅ MVP **A+B** completo — `proof.json`/`public.json`/`verification_key.json` gerados.
 
+### Stage 2.5 — Deploy na testnet (pré-requisito do Stage 3 e do Stage 4)
+Tudo até aqui rodou **local** (o Stage 0 adiou o deploy de propósito). Tanto o prover
+(Stage 3 lê estado on-chain real) quanto o attestor (Stage 4 mora on-chain) precisam de
+um deploy vivo. Por isso esta etapa entra **antes** do Stage 3.
+- **2.5.1** Build wasm dos contratos com `stellar contract build` (NÃO `cargo build --release`
+  — spec-shaking da soroban-sdk 26.1). ⚠️ **Windows:** o `cdylib` exige a toolchain **MSVC**
+  (o gnu usado nos testes de host estoura "export ordinal too large"); sem MSVC nesta máquina,
+  buildar/deployar de um ambiente com MSVC ou WSL.
+- **2.5.2** Deploy + wiring via `bootstrap.sh`: `registry`/`vault`/`policy`/`adapter-defindex`
+  com os setters (`set_writer`/`set_policy`/`set_vault`/`set_registry`/`add_strategy`). O
+  `solvency_attestor` ainda não existe (sai do Stage 4) — entra no bootstrap depois.
+- **2.5.3** Seed de demo: fundear o `vault`, criar N garantias via `policy` para que
+  `registry.guarantees_root()` e `vault.stable_assets()` retornem valores não-triviais — é o
+  que o prover (3.1) vai ler e o circuito amarrar.
+- **2.5.4** Conferir os reads ao vivo: `guarantees_root()` e `stable_assets()` batem com a
+  reconstrução off-chain (`prover/merkle.mjs`) sobre o mesmo conjunto. Anotar os contract IDs.
+- **Saída:** core deployado e semeado na testnet; IDs + estado prontos para o prover (Stage 3)
+  e para o deploy do attestor (Stage 4).
+
 ### Stage 3 — Prover service (Node/TS + snarkjs)
 - **3.1** Ler on-chain: garantias + `guarantees_root` + `vault.stable_assets`.
 - **3.2** Montar witness — B: lista+paths via helper do 1.4; A/C: atestações simuladas assinadas.
