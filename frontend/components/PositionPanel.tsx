@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PositionPanel — displays the connected user's mtvR share balance and
+ * PositionPanel — displays the connected user's MTVR share balance and
  * its USDC equivalent at current NAV.
  *
  * Design: Precision Brutalism — dark surface, Geist Bold declaration,
@@ -12,9 +12,9 @@
 import { fromStroops, fmtUsd } from "@/lib/format";
 
 interface PositionPanelProps {
-  /** Connected wallet's mtvR share balance in stroops (bigint) */
+  /** Connected wallet's MTVR share balance in stroops (bigint) */
   balance: bigint;
-  /** Current NAV per share, scaled 1e7 (bigint). 1e7 = 1.0000 USDC/mtvR */
+  /** Current NAV per share, scaled 1e7 (bigint). 1e7 = 1.0000 USDC/MTVR */
   navPerShare: bigint;
 }
 
@@ -68,7 +68,7 @@ export function PositionPanel({ balance, navPerShare }: PositionPanelProps) {
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-        {/* mtvR balance */}
+        {/* MTVR balance */}
         <div>
           <p
             className="font-body"
@@ -79,7 +79,7 @@ export function PositionPanel({ balance, navPerShare }: PositionPanelProps) {
               letterSpacing: "0.01em",
             }}
           >
-            mtvR SHARES
+            MTVR SHARES
           </p>
           <p
             className="font-display"
@@ -101,7 +101,7 @@ export function PositionPanel({ balance, navPerShare }: PositionPanelProps) {
               fontFeatureSettings: '"tnum" 1',
             }}
           >
-            mtvR · Mutav Reserve
+            MTVR · Mutav Reserve
           </p>
         </div>
 
