@@ -238,7 +238,7 @@ export default function TransparencyPage() {
                 margin: 0,
               }}
             >
-              Reserve Transparency
+              RESERVE TRANSPARENCY
             </h1>
             <p
               className="font-body"
@@ -312,31 +312,41 @@ export default function TransparencyPage() {
           />
         </div>
 
-        {/* ── Metric grid: 7 cards ──────────────────────────────────────── */}
+        {/* ── Metric grid: 4 top / 3 bottom ─────────────────────────────── */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1px",
             backgroundColor: "var(--color-border)",
             border: "1px solid var(--color-border)",
             marginBottom: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1px",
           }}
         >
+          {/* Top row — 4 cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "1px",
+              backgroundColor: "var(--color-border)",
+            }}
+          >
           {/* 1. Reserve Value */}
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtUsd(data.totalAssets)}
             unit="total assets · USDC"
+            accentValue
             loading={loading}
             error={error ?? undefined}
           />
 
           {/* 2. NAV per mtvR */}
           <MetricCard
-            label="NAV / mtvR"
+            label="NAV / MTVR"
             value={loading ? "—" : fmtNav(data.navPerShare)}
-            unit="USDC per mtvR share"
+            unit="USDC per MTVR share"
             loading={loading}
             error={error ?? undefined}
           />
@@ -360,7 +370,17 @@ export default function TransparencyPage() {
             loading={loading}
             error={error ?? undefined}
           />
+          </div>
 
+          {/* Bottom row — 3 cards (centered/balanced) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1px",
+              backgroundColor: "var(--color-border)",
+            }}
+          >
           {/* 5. Liquidity Buffer */}
           <MetricCard
             label="Liquidity Buffer"
@@ -384,10 +404,11 @@ export default function TransparencyPage() {
           <MetricCard
             label="Shares Outstanding"
             value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit="mtvR shares issued"
+            unit="MTVR shares issued"
             loading={loading}
             error={error ?? undefined}
           />
+          </div>
         </div>
 
         {/* ── Section label: guarantee registry ────────────────────────── */}
