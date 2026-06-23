@@ -18,6 +18,7 @@
  * Design: Precision Brutalism — 56px height, border-bottom only, no shadows.
  */
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
 
@@ -70,7 +71,7 @@ export function NavShell() {
       {/* Left: logo + nav links */}
       <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
         {/* Logo — fixed-color brand mark, identical on both fronts */}
-        <a
+        <Link
           href="/"
           aria-label="MUTAV — home"
           style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
@@ -82,7 +83,7 @@ export function NavShell() {
             height={28}
             style={{ display: "block", height: "28px", width: "auto" }}
           />
-        </a>
+        </Link>
 
         {/* Nav links */}
         <div
@@ -92,7 +93,7 @@ export function NavShell() {
           {NAV_LINKS.map((link) => {
             const active = isActive(link);
             return (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 role="listitem"
@@ -113,7 +114,7 @@ export function NavShell() {
                 }}
               >
                 {link.label}
-              </a>
+              </Link>
             );
           })}
         </div>

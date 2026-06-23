@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
 import { fmtNav } from "@/lib/format";
+import { TxStatus } from "@/components/TxStatus";
 
 interface DepositWidgetProps {
   /** Connected wallet public key */
@@ -52,6 +53,7 @@ export function DepositWidget({
   const [rawInput, setRawInput] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lastHash, setLastHash] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
 
   // Parse USDC input to stroops (bigint)
@@ -74,10 +76,12 @@ export function DepositWidget({
 
     setStatus("pending");
     setErrorMsg(null);
+    setLastHash(null);
     try {
       const hash = await txDeposit(address, usdcStroops);
       setRawInput("");
       setStatus("idle");
+      setLastHash(hash);
       onSuccess(hash);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Transaction failed");
@@ -163,6 +167,7 @@ export function DepositWidget({
               onChange={(e) => {
                 setRawInput(e.target.value);
                 if (status === "error") setStatus("idle");
+                if (lastHash) setLastHash(null);
               }}
               disabled={isPending}
               className="font-mono"
@@ -319,6 +324,9 @@ export function DepositWidget({
           {isPending && <span className="live-dot" aria-hidden="true" />}
           {isPending ? "Depositing…" : "Deposit"}
         </button>
+
+        {/* Inline confirmation — tx state lives on the component that triggered it */}
+        <TxStatus hash={lastHash} label="Deposit confirmed" />
       </form>
     </section>
   );

@@ -18,6 +18,7 @@ import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
 import { fmtNav, fromStroops, stroopsToInput } from "@/lib/format";
+import { TxStatus } from "@/components/TxStatus";
 import type { RedeemRequest } from "vault";
 
 interface RedeemPanelProps {
@@ -101,6 +102,9 @@ export function RedeemPanel({
   const [rawInput, setRawInput] = useState("");
   const [redeemStatus, setRedeemStatus] = useState<"idle" | "pending" | "error">("idle");
   const [redeemError, setRedeemError] = useState<string | null>(null);
+  // Last confirmed tx for any action in this panel (request / claim / cancel).
+  const [lastHash, setLastHash] = useState<string | null>(null);
+  const [lastLabel, setLastLabel] = useState("Confirmed");
 
   // Per-request action state: Map<requestId, "pending" | "error">
   const [actionState, setActionState] = useState<Map<number, "pending" | "error">>(new Map());
@@ -125,10 +129,13 @@ export function RedeemPanel({
 
     setRedeemStatus("pending");
     setRedeemError(null);
+    setLastHash(null);
     try {
       const hash = await txRequestRedeem(address, sharesStroops);
       setRawInput("");
       setRedeemStatus("idle");
+      setLastHash(hash);
+      setLastLabel("Redemption requested");
       onSuccess(hash);
     } catch (err) {
       setRedeemError(err instanceof Error ? err.message : "Transaction failed");
@@ -150,6 +157,8 @@ export function RedeemPanel({
         next.delete(id);
         return next;
       });
+      setLastHash(hash);
+      setLastLabel(`Claimed #${id}`);
       onSuccess(hash);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed";
@@ -172,6 +181,8 @@ export function RedeemPanel({
         next.delete(id);
         return next;
       });
+      setLastHash(hash);
+      setLastLabel(`Cancelled #${id}`);
       onSuccess(hash);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed";
@@ -268,6 +279,7 @@ export function RedeemPanel({
               onChange={(e) => {
                 setRawInput(e.target.value);
                 if (redeemStatus === "error") setRedeemStatus("idle");
+                if (lastHash) setLastHash(null);
               }}
               disabled={redeemStatus === "pending" || balance === 0n}
               className="font-mono"
@@ -359,15 +371,17 @@ export function RedeemPanel({
             fontWeight: 500,
             letterSpacing: "0.01em",
             cursor: canSubmit ? "pointer" : "not-allowed",
+            // Neutral secondary — Deposit is the singular amber CTA (amber is precious)
             backgroundColor:
-              canSubmit && isHovered ? "var(--color-accent)" : "transparent",
-            color:
-              canSubmit && isHovered
-                ? "var(--color-canvas)"
-                : canSubmit
-                ? "var(--color-accent)"
-                : "var(--color-text-3)",
-            border: `1px solid ${canSubmit ? "var(--color-accent)" : "var(--color-border)"}`,
+              canSubmit && isHovered ? "var(--color-surface-3)" : "transparent",
+            color: canSubmit ? "var(--color-text)" : "var(--color-text-3)",
+            border: `1px solid ${
+              canSubmit
+                ? isHovered
+                  ? "var(--color-text-2)"
+                  : "var(--color-text-3)"
+                : "var(--color-border)"
+            }`,
             opacity: redeemStatus === "pending" ? 0.6 : 1,
             transition:
               "color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out",
@@ -379,6 +393,9 @@ export function RedeemPanel({
           )}
           {redeemStatus === "pending" ? "Submitting…" : "Request Redemption"}
         </button>
+
+        {/* Inline confirmation — covers request / claim / cancel for this panel */}
+        <TxStatus hash={lastHash} label={lastLabel} />
       </form>
 
       {/* Queue list */}
