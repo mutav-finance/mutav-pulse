@@ -201,14 +201,13 @@ build` exports the full standard surface; `underlying()` renamed to `query_asset
       hand-roll fallback reusing audited `mul_div_with_rounding`.** See D5
       verification outcome.
 - [x] Contract implementation (vault SEP-0056 surface + tests + wasm build).
-- [ ] **Frontend (couple with redeploy):** update `lib/tx.ts` deposit call to the
-      new `(assets, receiver, from, operator)` signature and regenerate
-      `bindings/vault` from the rebuilt wasm. **Do this together with redeploying
-      the new vault to testnet** — the binding has a baked-in `contractId` for the
-      current deployment (still the old vault), so updating the frontend before
-      redeploy would desync it (new signature vs. old deployed `deposit`). The
-      signature + storage changes mean an in-place `upgrade()` won't work; expect
-      redeploy + re-wire via `bootstrap.sh`.
+- [x] **Redeploy + reseed + relink (done 2026-06-23).** Redeployed via
+      `bootstrap.sh` with `SOURCE=pulse-admin` (admin GBE3); new IDs in
+      `HANDOFF.md` + `frontend/.env.example`. Added reusable `seed.sh` — restored
+      the demo state exactly (NAV 1.0084, $50.42k reserve, $36k coverage, 4
+      guarantees). Regenerated `bindings/vault` from the deployed spec, updated
+      `lib/tx.ts` to the 4-arg deposit. Frontend: 10/10 vitest + typecheck green;
+      live vault verified (`query_asset`, `free_capital`=$14.42k, `max_withdraw`=0).
 - [ ] (Optional) formal design spec / implementation-plan docs — largely
       superseded by this log + the shipped implementation.
 

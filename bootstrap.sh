@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-NETWORK=testnet
-SOURCE=deployer
+NETWORK="${NETWORK:-testnet}"
+SOURCE="${SOURCE:-deployer}"
 ADMIN=$(stellar keys address "$SOURCE")
 : "${USDC_SAC:?set USDC_SAC to the underlying token contract id}"
 
