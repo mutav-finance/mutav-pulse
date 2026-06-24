@@ -12,6 +12,7 @@
 - **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, premium, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
+- **Real-World ZK:** on top of that public invariant, a **zero-knowledge proof-of-solvency seal** proves reserves cover *all* liabilities — including off-chain bank balances and a private client list — without revealing any values ([details](#zk-solvency-seal--proof-of-reserves-stellar-hacks-real-world-zk-track)).
 - **Live on testnet:** vault/policy/registry deployed + seeded; 23 contract unit tests + 10 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; investor interviews in progress.
@@ -107,6 +108,50 @@ USDC settles in SAC `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`.
 
 ---
 
+## ZK Solvency Seal — proof of reserves *(Stellar Hacks: Real-World ZK track)*
+
+On top of the public `stable_assets ≥ coverage_required` invariant above, Mutav Pulse adds a
+**zero-knowledge proof-of-solvency seal**: it proves on-chain (Soroban, Groth16 / BN254) that
+
+```
+reserves (on-chain vault + bank + wallets)  ≥  obligations (the whole guarantee list) × band
+```
+
+— including **off-chain bank balances** and a **private client list** — **without revealing any
+values, wallets, or client data**. Only a green/red light + a coverage band (e.g. "≥ 100%") leak.
+This is the classic proof of reserves / proof of solvency pattern (what serious exchanges adopted
+post-FTX), brought to a real-world fund on Stellar.
+
+**Why it can't be faked (the crown jewel — anti-omission):** the circuit recomposes the *entire*
+Poseidon-Merkle root from all guarantee leaves and requires it to equal the on-chain
+`guarantees_root`; the attestor re-reads that root **live**. Omitting or shrinking a guarantee
+changes the recomposed root → no valid proof. `cd prover && npm run anti-tamper -- --submit` shows
+all three paths live: honest → green; omission with the real root → proof impossible to generate;
+omission with a fake root → forged proof reverts on-chain (`InvalidProof`) → red.
+
+**Real vs simulated vs assumed (honest disclosure):**
+- ✅ **Real** — the cryptography (Groth16 zk-SNARK over BN254) + its on-chain verification (`pairing_check`); the binding to the **live** vault `stable_assets` + registry root; the anti-omission property; the ≥100% ratio floor enforced on-chain; measured cost ≈ 37.96M instructions (~38% of one tx).
+- 🟡 **Simulated** — the bank attestation oracle key (fixed for the hackathon; no Open Finance yet). The math/verification are real, only the data source is simulated.
+- ⚪ **Assumed** — a dedicated ZK registry mirrors the core guarantee book (in production the `policy` writes it on every transition). Piece C (multi-wallet reserves) is a cut stretch goal — A + B is the MVP.
+
+| ZK contract | ID |
+|---|---|
+| `solvency_attestor` (the seal — read `last_attestation`) | `CBYXNYYZRD5SOBU3HP5GWV7I64GISOF5H4SWN2UTXZ7FIF6LSVII36MT` |
+| `registry` (with `guarantees_root`) | `CCIIYG572C5HUJKPDVSCYWAJNUUPOEEXKXIURA3DMAPTMETE3HHOU3FC` |
+
+It proves against the same `vault` and USDC SAC listed above. Verify it yourself:
+
+```bash
+cd circuits && snarkjs groth16 verify verification_key.json public.json proof.json   # → OK!
+cargo test -p registry -p solvency-attestor --lib                                    # 6/6 · 8/8
+cd prover && npm install && npm run prove                                             # real proof from live state
+```
+
+The seal renders as the `ZkSolvencyBadge` above the SolvencyChip on `/earn/transparency`. Full
+architecture, stage-by-stage build, and the migration decision: [`docs/zk-solvency-plan.md`](docs/zk-solvency-plan.md).
+
+---
+
 ## Customer discovery
 
 MUTAV is built directly against the two sides of the Brazilian rental market it serves:
@@ -141,16 +186,20 @@ Redeploy + reseed from scratch (`bootstrap.sh` deploys + wires; `seed.sh` restor
 contracts/        Soroban smart contracts (Rust workspace)
   vault/  policy/  registry/  interfaces/  strategy/
   adapter-defindex/   mock-strategy/  mock-policy/  mock-defindex/
+  solvency-attestor/  (ZK: on-chain Groth16 verifier + last_attestation)
+circuits/         ZK: solvency.circom (Groth16/BN254) + proof/VK
+prover/           ZK: off-chain prover + anti-tamper demo (Node + snarkjs)
 frontend/         Next.js 16 investor app + /protocol operator cockpit
 docs/specs/       one design spec per phase
 docs/plans/       one implementation plan per phase
+docs/zk-solvency-plan.md   ZK seal: full stage-by-stage build plan
 HANDOFF.md        operator runbook: deploy, seed, invariants, gotchas
 PRODUCT.md        product brief: users, purpose, design principles
 ```
 
 ## Stack
 
-Soroban (soroban-sdk 26.1) · Rust · OpenZeppelin Stellar contracts · DeFindex · Stellar Wallets Kit · Next.js 16 · TypeScript · Bun · Tailwind v4 · Stellar CLI.
+Soroban (soroban-sdk 26.1) · Rust · OpenZeppelin Stellar contracts · DeFindex · Stellar Wallets Kit · Next.js 16 · TypeScript · Bun · Tailwind v4 · Stellar CLI · Circom / snarkjs (ZK).
 
 ## Team
 
