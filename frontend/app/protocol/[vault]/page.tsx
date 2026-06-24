@@ -137,13 +137,18 @@ export default function ProtocolVaultPage() {
 
   // Resolution: invalid → 404 | unverified → notice | verified → cockpit
   const resolution = resolveAddress(vault);
+  const reserve = getReserve(vault); // may be undefined (unverified/unknown)
+  const reads = useMemo(
+    () => (reserve?.contracts ? reserveReads(reserve.contracts) : null),
+    [reserve],
+  );
+
   if (resolution === "invalid") notFound();
-  if (resolution === "unverified") return <UnverifiedReserve address={vault} />;
+  if (resolution === "unverified" || !reserve || !reads) {
+    return <UnverifiedReserve address={vault} />;
+  }
 
-  // Verified path — build reads scoped to this reserve's contracts
-  const reserve = getReserve(vault)!;
-  const reads = useMemo(() => reserveReads(reserve.contracts!), [reserve.contracts]);
-
+  // Verified path — reserve and reads are narrowed to non-null
   return <ReserveCockpit reads={reads} />;
 }
 

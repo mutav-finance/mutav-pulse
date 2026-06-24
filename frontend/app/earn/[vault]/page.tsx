@@ -41,12 +41,18 @@ function ReserveHubInner() {
 
   // Resolution: invalid → 404 | unverified → notice | verified → hub
   const resolution = resolveAddress(vault);
-  if (resolution === "invalid") notFound();
-  if (resolution === "unverified") return <UnverifiedReserve address={vault} />;
+  const reserve = getReserve(vault); // may be undefined (unverified/unknown)
+  const reads = useMemo(
+    () => (reserve?.contracts ? reserveReads(reserve.contracts) : null),
+    [reserve],
+  );
 
-  // Verified path
-  const reserve = getReserve(vault)!; // guaranteed present when "verified"
-  const reads = useMemo(() => reserveReads(reserve.contracts!), [reserve.contracts]);
+  if (resolution === "invalid") notFound();
+  if (resolution === "unverified" || !reserve || !reads) {
+    return <UnverifiedReserve address={vault} />;
+  }
+
+  // Verified path — reserve and reads are narrowed to non-null
   const tab: Tab = search.get("tab") === "transparency" ? "transparency" : "invest";
 
   const setTab = (t: Tab) => router.replace(`/earn/${vault}?tab=${t}`);
