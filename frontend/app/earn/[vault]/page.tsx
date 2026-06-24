@@ -18,7 +18,7 @@
  * Design: Precision Brutalism, Investidor front (dark/amber).
  */
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import { resolveAddress, getReserve } from "@/lib/discovery";
@@ -46,7 +46,7 @@ function ReserveHubInner() {
 
   // Verified path
   const reserve = getReserve(vault)!; // guaranteed present when "verified"
-  const reads = reserveReads(reserve.contracts!);
+  const reads = useMemo(() => reserveReads(reserve.contracts!), [reserve.contracts]);
   const tab: Tab = search.get("tab") === "transparency" ? "transparency" : "invest";
 
   const setTab = (t: Tab) => router.replace(`/earn/${vault}?tab=${t}`);

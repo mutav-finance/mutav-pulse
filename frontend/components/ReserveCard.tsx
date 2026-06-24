@@ -120,6 +120,7 @@ export function ReserveCard({
     return (
       <Link
         href={`/earn/${reserve.address}`}
+        aria-label={`Open ${reserve.name}`}
         style={{ textDecoration: "none", cursor: "pointer", display: "block" }}
       >
         {card}

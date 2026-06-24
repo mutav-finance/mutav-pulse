@@ -80,4 +80,5 @@ export const RESERVES: Reserve[] = [
 ];
 
 export const LIVE_RESERVES = RESERVES.filter((r) => r.status === "live");
+// Invariant: PRIMARY_RESERVE must be a live reserve with `address` set — its `.address` is consumed unguarded by NavShell, homepage CTAs, and the /protocol redirect.
 export const PRIMARY_RESERVE = LIVE_RESERVES[0] ?? RESERVES[0];

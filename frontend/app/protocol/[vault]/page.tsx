@@ -25,7 +25,7 @@
  * Precision Brutalism — no rounded corners, no shadows.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, notFound } from "next/navigation";
 import { resolveAddress, getReserve } from "@/lib/discovery";
 import { reserveReads } from "@/lib/contracts";
@@ -142,7 +142,7 @@ export default function ProtocolVaultPage() {
 
   // Verified path — build reads scoped to this reserve's contracts
   const reserve = getReserve(vault)!;
-  const reads = reserveReads(reserve.contracts!);
+  const reads = useMemo(() => reserveReads(reserve.contracts!), [reserve.contracts]);
 
   return <ReserveCockpit reads={reads} />;
 }
