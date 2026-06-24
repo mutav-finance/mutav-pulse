@@ -298,16 +298,30 @@ Implementado em **`prover/prove.mjs`** (`npm run prove [bank_balance] [ratio_bps
   `proof.json`/`public.json`/`input.json` de **dados reais**. Re-verifica off-chain + confere os
   públicos (`root`==on-chain, `stable`==on-chain, `ratio`). _Run real:_ obrig. 49.200 + reservas
   vault 50.420 + banco sim. 10.000 → **cobertura 122,8%**, prova verde.
-- **3.4** Submeter ao attestor _(gate de integração — depende do Stage 4)_.
-- **Saída:** ✅ prova gerada de dados reais do vault (falta só 3.4, o submit on-chain).
+- **3.4** ✅ Submeter ao attestor: `prover/encode-for-soroban.mjs` converte `proof.json`/`public.json`
+  → proof 256 bytes + públicos; `attest` submetido na testnet (tx `355bee82…`) → `last_attestation`
+  gravado. `nonce` agora é timestamp (frescor). _(gate de integração fechado.)_
+- **Saída:** ✅ prova de dados reais gerada **e verificada on-chain**.
 
-### Stage 4 — `solvency_attestor` (Soroban, base `groth16_verifier`)
-- **4.1** `groth16_verify` (BN254 `pairing_check`) com VK **embutida** via `circom2soroban`.
-- **4.2** Checagens live: `public.guarantees_root == registry.guarantees_root()`;
-  `public.vault_stable_assets == vault.stable_assets()`.
-- **4.3** Frescor: janela de ledger/timestamp via `nonce`.
-- **4.4** Grava `last_attestation{solvent, ratio_bps, ledger, ts}`; `last_attestation()` leitura pública.
-- **Saída:** a "luz verde" mora on-chain e é re-verificável.
+### Stage 4 — `solvency_attestor` (Soroban) ✅ CONCLUÍDO
+Crate `contracts/solvency-attestor`. Attestor na testnet:
+**`CBYXNYYZRD5SOBU3HP5GWV7I64GISOF5H4SWN2UTXZ7FIF6LSVII36MT`** (admin=`mutav-test`,
+wired p/ registry `CCIIYG57…` + vault `CCOIGCO7…` + oráculo fixo).
+- **4.0** ✅ Vendorizado enxuto o `circom-groth16-verifier` da Nethermind (BN254): `build.rs`
+  embute a `verification_key.json` como consts (só `serde_json`+`num-bigint`, sem `ark-*`/`circuit-keys`).
+- **4.1** ✅ `groth16_verify` (BN254 `pairing_check`) com VK **embutida**. **Emenda fechada:** teste de
+  host verifica a prova REAL do snarkjs DENTRO do contrato (item aberto do Stage 0).
+- **4.2** ✅ Cross-check live **implícito**: `attest` lê `registry.guarantees_root()` e
+  `vault.stable_assets()` AO VIVO e usa como públicos — prova feita p/ outro estado não verifica.
+- **4.3** ✅ Frescor: `nonce` = timestamp assinado pelo oráculo; janela `WINDOW_SECS=3600`
+  (`StaleProof`/`ProofFromFuture`). **Pinning da pubkey-oráculo** em storage (`set_oracle`) fecha a
+  forja da peça A (findings 1 e 2 da revisão do Stage 3).
+- **4.4** ✅ Grava/expõe `last_attestation -> Option<Attestation{solvent, ratio_bps, ledger, ts}>`.
+  _Atestação real gravada:_ `{solvent:true, ratio_bps:10000, ledger:3249257, ts:1782260148}`.
+- **4.5** ✅ Deploy + submit real na testnet. **Custo medido:** ~**37,96M instruções** (~38% do budget
+  de 1 tx — bate com a estimativa "~40%"); `minResourceFee` ≈ 45.424 stroops. _(últimos 2 itens
+  abertos do Stage 0 — deploy e medição de custo — fechados.)_
+- **Saída:** ✅ a "luz verde" mora on-chain e é re-verificável; ciclo prover→attestor completo.
 
 ### Stage 5 — Selo no dashboard (front Investidor)
 Pode começar **mockado** em paralelo aos stages 1–4.

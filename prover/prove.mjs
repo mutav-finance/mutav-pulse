@@ -8,9 +8,11 @@
 //   4. re-verifica off-chain (snarkjs verify) + sanity: raiz recomposta == raiz on-chain,
 //      vault_stable_assets == on-chain.
 //
-// Uso: node prove.mjs [bank_balance] [ratio_bps]
+// Uso: node prove.mjs [bank_balance] [ratio_bps] [nonce]
 //   bank_balance: saldo do banco SIMULADO em stroops (default 100000000000 = 10.000 USDC). Peça A.
 //   ratio_bps:    faixa a provar (default 10000 = 100%).
+//   nonce:        timestamp da atestação (default = agora, unix secs). O attestor exige
+//                 frescor (now - nonce <= janela); o oráculo-banco assina sobre este nonce.
 //
 // O que é REAL vs SIMULADO (declarar no README, Stage 7):
 //   REAL: garantias + raiz + stable_assets lidos da testnet; a matemática da prova; a verificação.
@@ -32,7 +34,7 @@ const VAULT = "CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO";
 
 const BANK_BALANCE = BigInt(process.argv[2] ?? "100000000000"); // 10.000 USDC simulado (peça A)
 const RATIO_BPS = (process.argv[3] ?? "10000").toString();
-const NONCE = "1";
+const NONCE = (process.argv[4] ?? Math.floor(Date.now() / 1000)).toString(); // timestamp p/ frescor
 
 // Chave-oráculo do banco — FIXA/simulada (mesma do circuits/gen_input.mjs).
 const ORACLE_PRV = Buffer.from(
