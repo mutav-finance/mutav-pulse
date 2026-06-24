@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * DepositWidget — USDC amount input with live MTVR preview and deposit CTA.
+ * DepositWidget — deposit-token amount input with live MTVR preview and CTA.
+ * The token ticker is reserve-driven via the `depositToken` prop (e.g. "USDC").
  *
  * UX flow:
- *   1. User enters USDC amount (decimal input)
+ *   1. User enters a deposit-token amount (decimal input)
  *   2. Preview shows "you receive N MTVR at NAV" in real-time
  *   3. On submit: calls deposit() write helper → refreshes position on success
  *
@@ -22,6 +23,8 @@ interface DepositWidgetProps {
   address: string;
   /** Current NAV per share, scaled 1e7 */
   navPerShare: bigint;
+  /** Underlying token ticker the user deposits (e.g. "USDC" for the MUSD reserve) */
+  depositToken: string;
   /** Called with tx hash after a successful deposit; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -48,6 +51,7 @@ function Mono({
 export function DepositWidget({
   address,
   navPerShare,
+  depositToken,
   onSuccess,
 }: DepositWidgetProps) {
   const [rawInput, setRawInput] = useState("");
@@ -94,7 +98,7 @@ export function DepositWidget({
 
   return (
     <section
-      aria-label="Deposit USDC"
+      aria-label={`Deposit ${depositToken}`}
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
@@ -125,7 +129,7 @@ export function DepositWidget({
             margin: 0,
           }}
         >
-          Deposit USDC — Earn MTVR
+          Deposit {depositToken} — Earn MTVR
         </h2>
         <p
           className="font-body"
@@ -135,7 +139,7 @@ export function DepositWidget({
             marginTop: "4px",
           }}
         >
-          Contribute USDC to the MUTAV reserve and receive MTVR shares at current NAV.
+          Contribute {depositToken} to the MUTAV reserve and receive MTVR shares at current NAV.
         </p>
       </div>
 
@@ -154,7 +158,7 @@ export function DepositWidget({
               letterSpacing: "0.01em",
             }}
           >
-            USDC Amount
+            {depositToken} Amount
           </label>
           <div style={{ position: "relative" }}>
             <input
@@ -183,7 +187,7 @@ export function DepositWidget({
                 outline: "none",
                 // No border-radius (Precision Brutalism)
               }}
-              aria-label="USDC amount to deposit"
+              aria-label={`${depositToken} amount to deposit`}
             />
             <span
               className="font-body"
@@ -198,7 +202,7 @@ export function DepositWidget({
                 letterSpacing: "0.02em",
               }}
             >
-              USDC
+              {depositToken}
             </span>
           </div>
         </div>
@@ -265,7 +269,7 @@ export function DepositWidget({
               at NAV
             </span>
             <Mono style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
-              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} USDC/MTVR
+              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} {depositToken}/MTVR
             </Mono>
           </div>
         </div>

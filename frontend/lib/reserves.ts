@@ -3,14 +3,16 @@
  *
  * MUTAV is multi-currency: each reserve is its OWN set of contracts pegged to a
  * currency. The currency defines the underlying asset the reserve holds AND the
- * currency it pays defaults in. A BRL reserve sits in Selic/CDI-yielding
- * instruments and pays BRL rents; a USDC reserve sits in stablecoin DeFi; an ARS
- * reserve sits in peso instruments and serves the Argentine market.
+ * currency it pays defaults in. The MBRL reserve sits in Selic/CDI-yielding
+ * instruments and pays BRL rents; the MUSD reserve sits in stablecoin DeFi; the
+ * MARS reserve sits in peso instruments and serves the Argentine market. The
+ * vault is named for the fiat (MUSD); the deposited stablecoin token (e.g. USDC
+ * for MUSD) is a separate thing — see `depositToken`.
  *
  * Reserves never cross-subsidize — each is solvent in its own currency, so FX
  * never leaks into a solvency floor (see docs/whitepaper.md §5).
  *
- * Today only the USDC reserve is deployed (Stellar testnet); BRL and ARS are
+ * Today only the MUSD reserve is deployed (Stellar testnet); MBRL and MARS are
  * declared here as `planned` so the UI shows the full multi-currency picture.
  * When their sub-vaults deploy, fill in `contracts` and flip `status` to "live".
  */
@@ -22,10 +24,16 @@ export type ReserveStatus = "live" | "planned";
 
 export interface Reserve {
   id: string; // stable key, e.g. "usdc"
-  currency: string; // display ticker, e.g. "USDC" | "BRL" | "ARS"
-  name: string; // "USDC Reserve"
+  currency: string; // display ticker, e.g. "MUSD" | "MBRL" | "MARS"
+  name: string; // "Mutav USD Reserve"
   /** What the reserve's float is held in (underlying asset). */
   underlying: string;
+  /**
+   * The stablecoin token a user deposits/redeems (e.g. "USDC" for MUSD). This is
+   * the underlying token ticker, NOT the vault currency — the vault is named for
+   * the fiat (MUSD) while it custodies USDC. Drives the deposit/redeem UI labels.
+   */
+  depositToken: string;
   /** The market whose rental defaults this reserve covers. */
   market: string;
   status: ReserveStatus;
@@ -45,6 +53,7 @@ export const RESERVES: Reserve[] = [
     currency: "MUSD",
     name: "Mutav USD Reserve (testnet)",
     underlying: "USDC · stablecoin DeFi (DeFindex)",
+    depositToken: "USDC",
     market: "Brazil · testnet PoC",
     status: "live",
     tag: "Testnet",
@@ -62,6 +71,7 @@ export const RESERVES: Reserve[] = [
     currency: "MBRL",
     name: "Mutav BRL Reserve",
     underlying: "BRL · tokenized Tesouro / CDI",
+    depositToken: "BRL",
     market: "Brazil · 2nd PoC · pilot Q3 2026",
     status: "planned",
     tag: "PoC · Q3 2026",
@@ -73,6 +83,7 @@ export const RESERVES: Reserve[] = [
     currency: "MARS",
     name: "Mutav ARS Reserve",
     underlying: "ARS · peso instrument",
+    depositToken: "ARS",
     market: "Argentina · illustrative",
     status: "planned",
     tag: "Future",

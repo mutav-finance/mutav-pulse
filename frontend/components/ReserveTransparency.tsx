@@ -370,7 +370,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Modeled APY"
             value={hasBook ? fmtApy(econ.modeledApy) : "—"}
-            unit={`${fmtApy(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} u/w`}
+            unit={`${fmtApy(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} underwriting`}
             tooltip={`Underlying yield (${fmtApy(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South). See whitepaper.`}
             accentValue
             loading={loading}

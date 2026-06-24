@@ -419,7 +419,7 @@ export function InvestPanel({
                 lineHeight: 1.5,
               }}
             >
-              Connect a Stellar testnet wallet to deposit demo USDC, receive MTVR shares, and explore the redemption queue on the testnet PoC.
+              Connect a Stellar testnet wallet to deposit demo {reserve.depositToken}, receive MTVR shares, and explore the redemption queue on the testnet PoC.
             </p>
             <ConnectButton />
           </div>
@@ -485,6 +485,7 @@ export function InvestPanel({
               <DepositWidget
                 address={address}
                 navPerShare={data.navPerShare}
+                depositToken={reserve.depositToken}
                 onSuccess={handleSuccess}
               />
               <RedeemPanel
@@ -492,6 +493,7 @@ export function InvestPanel({
                 balance={data.balance}
                 requestIds={data.pendingIds}
                 requests={data.requests}
+                depositToken={reserve.depositToken}
                 onSuccess={handleSuccess}
               />
             </div>

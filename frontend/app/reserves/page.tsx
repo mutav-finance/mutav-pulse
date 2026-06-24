@@ -10,20 +10,14 @@
  * Design: Precision Brutalism / Investidor front. Brand tokens only.
  */
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getReserves } from "@/lib/discovery";
-import { PRIMARY_RESERVE } from "@/lib/reserves";
-import { reserveReads } from "@/lib/contracts";
 import { standardProductEconomics } from "@/lib/economics";
-import { fmtUsd } from "@/lib/format";
+import { fmtPct } from "@/lib/format";
+import { useLiveAum } from "@/lib/use-live-aum";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
 
 const MAX_W = "1280px";
-
-function pct(v: number): string {
-  return (v * 100).toFixed(1) + "%";
-}
 
 export default function ReservesPage() {
   const router = useRouter();
@@ -31,24 +25,7 @@ export default function ReservesPage() {
   const liveCount = reserves.filter((r) => r.status === "live").length;
   const plannedCount = reserves.filter((r) => r.status === "planned").length;
 
-  const [liveAum, setLiveAum] = useState<bigint | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!PRIMARY_RESERVE.contracts) return;
-    reserveReads(PRIMARY_RESERVE.contracts)
-      .vaultTotalAssets()
-      .then((v) => {
-        if (!cancelled) setLiveAum(v);
-      })
-      .catch(() => {
-        /* leave as null → renders "…" */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const aumLabel = liveAum === null ? "…" : fmtUsd(liveAum);
+  const { primaryLabel, aumFor } = useLiveAum();
 
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
@@ -93,7 +70,7 @@ export default function ReservesPage() {
           }}
         >
           {liveCount} live (testnet PoC) · {plannedCount} coming · live AUM{" "}
-          <span style={{ color: "var(--color-text-2)" }}>{aumLabel}</span>
+          <span style={{ color: "var(--color-text-2)" }}>{primaryLabel}</span>
         </p>
 
         {/* Reserve comparison table */}
@@ -137,7 +114,7 @@ export default function ReservesPage() {
                 const econ = standardProductEconomics(r.assumptions);
                 const live = r.status === "live";
                 const clickable = live && !!r.address;
-                const href = `/earn/${r.address}`;
+                const href = clickable ? `/earn/${r.address}` : undefined;
                 const cell: React.CSSProperties = {
                   padding: "13px 16px",
                   borderBottom: "1px solid var(--color-border)",
@@ -155,9 +132,9 @@ export default function ReservesPage() {
                 return (
                   <tr
                     key={r.id}
-                    onClick={clickable ? () => router.push(href) : undefined}
+                    onClick={href ? () => router.push(href) : undefined}
                     onKeyDown={
-                      clickable
+                      href
                         ? (e) => {
                             if (e.key === "Enter") router.push(href);
                           }
@@ -215,15 +192,15 @@ export default function ReservesPage() {
                       </span>
                     </td>
                     <td style={{ ...num, fontSize: "15px", color: live ? "var(--color-accent)" : "var(--color-text)" }}>
-                      {pct(econ.modeledApy)}
+                      {fmtPct(econ.modeledApy)}
                     </td>
-                    <td style={num}>{pct(econ.underlyingYield)}</td>
-                    <td style={num}>{pct(econ.underwritingSpread)}</td>
+                    <td style={num}>{fmtPct(econ.underlyingYield)}</td>
+                    <td style={num}>{fmtPct(econ.underwritingSpread)}</td>
                     <td className="font-mono" style={{ ...cell, fontSize: "11px", color: "var(--color-text-3)", whiteSpace: "nowrap" }}>
                       {r.underlying}
                     </td>
                     <td className="font-mono" style={{ ...cell, fontSize: "11px", color: "var(--color-text-2)", whiteSpace: "nowrap" }}>
-                      {live ? `AUM ${aumLabel}` : r.market}
+                      {live ? `AUM ${aumFor(r)}` : r.market}
                     </td>
                     <td style={{ ...cell, textAlign: "right" }}>
                       {clickable ? (

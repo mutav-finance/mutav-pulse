@@ -30,6 +30,8 @@ interface RedeemPanelProps {
   requestIds: number[];
   /** Resolved request objects, keyed by id */
   requests: Map<number, RedeemRequest>;
+  /** Underlying token ticker redemptions pay out (e.g. "USDC" for the MUSD reserve) */
+  depositToken: string;
   /** Called with tx hash after a successful tx; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -97,6 +99,7 @@ export function RedeemPanel({
   balance,
   requestIds,
   requests,
+  depositToken,
   onSuccess,
 }: RedeemPanelProps) {
   const [rawInput, setRawInput] = useState("");
@@ -229,7 +232,7 @@ export function RedeemPanel({
             margin: 0,
           }}
         >
-          Redeem MTVR — Queue USDC
+          Redeem MTVR — Queue {depositToken}
         </h2>
         <p
           className="font-body"
@@ -239,7 +242,7 @@ export function RedeemPanel({
             marginTop: "4px",
           }}
         >
-          Submit a redemption request. Once fulfilled by the vault operator, claim your USDC.
+          Submit a redemption request. Once fulfilled by the vault operator, claim your {depositToken}.
         </p>
       </div>
 
@@ -463,7 +466,7 @@ export function RedeemPanel({
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}{" "}
-                            USDC claimable
+                            {depositToken} claimable
                           </Mono>
                         )}
                       </div>

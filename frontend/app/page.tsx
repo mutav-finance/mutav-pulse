@@ -19,23 +19,18 @@
  * corners, no shadows, amber <5%.
  */
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getReserves } from "@/lib/discovery";
 import { PRIMARY_RESERVE } from "@/lib/reserves";
 import { standardProductEconomics } from "@/lib/economics";
-import { reserveReads } from "@/lib/contracts";
 import { config } from "@/lib/config";
-import { fmtUsd } from "@/lib/format";
+import { fmtPct } from "@/lib/format";
+import { useLiveAum } from "@/lib/use-live-aum";
 import { ReserveCard } from "@/components/ReserveCard";
 import { ProtocolDiagram } from "@/components/ProtocolDiagram";
 import { ConnectButton } from "@/components/ConnectButton";
 
 const MAX_W = "1280px";
-
-function pct(v: number): string {
-  return (v * 100).toFixed(1) + "%";
-}
 
 /** Section label — Inter, ALL CAPS (Explanation layer). */
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -66,25 +61,8 @@ export default function Home() {
   const brl = reserves.find((r) => r.currency === "MBRL");
   const brlApy = brl ? standardProductEconomics(brl.assumptions).modeledApy : null;
 
-  // Real AUM of the live reserve — one read on mount; "…" until it lands.
-  const [liveAum, setLiveAum] = useState<bigint | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!PRIMARY_RESERVE.contracts) return;
-    reserveReads(PRIMARY_RESERVE.contracts)
-      .vaultTotalAssets()
-      .then((v) => {
-        if (!cancelled) setLiveAum(v);
-      })
-      .catch(() => {
-        /* leave as null → renders "…" */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const aumLabel = liveAum === null ? "…" : fmtUsd(liveAum);
+  // Live reserve AUM (primary only) — shared hook; "…" until the read lands.
+  const { primaryLabel, aumFor } = useLiveAum();
 
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
@@ -148,7 +126,7 @@ export default function Home() {
           <span style={{ color: "var(--color-text-2)" }}>MBRL (next)</span> — demo the protocol on Stellar
           testnet. <span style={{ color: "var(--color-text-2)" }}>Not investable</span>; the production
           pilot opens <span style={{ color: "var(--color-accent)" }}>Q3 2026</span> with a BRL vault. Modeled
-          yield {pct(usdcApy)} (MUSD){brlApy !== null ? ` · ${pct(brlApy)} (MBRL)` : ""} — projected from
+          yield {fmtPct(usdcApy)} (MUSD){brlApy !== null ? ` · ${fmtPct(brlApy)} (MBRL)` : ""} — projected from
           premiums + DeFi yield, not live returns.
         </p>
 
@@ -219,15 +197,14 @@ export default function Home() {
           }}
         >
           {liveCount} live (testnet PoC) · {plannedCount} coming · APYs modeled from each peg, not
-          live returns · live AUM <span style={{ color: "var(--color-text)" }}>{aumLabel}</span>
+          live returns · live AUM <span style={{ color: "var(--color-text)" }}>{primaryLabel}</span>
         </p>
         <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
           {reserves.map((r) => (
             <div key={r.id} style={{ flex: "1 1 0", minWidth: "240px" }}>
               <ReserveCard
                 reserve={r}
-                aum={r.status === "live" ? aumLabel : undefined}
-                loading={r.status === "live" && liveAum === null}
+                aum={r.status === "live" ? aumFor(r) : undefined}
               />
             </div>
           ))}
@@ -328,7 +305,7 @@ export default function Home() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", paddingTop: "24px", borderTop: "1px solid var(--color-border)" }}>
           {[
             { label: "Verify vault ↗", href: `${config.explorerBase}/contract/${PRIMARY_RESERVE.address}`, ext: true },
-            { label: "Cockpit ↗", href: `/protocol/${PRIMARY_RESERVE.address}`, ext: false },
+            { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
             { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
           ].map((l) =>
             l.ext ? (

@@ -15,6 +15,10 @@ export function fmtNav(v: bigint): string {
 export function fmtBps(bps: number): string {
   return (bps / 100).toFixed(2) + "%";
 }
+/** Format a 0–1 rate as a 1-decimal percent ("5.5%"). Modeled-APY headlines. */
+export function fmtPct(v: number): string {
+  return (v * 100).toFixed(1) + "%";
+}
 export function truncAddr(a: string): string {
   return a.length > 10 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a;
 }

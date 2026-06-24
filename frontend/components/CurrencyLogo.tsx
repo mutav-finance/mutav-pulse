@@ -2,7 +2,7 @@
  * CurrencyLogo — a small fiat flag for a reserve's currency.
  *
  * The reserve is pegged to a currency; this shows the fiat it represents:
- * USDC → US, BRL → Brazil, ARS → Argentina. Flags are the one place we use
+ * MUSD → US, MBRL → Brazil, MARS → Argentina. Flags are the one place we use
  * literal color (otherwise Precision Brutalism stays monochrome + amber);
  * they're kept small and hairline-bordered so they read as identity marks,
  * not decoration.
@@ -12,10 +12,6 @@ const CURRENCY_COUNTRY: Record<string, string> = {
   MUSD: "US",
   MBRL: "BR",
   MARS: "AR",
-  USDC: "US",
-  USD: "US",
-  BRL: "BR",
-  ARS: "AR",
 };
 
 /** Simplified, recognizable flags drawn in a 24×16 viewBox. */

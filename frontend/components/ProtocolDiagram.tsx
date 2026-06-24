@@ -18,7 +18,6 @@
  * on the gate markers.
  */
 
-import { useMemo } from "react";
 import {
   ReactFlow,
   Handle,
@@ -262,15 +261,14 @@ const TECH = [
 ];
 
 export function ProtocolDiagram() {
-  const nodes = useMemo(() => NODES, []);
-  const edges = useMemo(() => EDGES, []);
-
+  // NODES/EDGES are module-level constants — pass them directly (a stable
+  // reference already; no useMemo needed).
   return (
     <div>
       <div style={{ height: "clamp(360px, 42vw, 480px)", border: "1px solid var(--color-border)", backgroundColor: "var(--color-canvas)" }}>
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={NODES}
+          edges={EDGES}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           colorMode="dark"

@@ -12,22 +12,17 @@
 
 import Link from "next/link";
 import { standardProductEconomics } from "@/lib/economics";
+import { fmtPct } from "@/lib/format";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
 import type { Reserve } from "@/lib/reserves";
-
-function pct(v: number): string {
-  return (v * 100).toFixed(1) + "%";
-}
 
 export function ReserveCard({
   reserve,
   aum,
-  loading = false,
 }: {
   reserve: Reserve;
-  /** Formatted live AUM string (live reserves only). */
+  /** Formatted live AUM string (live reserves only); "…" while loading, "—" if absent. */
   aum?: string;
-  loading?: boolean;
 }) {
   const live = reserve.status === "live";
   const econ = standardProductEconomics(reserve.assumptions);
@@ -82,13 +77,13 @@ export function ReserveCard({
             fontFeatureSettings: '"tnum" 1',
           }}
         >
-          {pct(econ.modeledApy)}
+          {fmtPct(econ.modeledApy)}
         </p>
         <p
           className="font-mono"
           style={{ fontSize: "10px", color: "var(--color-text-3)", margin: "4px 0 0" }}
         >
-          {pct(econ.underlyingYield)} yield + {pct(econ.underwritingSpread)} underwriting · modeled
+          {fmtPct(econ.underlyingYield)} yield + {fmtPct(econ.underwritingSpread)} underwriting · modeled
         </p>
       </div>
 
@@ -106,7 +101,7 @@ export function ReserveCard({
           <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-2)", margin: 0 }}>
             AUM{" "}
             <span style={{ color: "var(--color-text)" }}>
-              {loading ? "—" : (aum ?? "—")}
+              {aum ?? "—"}
             </span>
           </p>
         ) : (
