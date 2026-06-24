@@ -152,6 +152,14 @@ impl RegistryTrait for Registry {
         let mut active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
         let present = active.iter().any(|x| x == g.id);
         if g.active && !present {
+            // A árvore tem capacidade fixa 2^TREE_DEPTH. Passar disso faria o
+            // `compute_root` devolver só a primeira sub-raiz (folhas excedentes
+            // somem da raiz E da soma de obrigações) → solvência falsa por omissão.
+            // Falhar alto em vez de corromper baixo: crescer exige upgrade coordenado
+            // (registry + circuito/VK), nunca silencioso.
+            if active.len() >= (1u32 << TREE_DEPTH) {
+                panic!("registry: capacidade da arvore esgotada (max garantias ativas)");
+            }
             active.push_back(g.id);
         } else if !g.active && present {
             let mut next = Vec::<u32>::new(&e);

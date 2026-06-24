@@ -75,13 +75,22 @@ async function main() {
   const N = 1 << TREE_DEPTH; // 32
   if (activeIds.length > N) throw new Error(`garantias (${activeIds.length}) > capacidade da árvore (${N})`);
 
+  // obrigação = monthly_amount * (months_covered - months_used), saturada a >=0 —
+  // idêntico ao `leaf()` do registry (saturating_sub + max(0)), p/ a raiz casar
+  // mesmo em dado de borda.
+  const obligationOf = (g) => {
+    const rem = BigInt(g.months_covered) - BigInt(g.months_used);
+    const ob = BigInt(g.monthly_amount) * (rem > 0n ? rem : 0n);
+    return ob > 0n ? ob : 0n;
+  };
+
   // --- peça B: folhas reais na ordem de active_ids, padding a 32 ---
   const id = Array(N).fill("0");
   const obligation = Array(N).fill("0");
   const active = Array(N).fill("0");
   const obs = [];
   guarantees.forEach((g, i) => {
-    const ob = BigInt(g.monthly_amount) * BigInt(g.months_covered - g.months_used);
+    const ob = obligationOf(g);
     id[i] = String(g.id);
     obligation[i] = ob.toString();
     active[i] = g.active ? "1" : "0";
@@ -93,9 +102,7 @@ async function main() {
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
   const h2 = (a, b) => F.toObject(poseidon([a, b]));
-  const leaves = guarantees.map((g) =>
-    leafFn(h2, g.id, BigInt(g.monthly_amount) * BigInt(g.months_covered - g.months_used)),
-  );
+  const leaves = guarantees.map((g) => leafFn(h2, g.id, obligationOf(g)));
   const rootField = computeRoot(h2, leaves);
   const rootHex = toHex32(rootField).slice(2);
   if (rootHex !== onchainRootHex) {

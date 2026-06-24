@@ -204,3 +204,30 @@ fn root_matches_direct_fold() {
     let expected = fold_root(&e, vec![&e, leaf(&e, &g0), leaf(&e, &g1)]);
     assert_eq!(r.guarantees_root(), expected, "raiz on-chain deve casar com o fold direto");
 }
+
+#[test]
+#[should_panic(expected = "capacidade")]
+fn put_rejects_beyond_tree_capacity() {
+    // A 2^TREE_DEPTH+1-ésima garantia ativa deve ser rejeitada (senão a raiz
+    // truncaria silenciosamente e abriria omissão de obrigações).
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let cap = 1u32 << TREE_DEPTH;
+    for i in 0..cap {
+        // O recompute O(n) por put acumula budget no Env de teste; resetar isola
+        // a LÓGICA do cap (o custo por-put é avaliado à parte — ver plano 6.4).
+        e.cost_estimate().budget().reset_unlimited();
+        r.put(&g(&e, i, &landlord, true)); // preenche a capacidade
+    }
+    assert_eq!(r.active_ids().len(), cap);
+    e.cost_estimate().budget().reset_unlimited();
+    r.put(&g(&e, cap, &landlord, true)); // a +1 -> panic
+}

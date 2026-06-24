@@ -13,17 +13,27 @@
 extern crate alloc;
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, vec, Address, Bytes, BytesN, Env, Vec, U256,
+    contract, contracterror, contractimpl, contracttype, symbol_short, vec, Address, Bytes, BytesN,
+    Env, Vec, U256,
     crypto::bn254::{Bn254Fr, Bn254G1Affine as G1Affine, Bn254G2Affine as G2Affine},
 };
 use interfaces::{RegistryClient, VaultClient};
 
 // Constantes da VK geradas pelo build.rs a partir de verification_key.json.
+// NB: a VK e o `solvency_final.zkey` (Stage 2) são um PAR — regenerar o zkey
+// (novo trusted setup) sem recommitar a `verification_key.json` faria o attestor
+// rejeitar provas válidas. Mantê-los em sincronia (ver Stage 7/README).
 include!(concat!(env!("OUT_DIR"), "/vk.rs"));
 
 /// Janela de frescor: a atestação do banco (nonce=timestamp) não pode ser mais
 /// velha que isto. 1 hora.
 const WINDOW_SECS: u64 = 3600;
+
+// TTL do instance storage (~5s/ledger): se faltar menos que ~7 dias, estende p/
+// ~31 dias. Sem isto, a atestação + o wiring (registry/vault/oráculo) expirariam
+// e o selo "sumiria" (last_attestation -> None; attest -> NotConfigured).
+const TTL_THRESHOLD: u32 = 120_960; // ~7 dias
+const TTL_EXTEND_TO: u32 = 535_680; // ~31 dias
 
 // ---------------------------------------------------------------------------
 // Verificador Groth16 (BN254) — VK embutida.
@@ -198,6 +208,10 @@ impl SolvencyAttestor {
         admin.require_auth();
     }
 
+    fn bump_ttl(e: &Env) {
+        e.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    }
+
     pub fn set_admin(e: Env, new_admin: Address) {
         Self::require_admin(&e);
         e.storage().instance().set(&DataKey::Admin, &new_admin);
@@ -206,11 +220,13 @@ impl SolvencyAttestor {
     pub fn set_registry(e: Env, addr: Address) {
         Self::require_admin(&e);
         e.storage().instance().set(&DataKey::Registry, &addr);
+        Self::bump_ttl(&e);
     }
 
     pub fn set_vault(e: Env, addr: Address) {
         Self::require_admin(&e);
         e.storage().instance().set(&DataKey::Vault, &addr);
+        Self::bump_ttl(&e);
     }
 
     /// Fixa a pubkey EdDSA do oráculo-banco (coords Ax/Ay como field elements BE).
@@ -219,6 +235,7 @@ impl SolvencyAttestor {
         Self::require_admin(&e);
         e.storage().instance().set(&DataKey::OracleAx, &ax);
         e.storage().instance().set(&DataKey::OracleAy, &ay);
+        Self::bump_ttl(&e);
     }
 
     pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
@@ -273,6 +290,9 @@ impl SolvencyAttestor {
             ts: now,
         };
         e.storage().instance().set(&DataKey::Last, &att);
+        Self::bump_ttl(&e);
+        // Evento p/ o front reagir sem polling.
+        e.events().publish((symbol_short!("attested"),), att);
         Ok(())
     }
 
