@@ -73,3 +73,92 @@ fn rejects_wrong_public_input_count() {
         Err(Groth16Error::MalformedPublicInputs)
     ));
 }
+
+// --- attest() end-to-end com mocks de registry/vault ---
+// O fixture (circuits/proof.json) tem: root=PUBLIC_HEX[0], stable=0, ratio=10000,
+// nonce=1, oracle=(PUBLIC_HEX[4], PUBLIC_HEX[5]).
+
+use soroban_sdk::testutils::{Address as _, Ledger as _};
+use soroban_sdk::{contract, contractimpl, Address};
+use crate::{SolvencyAttestor, SolvencyAttestorClient, AttestError};
+
+#[contract]
+struct MockReg;
+#[contractimpl]
+impl MockReg {
+    pub fn guarantees_root(e: Env) -> BytesN<32> {
+        BytesN::from_array(&e, &unhex::<32>(PUBLIC_HEX[0]))
+    }
+}
+
+#[contract]
+struct MockVault;
+#[contractimpl]
+impl MockVault {
+    pub fn stable_assets(_e: Env) -> i128 {
+        0 // == public[1] do fixture
+    }
+}
+
+fn proof_bytes(e: &Env) -> Bytes {
+    Bytes::from_array(e, &unhex::<256>(PROOF_HEX))
+}
+
+fn setup(e: &Env) -> SolvencyAttestorClient<'_> {
+    e.mock_all_auths();
+    let admin = Address::generate(e);
+    let reg = e.register(MockReg, ());
+    let vault = e.register(MockVault, ());
+    let id = e.register(SolvencyAttestor, (admin,));
+    let c = SolvencyAttestorClient::new(e, &id);
+    c.set_registry(&reg);
+    c.set_vault(&vault);
+    c.set_oracle(
+        &BytesN::from_array(e, &unhex::<32>(PUBLIC_HEX[4])),
+        &BytesN::from_array(e, &unhex::<32>(PUBLIC_HEX[5])),
+    );
+    c
+}
+
+#[test]
+fn attest_happy_path_records_attestation() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 100); // now=100, nonce=1 -> fresco
+    let c = setup(&env);
+
+    assert!(c.last_attestation().is_none());
+    c.attest(&proof_bytes(&env), &10_000u32, &1u64);
+
+    let att = c.last_attestation().unwrap();
+    assert!(att.solvent);
+    assert_eq!(att.ratio_bps, 10_000);
+    assert_eq!(att.ts, 100);
+}
+
+#[test]
+fn attest_rejects_stale_proof() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 1 + 3600 + 1); // fora da janela
+    let c = setup(&env);
+    let r = c.try_attest(&proof_bytes(&env), &10_000u32, &1u64);
+    assert_eq!(r, Err(Ok(AttestError::StaleProof)));
+}
+
+#[test]
+fn attest_rejects_future_proof() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 0); // now < nonce
+    let c = setup(&env);
+    let r = c.try_attest(&proof_bytes(&env), &10_000u32, &1u64);
+    assert_eq!(r, Err(Ok(AttestError::ProofFromFuture)));
+}
+
+#[test]
+fn attest_rejects_wrong_ratio() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    let c = setup(&env);
+    // ratio 12000 != public[2] (10000) do fixture -> prova não verifica.
+    let r = c.try_attest(&proof_bytes(&env), &12_000u32, &1u64);
+    assert_eq!(r, Err(Ok(AttestError::InvalidProof)));
+}
