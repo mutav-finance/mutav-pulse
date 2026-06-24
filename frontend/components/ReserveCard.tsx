@@ -10,6 +10,7 @@
  * JetBrains Mono evidence. No rounded corners, no shadows.
  */
 
+import Link from "next/link";
 import { standardProductEconomics } from "@/lib/economics";
 import type { Reserve } from "@/lib/reserves";
 
@@ -30,7 +31,7 @@ export function ReserveCard({
   const live = reserve.status === "live";
   const econ = standardProductEconomics(reserve.assumptions);
 
-  return (
+  const card = (
     <div
       style={{
         backgroundColor: "var(--color-surface)",
@@ -112,4 +113,19 @@ export function ReserveCard({
       </div>
     </div>
   );
+
+  // Live reserves with a vault address are click-through to their hub.
+  // Planned reserves render exactly as before — non-interactive.
+  if (live && reserve.address) {
+    return (
+      <Link
+        href={`/earn/${reserve.address}`}
+        style={{ textDecoration: "none", cursor: "pointer", display: "block" }}
+      >
+        {card}
+      </Link>
+    );
+  }
+
+  return card;
 }
