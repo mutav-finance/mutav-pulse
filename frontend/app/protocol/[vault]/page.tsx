@@ -323,7 +323,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 marginBottom: "6px",
               }}
             >
-              MUTAV PROTOCOL — RESERVE MANAGER
+              MUTAV PULSE PROTOCOL — RESERVE COCKPIT
             </p>
             <h1
               className="font-display"
@@ -579,7 +579,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 >
                   <FormField
                     id="sg-monthly"
-                    label="Monthly Amount (USDC)"
+                    label="Monthly Amount (in USDC)"
                     type="number"
                     min="0"
                     step="0.01"
@@ -730,7 +730,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 >
                   Premium payments advance the <Mono style={{ fontSize: "11px", color: "var(--color-text-2)" }}>paid_until</Mono>{" "}
                   timestamp. Contract asserts premiums are not yet current
-                  before accepting. Premium income accrues to NAV.
+                  before accepting. Premium income accrues to NAV (PoC testnet only).
                 </p>
               </div>
             </ActionGrid>
@@ -785,9 +785,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     lineHeight: 1.5,
                   }}
                 >
-                  Disburses one monthly amount to the landlord and reduces
-                  coverage_required. Requires stable_assets ≥
-                  coverage_required after disbursement.
+                  Reduces coverage_required first, then disburses one monthly amount to the landlord. Solvency (stable_assets ≥ coverage_required) is enforced before disbursement.
                 </p>
               </ProtocolActionForm>
 
@@ -1077,7 +1075,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 />
                 <FormCheckbox
                   id="as-volatile"
-                  label="Volatile strategy (holds non-stable assets)"
+                  label="Volatile strategy (excluded from solvency coverage floor)"
                   checked={isVolatile}
                   onChange={setIsVolatile}
                   disabled={!isVaultAdmin}
@@ -1124,7 +1122,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 >
                   Call rebalance after removing to reallocate the freed
                   weight. Removing the last strategy leaves all assets in
-                  the vault&apos;s free capital buffer.
+                  the vault&apos;s free_capital.
                 </p>
               </ProtocolActionForm>
             </ActionGrid>
@@ -1210,7 +1208,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
               letterSpacing: "0.04em",
             }}
           >
-            Stellar Testnet · admin cockpit · read-write
+            Stellar Testnet · PoC · admin cockpit · read-write
           </span>
         </div>
       </div>

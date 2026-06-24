@@ -135,7 +135,7 @@ export function VerificationPanel() {
                 opacity: 0.7,
               }}
             >
-              → stellar.expert
+              → stellar.expert / testnet
             </span>
           </a>
         ))}

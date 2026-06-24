@@ -1,21 +1,22 @@
 "use client";
 
 /**
- * / — Homepage: yield-forward onboarding (the product's front door).
+ * / — Homepage: Mutav Pulse, the protocol PoC (the product's front door).
  *
- * Four sections: HERO (showcases the live reserve's modeled APY as the
- * actionable number), HOW IT WORKS (3 steps + solvency guarantee), RESERVES
- * (the multi-currency showcase; live cards click through to their hub), and
- * ONBOARD (connect → faucet → deposit + verification links).
+ * This reads as the PROTOCOL project (Mutav Pulse), not a "come earn yield"
+ * app: the USDC testnet vault is a live demo, not investable, and the real
+ * pilot is a BRL vault in Q3 2026. Two PoC vaults (USDC live, BRL next)
+ * demonstrate the multi-currency protocol on Stellar testnet.
  *
- * Honesty rule: the hero APY is the LIVE (USDC) reserve's. Planned reserves
- * (BRL/ARS) keep their "Planned" badge and are never presented as investable.
+ * Sections: HERO (Pulse identity) → RESERVES (#2, fast access) → HOW IT WORKS
+ * → PROTOCOL FLOW (diagram + gates) → ONBOARD (try the PoC).
  *
- * NOT the dense transparency dashboard — that lives on each reserve's hub
- * Transparency tab. This page is landing + conversion only.
+ * Positioning borrows mutav.finance's language (institutional guarantor under
+ * Art. 37 II of Lei 8.245/91; solvency-verifiable, no black box). APYs shown
+ * are MODELED from each currency's peg — never presented as live returns.
  *
- * Design: Precision Brutalism / Investidor front (dark + amber). Three-typeface
- * system, brand tokens only, no rounded corners, no shadows, amber <5%.
+ * Design: Precision Brutalism / Investidor front. Brand tokens only, no rounded
+ * corners, no shadows, amber <5%.
  */
 
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ import { reserveReads } from "@/lib/contracts";
 import { config } from "@/lib/config";
 import { fmtUsd } from "@/lib/format";
 import { ReserveCard } from "@/components/ReserveCard";
+import { ProtocolDiagram } from "@/components/ProtocolDiagram";
 import { ConnectButton } from "@/components/ConnectButton";
 
 const MAX_W = "1280px";
@@ -35,7 +37,7 @@ function pct(v: number): string {
   return (v * 100).toFixed(1) + "%";
 }
 
-// Section label — Inter, ALL CAPS (Explanation layer, used only on data labels)
+/** Section label — Inter, ALL CAPS (Explanation layer). */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
@@ -55,13 +57,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
-  // Hero APY: the LIVE reserve's modeled APY — model-backed from its currency
-  // peg, no chain read needed. This is the actionable number.
-  const heroApy = standardProductEconomics(PRIMARY_RESERVE.assumptions).modeledApy;
-
   const reserves = getReserves();
   const liveCount = reserves.filter((r) => r.status === "live").length;
   const plannedCount = reserves.filter((r) => r.status === "planned").length;
+
+  // Modeled APYs (peg-derived, no chain read) — labeled as modeled, not live.
+  const usdcApy = standardProductEconomics(PRIMARY_RESERVE.assumptions).modeledApy;
+  const brl = reserves.find((r) => r.currency === "MBRL");
+  const brlApy = brl ? standardProductEconomics(brl.assumptions).modeledApy : null;
 
   // Real AUM of the live reserve — one read on mount; "…" until it lands.
   const [liveAum, setLiveAum] = useState<bigint | null>(null);
@@ -84,62 +87,72 @@ export default function Home() {
   const aumLabel = liveAum === null ? "…" : fmtUsd(liveAum);
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--color-canvas)",
-        color: "var(--color-text)",
-      }}
-    >
+    <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "96px 32px 80px",
+          padding: "88px 32px 72px",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        <SectionLabel>Mutav · Solvency-gated reserve</SectionLabel>
-        <h1
-          className="font-display"
-          style={{
-            fontSize: "clamp(40px, 6vw, 68px)",
-            lineHeight: 1.02,
-            letterSpacing: "-0.03em",
-            margin: "0 0 24px",
-            maxWidth: "16ch",
-            color: "var(--color-text)",
-          }}
-        >
-          Earn yield backing Brazil&apos;s rental guarantees
-        </h1>
-        <p
-          className="font-body"
-          style={{
-            fontSize: "18px",
-            lineHeight: 1.5,
-            color: "var(--color-text-2)",
-            margin: "0 0 40px",
-            maxWidth: "52ch",
-          }}
-        >
-          The live USDC reserve targets a modeled{" "}
+        {/* Pulse / hackathon identity badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
           <span
             className="font-mono"
             style={{
+              fontSize: "10px",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
               color: "var(--color-accent)",
-              fontFeatureSettings: '"tnum" 1',
-              fontVariantNumeric: "tabular-nums",
+              border: "1px solid var(--color-accent)",
+              padding: "3px 9px",
             }}
           >
-            {pct(heroApy)} APY
-          </span>{" "}
-          — premiums + DeFi yield, solvency-gated. Planned BRL reserves model up
-          to ~33% (coming, not yet investable).
+            Stellar Pulso Hackathon · Proof of Concept
+          </span>
+        </div>
+        <SectionLabel>Mutav Pulse Protocol — onchain rental guarantees</SectionLabel>
+
+        <h1
+          className="font-display"
+          style={{
+            fontSize: "clamp(40px, 6vw, 66px)",
+            lineHeight: 1.03,
+            letterSpacing: "-0.03em",
+            margin: "0 0 24px",
+            maxWidth: "17ch",
+            color: "var(--color-text)",
+          }}
+        >
+          The reserve protocol behind Brazil&apos;s rental guarantees
+        </h1>
+
+        <p
+          className="font-body"
+          style={{ fontSize: "18px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 18px", maxWidth: "58ch" }}
+        >
+          A testnet proof-of-concept of{" "}
+          <strong style={{ color: "var(--color-text)", fontWeight: 600 }}>Mutav&apos;s Pulse Protocol</strong>{" "}
+          — an on-chain, solvency-gated reserve that backs rental fianças (institutional guarantor, Art. 37 II of
+          Lei 8.245/91), pays tenant defaults, and routes idle float to yield adapters. No black box: every
+          number traces on-chain.
         </p>
 
-        {/* CTAs — exactly one amber (Start earning) */}
+        <p
+          className="font-mono"
+          style={{ fontSize: "12.5px", lineHeight: 1.6, color: "var(--color-text-3)", margin: "0 0 36px", maxWidth: "62ch" }}
+        >
+          Two PoC vaults — <span style={{ color: "var(--color-text-2)" }}>MUSD (live)</span> and{" "}
+          <span style={{ color: "var(--color-text-2)" }}>MBRL (next)</span> — demo the protocol on Stellar
+          testnet. <span style={{ color: "var(--color-text-2)" }}>Not investable</span>; the production
+          pilot opens <span style={{ color: "var(--color-accent)" }}>Q3 2026</span> with a BRL vault. Modeled
+          yield {pct(usdcApy)} (MUSD){brlApy !== null ? ` · ${pct(brlApy)} (MBRL)` : ""} — projected from
+          premiums + DeFi yield, not live returns.
+        </p>
+
+        {/* CTAs — exactly one amber */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
           <Link
             href={`/earn/${PRIMARY_RESERVE.address}`}
@@ -158,7 +171,7 @@ export default function Home() {
               lineHeight: 1,
             }}
           >
-            Start earning →
+            Explore the live reserve →
           </Link>
           <a
             href="#how-it-works"
@@ -182,13 +195,52 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── RESERVES showcase (section #2 — fast access) ─────────────────── */}
+      <section
+        id="reserves"
+        style={{
+          maxWidth: MAX_W,
+          margin: "0 auto",
+          padding: "72px 32px",
+          borderBottom: "1px solid var(--color-border)",
+          scrollMarginTop: "72px",
+        }}
+      >
+        <SectionLabel>Reserves — one protocol, one vault per currency (PoC)</SectionLabel>
+        <p
+          className="font-mono"
+          style={{
+            fontSize: "12px",
+            letterSpacing: "0.02em",
+            color: "var(--color-text-2)",
+            margin: "0 0 24px",
+            fontFeatureSettings: '"tnum" 1',
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {liveCount} live (testnet PoC) · {plannedCount} coming · APYs modeled from each peg, not
+          live returns · live AUM <span style={{ color: "var(--color-text)" }}>{aumLabel}</span>
+        </p>
+        <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
+          {reserves.map((r) => (
+            <div key={r.id} style={{ flex: "1 1 0", minWidth: "240px" }}>
+              <ReserveCard
+                reserve={r}
+                aum={r.status === "live" ? aumLabel : undefined}
+                loading={r.status === "live" && liveAum === null}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
       <section
         id="how-it-works"
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "80px 32px",
+          padding: "72px 32px",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -204,219 +256,103 @@ export default function Home() {
           }}
         >
           {[
-            {
-              n: "01",
-              t: "Deposit, receive shares",
-              d: "Deposit USDC into the reserve and receive mtvR shares — your tokenized claim on the whole reserve at NAV.",
-            },
-            {
-              n: "02",
-              t: "Reserve backs fianças",
-              d: "The reserve underwrites rental guarantees (fianças) across Brazil, earning a premium on every active, premium-current policy.",
-            },
-            {
-              n: "03",
-              t: "Idle float earns yield",
-              d: "Capital not locked behind coverage is allocated to DeFi yield. You redeem from surplus — solvency comes first, always.",
-            },
+            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's currency and receive mtvR shares — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
+            { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a premium on every active, premium-current policy." },
+            { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus — solvency comes first, always." },
           ].map((s) => (
-            <div
-              key={s.n}
-              style={{
-                backgroundColor: "var(--color-surface)",
-                padding: "28px 26px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              <span
-                className="font-mono"
-                style={{
-                  fontSize: "12px",
-                  letterSpacing: "0.1em",
-                  color: "var(--color-text-3)",
-                  fontFeatureSettings: '"tnum" 1',
-                }}
-              >
+            <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-text-3)", fontFeatureSettings: '"tnum" 1' }}>
                 {s.n}
               </span>
-              <h3
-                className="font-display"
-                style={{
-                  fontSize: "19px",
-                  letterSpacing: "-0.01em",
-                  margin: 0,
-                  color: "var(--color-text)",
-                }}
-              >
+              <h3 className="font-display" style={{ fontSize: "19px", letterSpacing: "-0.01em", margin: 0, color: "var(--color-text)" }}>
                 {s.t}
               </h3>
-              <p
-                className="font-body"
-                style={{
-                  fontSize: "14px",
-                  lineHeight: 1.55,
-                  color: "var(--color-text-2)",
-                  margin: 0,
-                }}
-              >
+              <p className="font-body" style={{ fontSize: "14px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
                 {s.d}
               </p>
             </div>
           ))}
         </div>
-
-        {/* The solvency invariant — stated as evidence */}
-        <p
-          className="font-mono"
-          style={{
-            fontSize: "12px",
-            letterSpacing: "0.02em",
-            color: "var(--color-text-2)",
-            margin: "24px 0 0",
-            lineHeight: 1.5,
-          }}
-        >
-          <span style={{ color: "var(--color-accent)" }}>solvency-gated:</span>{" "}
-          stable assets ≥ guarantee coverage, always.
+        <p className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.02em", color: "var(--color-text-2)", margin: "24px 0 0", lineHeight: 1.5 }}>
+          <span style={{ color: "var(--color-accent)" }}>solvency-gated:</span> stable assets ≥ guarantee coverage, always.
         </p>
       </section>
 
-      {/* ── RESERVES showcase ────────────────────────────────────────────── */}
+      {/* ── PROTOCOL FLOW (diagram + gates) ──────────────────────────────── */}
       <section
+        id="protocol-flow"
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "80px 32px",
+          padding: "72px 32px",
           borderBottom: "1px solid var(--color-border)",
+          scrollMarginTop: "72px",
         }}
       >
-        <SectionLabel>Reserves</SectionLabel>
+        <SectionLabel>Protocol flow</SectionLabel>
         <p
-          className="font-mono"
-          style={{
-            fontSize: "12px",
-            letterSpacing: "0.02em",
-            color: "var(--color-text-2)",
-            margin: "0 0 24px",
-            fontFeatureSettings: '"tnum" 1',
-            fontVariantNumeric: "tabular-nums",
-          }}
+          className="font-body"
+          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "60ch" }}
         >
-          {liveCount} live · {plannedCount} planned · total AUM{" "}
-          <span style={{ color: "var(--color-text)" }}>{aumLabel}</span> (USD-equiv)
+          The reserve is the vault: it holds custody, mints shares at NAV, runs an async redemption
+          queue, and allocates idle float across strategy adapters for yield. Three gates keep it
+          solvent — marked <span style={{ color: "var(--color-accent)" }}>◇</span> on the flows they
+          govern.
         </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          {reserves.map((r) => (
-            <ReserveCard
-              key={r.id}
-              reserve={r}
-              aum={r.status === "live" ? aumLabel : undefined}
-              loading={r.status === "live" && liveAum === null}
-            />
-          ))}
-        </div>
+        <ProtocolDiagram />
       </section>
 
       {/* ── ONBOARD ──────────────────────────────────────────────────────── */}
-      <section
-        style={{
-          maxWidth: MAX_W,
-          margin: "0 auto",
-          padding: "80px 32px 96px",
-        }}
-      >
-        <SectionLabel>Get started</SectionLabel>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "72px 32px 96px" }}>
+        <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
-          style={{
-            fontSize: "clamp(28px, 4vw, 40px)",
-            letterSpacing: "-0.02em",
-            margin: "0 0 16px",
-            color: "var(--color-text)",
-            maxWidth: "18ch",
-          }}
+          style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", margin: "0 0 16px", color: "var(--color-text)", maxWidth: "20ch" }}
         >
-          Connect wallet → get testnet USDC → deposit
+          Connect a wallet and watch the protocol move
         </h2>
         <p
           className="font-body"
-          style={{
-            fontSize: "15px",
-            lineHeight: 1.55,
-            color: "var(--color-text-2)",
-            margin: "0 0 28px",
-            maxWidth: "48ch",
-          }}
+          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Connect a Stellar wallet, claim testnet USDC from the on-ramp inside the
-          reserve, and deposit. Everything is on-chain and verifiable.
+          Claim demo USDC from the on-ramp inside the live reserve, deposit, and drive premiums,
+          defaults, and redemptions on Stellar testnet. It&apos;s a demonstration — no real funds, no
+          earnings. Every value reads directly from the contracts.
         </p>
 
         <div style={{ marginBottom: "40px" }}>
           <ConnectButton />
         </div>
 
-        {/* Verification footer — evidence links, mono */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "24px",
-            paddingTop: "24px",
-            borderTop: "1px solid var(--color-border)",
-          }}
-        >
-          <a
-            href={`${config.explorerBase}/contract/${PRIMARY_RESERVE.address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono"
-            style={{
-              fontSize: "12px",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "var(--color-text-3)",
-              textDecoration: "none",
-            }}
-          >
-            Verify vault ↗
-          </a>
-          <Link
-            href={`/earn/${PRIMARY_RESERVE.address}?tab=transparency`}
-            className="font-mono"
-            style={{
-              fontSize: "12px",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "var(--color-text-3)",
-              textDecoration: "none",
-            }}
-          >
-            Contracts ↗
-          </Link>
-          <a
-            href="https://github.com/mutav-finance"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono"
-            style={{
-              fontSize: "12px",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "var(--color-text-3)",
-              textDecoration: "none",
-            }}
-          >
-            Whitepaper ↗
-          </a>
+        {/* Verification footer */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", paddingTop: "24px", borderTop: "1px solid var(--color-border)" }}>
+          {[
+            { label: "Verify vault ↗", href: `${config.explorerBase}/contract/${PRIMARY_RESERVE.address}`, ext: true },
+            { label: "Cockpit ↗", href: `/protocol/${PRIMARY_RESERVE.address}`, ext: false },
+            { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
+          ].map((l) =>
+            l.ext ? (
+              <a
+                key={l.label}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono"
+                style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.label}
+                href={l.href}
+                className="font-mono"
+                style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
+              >
+                {l.label}
+              </Link>
+            ),
+          )}
         </div>
       </section>
     </main>

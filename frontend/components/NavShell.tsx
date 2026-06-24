@@ -26,12 +26,13 @@ import { PRIMARY_RESERVE } from "@/lib/reserves";
 interface NavLink {
   href: string;
   label: string;
-  /** Match strategy: "exact" | "prefix" */
-  match?: "exact" | "prefix";
+  /** Match strategy: "exact" | "prefix" | "home" (active anywhere on the homepage) */
+  match?: "exact" | "prefix" | "home";
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "reserves", match: "exact" },
+  { href: "/", label: "home", match: "home" },
+  { href: "/reserves", label: "reserves", match: "prefix" },
   { href: `/protocol/${PRIMARY_RESERVE.address}`, label: "protocol", match: "prefix" },
 ];
 
@@ -47,6 +48,7 @@ export function NavShell() {
   /** True when this link is the current page */
   function isActive(link: NavLink): boolean {
     if (link.match === "prefix") return pathname.startsWith(link.href);
+    if (link.match === "home") return pathname === "/";
     return pathname === link.href;
   }
 

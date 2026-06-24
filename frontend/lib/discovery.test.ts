@@ -10,7 +10,7 @@ describe("discovery seam", () => {
   });
   it("resolves the live reserve by its vault address", () => {
     const r = getReserve(LIVE);
-    expect(r?.currency).toBe("USDC");
+    expect(r?.currency).toBe("MUSD");
     expect(isVerified(LIVE)).toBe(true);
   });
   it("an unknown but valid contract address is unverified, not found", () => {

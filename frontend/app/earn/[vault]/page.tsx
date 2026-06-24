@@ -29,7 +29,7 @@ import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "invest" | "transparency";
+type Tab = "deposit" | "transparency";
 
 // ── Inner hub (needs Suspense wrapper for useSearchParams) ────────────────────
 
@@ -53,7 +53,7 @@ function ReserveHubInner() {
   }
 
   // Verified path — reserve and reads are narrowed to non-null
-  const tab: Tab = search.get("tab") === "transparency" ? "transparency" : "invest";
+  const tab: Tab = search.get("tab") === "transparency" ? "transparency" : "deposit";
 
   const setTab = (t: Tab) => router.replace(`/earn/${vault}?tab=${t}`);
 
@@ -114,7 +114,7 @@ function ReserveHubInner() {
             borderBottom: "1px solid var(--color-border)",
           }}
         >
-          {(["invest", "transparency"] as Tab[]).map((t) => (
+          {(["deposit", "transparency"] as Tab[]).map((t) => (
             <button
               key={t}
               role="tab"
@@ -160,7 +160,7 @@ function ReserveHubInner() {
       </div>
 
       {/* Active tab — each supplies its own <main> */}
-      {tab === "invest" ? (
+      {tab === "deposit" ? (
         <InvestPanel reads={reads} reserve={reserve} />
       ) : (
         <ReserveTransparency reads={reads} reserve={reserve} />

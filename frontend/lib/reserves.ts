@@ -42,8 +42,8 @@ export interface Reserve {
 export const RESERVES: Reserve[] = [
   {
     id: "usdc",
-    currency: "USDC",
-    name: "USDC Reserve (testnet)",
+    currency: "MUSD",
+    name: "Mutav USD Reserve (testnet)",
     underlying: "USDC · stablecoin DeFi (DeFindex)",
     market: "Brazil · testnet PoC",
     status: "live",
@@ -59,21 +59,23 @@ export const RESERVES: Reserve[] = [
   },
   {
     id: "brl",
-    currency: "BRL",
-    name: "BRL Reserve",
+    currency: "MBRL",
+    name: "Mutav BRL Reserve",
     underlying: "BRL · tokenized Tesouro / CDI",
-    market: "Brazil",
+    market: "Brazil · 2nd PoC · pilot Q3 2026",
     status: "planned",
+    tag: "PoC · Q3 2026",
     // Selic/CDI ~14%; Brazilian (South) rental delinquency.
     assumptions: { underlyingYield: 0.14, delinquency: 0.0246 },
   },
   {
     id: "ars",
-    currency: "ARS",
-    name: "ARS Reserve",
+    currency: "MARS",
+    name: "Mutav ARS Reserve",
     underlying: "ARS · peso instrument",
     market: "Argentina · illustrative",
     status: "planned",
+    tag: "Future",
     // Illustrative peso rate + higher local delinquency — placeholder pending data.
     assumptions: { underlyingYield: 0.35, delinquency: 0.06 },
   },

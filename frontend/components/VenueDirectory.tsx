@@ -58,7 +58,7 @@ const VENUES: Venue[] = [
   {
     name: "DeFindex",
     role: "Yield",
-    description: "Multi-strategy vault allocator. Reserve capital earns yield via the DeFindex adapter wired to the MUTAV vault.",
+    description: "Multi-strategy vault allocator. Reserve capital is routed to the DeFindex adapter wired to the MUTAV vault to generate yield in the testnet PoC.",
     status: "live",
     href: adapterLink.href,
     actionLabel: adapterLink.label,
@@ -192,7 +192,7 @@ export function VenueDirectory() {
     >
       <table
         style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
-        aria-label="Yield venue directory"
+        aria-label="Protocol integration directory"
       >
         <colgroup>
           <col style={{ width: "22%" }} />

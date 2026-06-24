@@ -210,7 +210,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
                 margin: "0 0 8px",
               }}
             >
-              MUTAV RESERVE
+              MUTAV PULSE PROTOCOL
             </p>
             <h1
               className="font-display"
@@ -234,8 +234,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
                 maxWidth: "520px",
               }}
             >
-              Live on-chain reserve metrics, guarantee registry, yield venues, and
-              contract verification. All values read directly from Soroban testnet.
+              Testnet on-chain reserve metrics, guarantee registry, yield venues, and contract verification — all reads from Soroban testnet. This is a proof-of-concept; values are not from a production reserve.
             </p>
           </div>
 
@@ -306,7 +305,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             }}
           >
             {reserve.currency}
-            {reserve.tag ? ` (${reserve.tag})` : ""} RESERVE · LIVE DETAIL
+            {reserve.tag ? ` (${reserve.tag})` : ""} RESERVE · TESTNET LIVE DETAIL
           </p>
           <p
             className="font-body"
@@ -352,7 +351,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtUsd(data.totalAssets)}
-            unit="total assets · USDC"
+            unit="total assets · MUSD vault (USDC)"
             accentValue
             loading={loading}
             error={error ?? undefined}
@@ -372,7 +371,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             label="Modeled APY"
             value={hasBook ? fmtApy(econ.modeledApy) : "—"}
             unit={`${fmtApy(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} u/w`}
-            tooltip={`Underlying yield (${fmtApy(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South). See docs/whitepaper.md.`}
+            tooltip={`Underlying yield (${fmtApy(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South). See whitepaper.`}
             accentValue
             loading={loading}
             error={error ?? undefined}
@@ -382,7 +381,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Committed to Guarantees"
             value={loading ? "—" : fmtUsd(data.coverageRequired)}
-            unit="coverage required · USDC"
+            unit="coverage required · MUSD vault (USDC)"
             loading={loading}
             error={error ?? undefined}
           />
@@ -459,7 +458,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             label="Underlying Yield"
             value={fmtApy(econ.underlyingYield)}
             unit="modeled base rate"
-            tooltip="The reserve's risk-free/underlying yield, pegged to the guarantee currency (BRL Selic ~14% vs USD stablecoin DeFi ~5.5%). A stated assumption, not an on-chain read."
+            tooltip="The assumed underlying yield for this reserve's currency peg (USD stablecoin DeFi ~5.5%). For reference, a BRL reserve would use Selic ~14%. A stated assumption, not an on-chain read."
             loading={loading}
             error={error ?? undefined}
           />
@@ -503,8 +502,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           Modeled at {fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South
           region, 60+ days overdue) and {fmtApy(econ.underlyingYield)} underlying yield
           ({reserve.currency} peg). The spread is computed from the live
-          guarantee book; default and yield rates are stated assumptions. Method:
-          docs/whitepaper.md.
+          guarantee book; default and yield rates are stated assumptions. Method: see whitepaper.
         </p>
 
         {/* ── Section label: guarantee registry ────────────────────────── */}
@@ -552,7 +550,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
               margin: 0,
             }}
           >
-            YIELD VENUES
+            PROTOCOL INTEGRATIONS
           </p>
           <span
             className="font-mono"
@@ -574,9 +572,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
               margin: "16px 0 0",
             }}
           >
-            The reserve is a diversified allocator — capital earns across multiple on-chain
-            venues. DeFindex is live today; additional integrations are enabled as they reach
-            production readiness.
+            On the deployed testnet reserve, capital is routed to on-chain yield venues via strategy adapters. The DeFindex adapter is live on testnet; Soroswap and Blend integrations are planned.
           </p>
         </div>
 
@@ -599,7 +595,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             className="font-mono"
             style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
           >
-            Stellar Testnet · live reads
+            Stellar Testnet · PoC · live reads
           </span>
         </div>
       </div>

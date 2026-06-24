@@ -12,6 +12,7 @@
 
 import Link from "next/link";
 import { standardProductEconomics } from "@/lib/economics";
+import { CurrencyLogo } from "@/components/CurrencyLogo";
 import type { Reserve } from "@/lib/reserves";
 
 function pct(v: number): string {
@@ -43,13 +44,16 @@ export function ReserveCard({
         opacity: live ? 1 : 0.82,
       }}
     >
-      {/* Header: ticker + status badge */}
+      {/* Header: fiat logo + ticker + status badge */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span
-          className="font-display"
-          style={{ fontSize: "18px", color: "var(--color-text)", letterSpacing: "-0.01em" }}
-        >
-          {reserve.currency}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}>
+          <CurrencyLogo currency={reserve.currency} width={26} />
+          <span
+            className="font-display"
+            style={{ fontSize: "18px", color: "var(--color-text)", letterSpacing: "-0.01em" }}
+          >
+            {reserve.currency}
+          </span>
         </span>
         <span
           className="font-mono"
@@ -84,7 +88,7 @@ export function ReserveCard({
           className="font-mono"
           style={{ fontSize: "10px", color: "var(--color-text-3)", margin: "4px 0 0" }}
         >
-          {pct(econ.underlyingYield)} yield + {pct(econ.underwritingSpread)} u/w · modeled
+          {pct(econ.underlyingYield)} yield + {pct(econ.underwritingSpread)} underwriting · modeled
         </p>
       </div>
 
@@ -120,7 +124,7 @@ export function ReserveCard({
     return (
       <Link
         href={`/earn/${reserve.address}`}
-        aria-label={`Open ${reserve.name}`}
+        aria-label={`View ${reserve.name} vault`}
         style={{ textDecoration: "none", cursor: "pointer", display: "block" }}
       >
         {card}

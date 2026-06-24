@@ -110,7 +110,7 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
             color: "var(--color-text-2)",
           }}
         >
-          Test USDC on-ramp
+          Testnet USDC faucet
         </span>
         <span
           className="font-mono"
@@ -144,7 +144,7 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
         <span className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
           {isTrustlineStep
             ? "Add a trustline to receive demo USDC"
-            : "Demo funds to test deposit & redeem"}
+            : "Demo funds to test deposit and redeem"}
         </span>
       </div>
 

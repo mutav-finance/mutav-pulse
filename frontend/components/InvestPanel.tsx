@@ -187,7 +187,7 @@ export function InvestPanel({
                 margin: 0,
               }}
             >
-              MUTAV RESERVE
+              MUTAV PULSE PROTOCOL
             </p>
             <p
               className="font-body"
@@ -200,7 +200,7 @@ export function InvestPanel({
                 margin: 0,
               }}
             >
-              Real Asset. Real Yield.
+              Testnet PoC
             </p>
           </div>
           <h1
@@ -213,7 +213,7 @@ export function InvestPanel({
               marginBottom: "24px",
             }}
           >
-            EARN YIELD ON THE MUTAV {reserve.currency} RESERVE
+            MUTAV PULSE PROTOCOL — {reserve.currency} RESERVE
           </h1>
 
           {/* NAV stat cards */}
@@ -408,7 +408,7 @@ export function InvestPanel({
                 letterSpacing: "-0.01em",
               }}
             >
-              CONNECT YOUR WALLET TO EARN
+              CONNECT YOUR WALLET TO EXPLORE THE POC
             </p>
             <p
               className="font-body"
@@ -419,8 +419,7 @@ export function InvestPanel({
                 lineHeight: 1.5,
               }}
             >
-              Connect a Stellar wallet to deposit {reserve.currency}, receive MTVR shares,
-              and manage your redemption queue.
+              Connect a Stellar testnet wallet to deposit demo USDC, receive MTVR shares, and explore the redemption queue on the testnet PoC.
             </p>
             <ConnectButton />
           </div>
