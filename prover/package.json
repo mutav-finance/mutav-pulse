@@ -6,7 +6,8 @@
   "description": "Reconstrução off-chain e prover do selo de solvência ZK (peça B em diante).",
   "scripts": {
     "derisk:merkle": "node derisk-merkle.mjs",
-    "prove": "node prove.mjs"
+    "prove": "node prove.mjs",
+    "anti-tamper": "node anti-tamper.mjs"
   },
   "dependencies": {
     "circomlibjs": "^0.1.7",

@@ -370,11 +370,20 @@ Pode começar **mockado** em paralelo aos stages 1–4.
 - ⚠️ ler `node_modules/next/dist/docs/` **antes** de codar (breaking changes — ver `frontend/AGENTS.md`).
 - **Saída:** selo funcional lendo o attestor.
 
-### Stage 6 — Robustez + cenário anti-trapaça
-- **6.1** Seed (vault + banco + N garantias) → prova → verde.
-- **6.2** Anti-trapaça: alterar uma garantia → root muda → prova rejeitada → vermelho.
-- **6.3** Se A+B sólidos: ativar a peça **C** (carteiras).
-- **Saída:** fluxo redondo, à prova de ataque.
+### Stage 6 — Robustez + cenário anti-trapaça ✅ (6.1+6.2; 6.3 cortado)
+Demo reproduzível em **`prover/anti-tamper.mjs`** (`npm run anti-tamper [bank] [ratio] [--submit]`),
+lendo o estado real da testnet. Os quatro sinais, verificados ao vivo:
+- **6.1** ✅ HONESTO → lista completa + raiz real → prova verifica off-chain (cobertura 122,8%) → **selo verde**.
+- **6.2** ✅ Anti-trapaça, dois ângulos:
+  - **Omissão + raiz REAL:** esconder a maior garantia (passivo 492.000 → 312.000) mantendo a
+    `guarantees_root` on-chain → a prova é **IMPOSSÍVEL de gerar** (o circuito exige
+    `b.root === guarantees_root`; folhas adulteradas recompõem outra raiz → constraint falha na linha 110).
+  - **Omissão + raiz FALSA:** adultera folhas E raiz pública juntas → a prova até gera (raiz falsa
+    `0x264bc63c…` ≠ raiz real `0x2962a3bb…`). Com `--submit`, a prova forjada foi enviada ao attestor
+    e **reverteu on-chain (`InvalidProof`)** — o attestor lê a raiz REAL ao vivo. **Selo vermelho. Trapaça barrada.**
+  - _(Insolvência → vermelho já é coberto pelo pre-check do `prove.mjs`: sem reservas, o `fullProve` nem gera.)_
+- **6.3** ✂️ peça **C** (carteiras) — stretch, cortado sem quebrar a demo (A+B é o MVP premiável).
+- **Saída:** ✅ fluxo redondo e à prova de ataque, demonstrável com um comando.
 
 ### Stage 7 — README + entrega
 - Arquitetura, real vs. simulado, como rodar/reconferir; limpar repo; submeter.
