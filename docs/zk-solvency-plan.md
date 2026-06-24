@@ -287,6 +287,24 @@ da `policy` antiga (writer = nós); seed direto via `put()`.
 - **Saída:** ✅ registry novo deployado e semeado na testnet; `guarantees_root` + `stable_assets`
   prontos para o prover (Stage 3) e para o attestor (Stage 4).
 
+> **⏳ PENDÊNCIA — decisão para quando a chave `GBE3QZQS…` estiver disponível** (admin do core de
+> 2026-06-22; ver [[zk-testnet-deploy-state]]). O registry-only acima é um **contorno** da falta dessa
+> chave: o registry novo é semeado **à mão** (writer = nós), então a anti-omissão prova que o prover usou
+> a lista inteira *que está no registry* — mas a fidelidade registry↔livro-real é uma **suposição**, não
+> uma garantia da chain. Com a chave em mãos, eliminar o hand-seed e amarrar a prova ao livro REAL escrito
+> pela `policy`. Duas rotas:
+> - **(A) Recomendada — `upgrade()` in-place do registry ANTIGO.** Adicionar `guarantees_root()` é mudança
+>   **aditiva** (nova variante `DataKey::GuaranteesRoot` no fim do enum; o fallback `unwrap_or_else(compute_root)`
+>   já cobre um registry que tem garantias mas ainda não gravou a raiz). Mantém a `policy` como writer → a raiz
+>   passa a **acompanhar a realidade sozinha**, sem cópia manual. Depois, re-apontar attestor + prover para o
+>   registry antigo. **Verificar antes do upgrade:** layout de storage preservado e `active_ids` já existente no
+>   registry antigo — é a única decisão de risco (upgrade in-place exige layout compatível).
+> - **(B) Alternativa — redeploy do core inteiro** (registry+policy+vault) sob nossa chave + re-wire
+>   `policy → registry novo` via `bootstrap.sh`. Slate limpo, porém mais disruptivo (re-deploy + tratar os
+>   fundos do vault).
+> **Decisão do time:** seguir **(A)** se o layout do registry antigo for compatível; cair para **(B)** se não
+> for. jubscodes executa esta decisão durante a revisão, já com a chave na mão.
+
 ### Stage 3 — Prover service (Node/TS + snarkjs) ✅ 3.1–3.3 (3.4 aguarda Stage 4)
 Implementado em **`prover/prove.mjs`** (`npm run prove [bank_balance] [ratio_bps]`).
 - **3.1** ✅ Lê on-chain (testnet, via `stellar contract invoke`): `registry.active_ids()` +
@@ -360,6 +378,21 @@ Pode começar **mockado** em paralelo aos stages 1–4.
 
 ### Stage 7 — README + entrega
 - Arquitetura, real vs. simulado, como rodar/reconferir; limpar repo; submeter.
+- **⚠️ Lembrete VK↔zkey (par indivisível):** `circuits/verification_key.json` (versionado, embutido no
+  attestor via `build.rs`) e `circuits/solvency_final.zkey` (**NÃO** versionado — ~19MB, gitignorado) são um
+  PAR de **um** trusted setup. Mexer no circuito OU refazer o setup invalida o par → o attestor passa a
+  rejeitar provas válidas. Ao regerar, regerar a cadeia inteira E re-deployar a wasm do attestor:
+  ```
+  circom solvency.circom --r1cs --wasm --sym -l node_modules -p bn128
+  snarkjs groth16 setup solvency.r1cs pot16_final.ptau solvency_0.zkey
+  snarkjs zkey contribute solvency_0.zkey solvency_final.zkey -e="..."
+  snarkjs zkey export verificationkey solvency_final.zkey verification_key.json
+  # fixture do teste: node gen_input.mjs 0 10000 2000 → (gen witness → groth16 prove) →
+  #   node ../prover/encode-for-soroban.mjs . --rust > ../contracts/solvency-attestor/src/test_fixture.rs
+  # por fim: stellar contract build (wasm nova com VK nova) + upgrade() em CBYXNYYZ…
+  ```
+  Sensor existente: o teste `verifies_real_snarkjs_proof` quebra se a VK embutida divergir do `proof.json`
+  fixture. Como o `zkey` não entra no repo, o README **precisa** dizer como regerá-lo (só a VK viaja).
 
 ---
 

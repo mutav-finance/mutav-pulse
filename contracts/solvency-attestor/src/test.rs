@@ -162,3 +162,15 @@ fn attest_rejects_wrong_ratio() {
     let r = c.try_attest(&proof_bytes(&env), &12_000u32, &1u64);
     assert_eq!(r, Err(Ok(AttestError::InvalidProof)));
 }
+
+#[test]
+fn attest_rejects_ratio_below_floor() {
+    // Faixa < 100% (10_000 bps) é rejeitada ANTES de verificar a prova — o piso
+    // garante que `solvent:true` só seja gravado p/ cobertura >= 100%.
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    let c = setup(&env);
+    let r = c.try_attest(&proof_bytes(&env), &5_000u32, &1u64);
+    assert_eq!(r, Err(Ok(AttestError::RatioTooLow)));
+    assert!(c.last_attestation().is_none(), "nada deve ser gravado");
+}

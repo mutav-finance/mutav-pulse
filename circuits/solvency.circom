@@ -12,6 +12,7 @@ pragma circom 2.0.0;
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/eddsaposeidon.circom";
+include "circomlib/circuits/bitify.circom";
 
 template Leaf() {
     signal input id;
@@ -126,7 +127,19 @@ template Solvency(depth) {
     signal reserves;
     reserves <== vault_stable_assets + bank_balance;
 
+    // Range-check: amarra reservas e obrigações a 128 bits ANTES de comparar.
+    // Sem isto, GreaterEqThan(200) só é sólido se os operandos couberem em 200 bits —
+    // uma invariante implícita que pendurava a corretude na magnitude do que o oráculo
+    // assina. Com o range-check a soundness do comparador é auto-contida: 128 bits cobrem
+    // qualquer valor real (stroops << 2^128) e impedem o "dar a volta" no campo.
+    component reservesBits = Num2Bits(128);
+    reservesBits.in <== reserves;
+    component oblBits = Num2Bits(128);
+    oblBits.in <== b.obligations;
+
     // Solvência: reserves * 10000 >= obligations * ratio_bps.
+    // (reserves < 2^128 => reserves*10000 < 2^142 < 2^200; ratio_bps é u32 on-chain
+    //  => obligations*ratio_bps < 2^160 < 2^200 — operandos seguros p/ GreaterEqThan(200).)
     component ge = GreaterEqThan(200);
     ge.in[0] <== reserves * 10000;
     ge.in[1] <== b.obligations * ratio_bps;

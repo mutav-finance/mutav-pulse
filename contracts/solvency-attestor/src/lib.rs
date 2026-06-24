@@ -29,6 +29,13 @@ include!(concat!(env!("OUT_DIR"), "/vk.rs"));
 /// velha que isto. 1 hora.
 const WINDOW_SECS: u64 = 3600;
 
+/// Faixa mínima de cobertura aceita. `solvent` só é gravado `true` se a prova for
+/// de pelo menos 100% (10_000 bps). Sem este piso, `attest` aceitaria uma prova
+/// válida de faixa baixa (ex.: 50%) e gravaria `solvent:true` mesmo assim — o flag
+/// passaria a significar só "existe prova p/ ALGUMA faixa", não "coberto". Com o
+/// piso, `solvent:true` carrega significado on-chain (≥ 100%).
+const MIN_RATIO_BPS: u32 = 10_000;
+
 // TTL do instance storage (~5s/ledger): se faltar menos que ~7 dias, estende p/
 // ~31 dias. Sem isto, a atestação + o wiring (registry/vault/oráculo) expirariam
 // e o selo "sumiria" (last_attestation -> None; attest -> NotConfigured).
@@ -157,6 +164,8 @@ pub enum AttestError {
     ProofFromFuture = 4,
     /// registry/vault/oráculo ainda não foram setados.
     NotConfigured = 5,
+    /// `ratio_bps < MIN_RATIO_BPS` — faixa abaixo do piso de cobertura (100%).
+    RatioTooLow = 6,
 }
 
 impl From<Groth16Error> for AttestError {
@@ -247,6 +256,12 @@ impl SolvencyAttestor {
     /// Públicos reconstruídos do estado real: prova feita p/ outro estado não verifica.
     /// `nonce` = timestamp assinado pelo oráculo (frescor). PERMISSIONLESS.
     pub fn attest(e: Env, proof: Bytes, ratio_bps: u32, nonce: u64) -> Result<(), AttestError> {
+        // Piso de cobertura: só atesta `solvent` p/ faixa >= 100%. Garante que
+        // `solvent:true` signifique "coberto" e não "prova de uma faixa qualquer".
+        if ratio_bps < MIN_RATIO_BPS {
+            return Err(AttestError::RatioTooLow);
+        }
+
         let registry: Address =
             e.storage().instance().get(&DataKey::Registry).ok_or(AttestError::NotConfigured)?;
         let vault: Address =
