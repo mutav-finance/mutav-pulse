@@ -323,6 +323,26 @@ wired p/ registry `CCIIYG57…` + vault `CCOIGCO7…` + oráculo fixo).
   abertos do Stage 0 — deploy e medição de custo — fechados.)_
 - **Saída:** ✅ a "luz verde" mora on-chain e é re-verificável; ciclo prover→attestor completo.
 
+### Revisão Stages 0–4 — fixes aplicados (pós-ciclo completo)
+Revisão cruzada com o caminho inteiro vivo. Consistência end-to-end de encoding/ordem
+**provada** pelo `attest` real passar on-chain; binding ao estado vivo **provado adversarialmente**
+(nonce/ratio errados → `InvalidProof`; controle → `Ok`). Fixes aplicados e **deployados via
+`upgrade()`** (registry `CCIIYG57…` + attestor `CBYXNYYZ…`; storage preservado, root e
+`last_attestation` intactos):
+- **#1 [ALTO soundness]** `registry.put()` rejeita a `2^TREE_DEPTH+1`-ésima garantia ativa.
+  Acima da capacidade o `compute_root` truncava a raiz silenciosamente (folhas excedentes somem
+  da raiz E da soma → solvência falsa por omissão). Agora falha alto. _(Confirmado empírico:
+  `root(33)==root(32)`.)_ Teste `put_rejects_beyond_tree_capacity`.
+- **#2 [MED]** attestor estende TTL do instance storage (`attest` + setters) — selo não expira.
+- **#3** attestor emite evento `attested` (confirmado on-chain) — front reage sem polling.
+- **#4** nota: VK embutida e `solvency_final.zkey` são um par — manter em sincronia (Stage 7).
+- **#7** prover satura `obligationOf` (>=0) igual ao `leaf()` do registry.
+- _Não aplicados:_ **#5** (replay — não é vetor: idempotente vs estado vivo) e **#6** (embutir
+  oráculo na VK — exige circuito + regenerar VK/zkey/prova + redeploy; stretch).
+- **Observação (escala):** o recompute O(n) por `put` (seção 6.4) já pesa perto da capacidade 32
+  (no teste, 32 puts cumulativos estouram o budget do `Env`); o cap (#1) limita o pior caso. A
+  migração para Merkle Sum Tree incremental (6.4) continua sendo o caminho v2.
+
 ### Stage 5 — Selo no dashboard (front Investidor)
 Pode começar **mockado** em paralelo aos stages 1–4.
 - **5.1** `reads.solvencyAttestation()` em `lib/contracts.ts` (mock até o attestor estar live).
