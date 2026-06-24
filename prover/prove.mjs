@@ -52,7 +52,14 @@ const OUT = path.join(here, "out");
 function read(id, fn, ...args) {
   const cmd = ["stellar", "contract", "invoke", "--id", id, "--source", SOURCE,
     "--network", NETWORK, "--", fn, ...args].join(" ");
-  const out = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  let out;
+  try {
+    // stderr -> pipe para que, em caso de falha, o erro real da CLI apareça na exceção.
+    out = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (e) {
+    const why = (e.stderr || e.stdout || e.message || "").toString().trim();
+    throw new Error(`falha ao ler ${fn} de ${id}:\n${why}`);
+  }
   return JSON.parse(out.trim());
 }
 
@@ -94,6 +101,18 @@ async function main() {
   }
   console.error(`      active_ids=${JSON.stringify(activeIds)} root=0x${rootHex}`);
   console.error(`      obrigações=${totalObligations} reservas(vault)=${stableAssets} banco(sim)=${BANK_BALANCE}`);
+
+  // --- pre-check de solvência: erro claro antes do fullProve (senão snarkjs solta
+  //     um "Assert Failed line 133" críptico ao falhar a constraint de faixa). ---
+  const reserves = stableAssets + BANK_BALANCE;
+  if (reserves * 10000n < totalObligations * BigInt(RATIO_BPS)) {
+    const haveBps = totalObligations === 0n ? "∞" : (reserves * 10000n / totalObligations).toString();
+    throw new Error(
+      `insolvente na faixa pedida: reservas=${reserves} cobrem ${haveBps} bps das ` +
+      `obrigações=${totalObligations}, mas a faixa exige ${RATIO_BPS} bps. ` +
+      `Baixe ratio_bps ou aumente bank_balance.`,
+    );
+  }
 
   // --- peça A: atestação de banco simulada, assinada EdDSA-Poseidon sobre M=Poseidon(saldo,nonce) ---
   const eddsa = await buildEddsa();
@@ -139,8 +158,7 @@ async function main() {
   if (BigInt(pubStable) !== stableAssets) throw new Error(`public stable != vault on-chain`);
   if (pubRatio !== RATIO_BPS) throw new Error(`public ratio != pedido`);
 
-  const reserves = stableAssets + BANK_BALANCE;
-  const pct = Number((reserves * 10000n) / totalObligations) / 100;
+  const pct = totalObligations === 0n ? "∞" : Number((reserves * 10000n) / totalObligations) / 100;
   console.error(`\n✅ prova gerada e verificada (out/proof.json, out/public.json)`);
   console.error(`   reservas=${reserves} obrigações=${totalObligations} cobertura=${pct}% faixa provada=${Number(RATIO_BPS) / 100}%`);
 }
