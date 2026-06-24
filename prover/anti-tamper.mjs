@@ -168,9 +168,18 @@ async function main() {
     await snarkjs.groth16.fullProve(omitInput, WASM, ZKEY);
     console.error(`    ❌ FALHA DE SEGURANÇA: a prova foi gerada (não deveria!)\n`);
     process.exitCode = 2;
-  } catch {
-    console.error(`    ✅ REJEITADO na geração: a raiz recomposta das folhas adulteradas ≠ raiz on-chain`);
-    console.error(`       → o circuito exige b.root === guarantees_root. Omitir é IMPOSSÍVEL mantendo a raiz real.\n`);
+  } catch (e) {
+    // Só conta como "rejeitado" se foi a CONSTRAINT da raiz (solvency.circom:110,
+    // `b.root === guarantees_root`). Erro de outro tipo (path/snarkjs/OOM) não prova
+    // nada — um demo de anti-trapaça não pode pintar verde por engano.
+    const m = (e.message || e).toString();
+    if (/line: 110|Solvency|Assert/i.test(m)) {
+      console.error(`    ✅ REJEITADO na geração: a raiz recomposta das folhas adulteradas ≠ raiz on-chain`);
+      console.error(`       → o circuito exige b.root === guarantees_root. Omitir é IMPOSSÍVEL mantendo a raiz real.\n`);
+    } else {
+      console.error(`    ⚠️  falhou por motivo INESPERADO (não a constraint da raiz): ${m}\n`);
+      process.exitCode = 2;
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -206,9 +215,16 @@ async function main() {
       console.error(`    ❌ FALHA DE SEGURANÇA: o attestor ACEITOU a prova forjada (não deveria!)`);
       process.exitCode = 2;
     } catch (e) {
+      // Só é "barrada" se o REVERT veio do CONTRATO (InvalidProof). Falha de rede/infra
+      // no invoke não chegou ao attestor — não pode ser reportada como trapaça barrada.
       const why = (e.stderr || e.message || "").toString();
-      const rejected = /InvalidProof|Error\(Contract/.test(why);
-      console.error(`    ✅ ${rejected ? "REVERTEU on-chain (InvalidProof)" : "revert on-chain"} → SELO VERMELHO. Trapaça barrada.\n`);
+      if (/InvalidProof|Error\(Contract/.test(why)) {
+        console.error(`    ✅ REVERTEU on-chain (InvalidProof) → SELO VERMELHO. Trapaça barrada.\n`);
+      } else {
+        console.error(`    ⚠️  o invoke falhou, mas NÃO por erro de contrato (rede/infra?) — inconclusivo:`);
+        console.error(`        ${why.split("\n").find((l) => l.trim()) ?? why}\n`);
+        process.exitCode = 2;
+      }
     }
   } else {
     console.error(`    (rode com --submit para ver o attestor REVERTER a prova forjada on-chain.)\n`);
