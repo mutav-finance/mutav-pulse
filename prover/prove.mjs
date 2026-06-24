@@ -28,9 +28,9 @@ import { computeRoot, leaf as leafFn, toHex32, TREE_DEPTH } from "./merkle.mjs";
 
 const NETWORK = "testnet";
 const SOURCE = "mutav-test";
-// Stage 2.5: new registry (with guarantees_root) + existing vault reused (read-only).
+// ZK registry (with guarantees_root, mirrors the live core book) + the live core vault (read-only).
 const REGISTRY = "CCIIYG572C5HUJKPDVSCYWAJNUUPOEEXKXIURA3DMAPTMETE3HHOU3FC";
-const VAULT = "CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO";
+const VAULT = "CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR";
 
 const BANK_BALANCE = BigInt(process.argv[2] ?? "100000000000"); // 10,000 USDC simulated (piece A)
 const RATIO_BPS = (process.argv[3] ?? "10000").toString();

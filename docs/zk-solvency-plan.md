@@ -266,6 +266,15 @@ Chosen way out: deploy a **new registry** under our admin and **reuse the existi
 (which we only need to *read* — `stable_assets` is permissionless). The new registry stays decoupled
 from the old `policy` (writer = us); seeded directly via `put()`.
 
+> **🔄 Post-rebase update (2026-06-24, Option B):** after rebasing `zk` onto `main`, the ZK stack was
+> re-wired to main's **new** core deploy. Current live IDs: **vault `CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR`**
+> (new SEP-0056 vault, `stable_assets` ≈ 51,019.77 USDC); the **ZK registry `CCIIYG57…`** was re-seeded
+> to the new book (4 × 12,000 = **48,000 USDC**, new `guarantees_root = 0x0073ce2426923d04f0db23f4642d3a348c8fa162fe4f583309f7fbbb92fe082b`);
+> the **attestor `CBYXNYYZ…`** was `set_vault`-ed to the new vault and re-attested (coverage ≈ 127%).
+> The IDs/numbers in 2.5.x and Stage 3/4 below are the **original** deploy and are superseded — see
+> [[zk-testnet-deploy-state]]. (main's new core registry `CCFYHEAI…` has no `guarantees_root`, so the ZK
+> keeps its own `CCIIYG57…`; the old vault `CCOIGCO7…` is obsolete.)
+
 - **2.5.1** ✅ Wasm build with `stellar contract build` (NOT `cargo build --release` — soroban-sdk 26.1
   spec-shaking). ⚠️ **Windows:** **no MSVC needed** — just the **gnu** toolchain with the
   wasm target installed: `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
