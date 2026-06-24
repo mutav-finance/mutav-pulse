@@ -21,6 +21,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
+import { PRIMARY_RESERVE } from "@/lib/reserves";
 
 interface NavLink {
   href: string;
@@ -30,9 +31,8 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: "/earn", label: "earn", match: "exact" },
-  { href: "/earn/transparency", label: "transparency", match: "exact" },
-  { href: "/protocol", label: "protocol", match: "prefix" },
+  { href: "/", label: "reserves", match: "exact" },
+  { href: `/protocol/${PRIMARY_RESERVE.address}`, label: "protocol", match: "prefix" },
 ];
 
 /** Resolve whether this front is the terminal register */
