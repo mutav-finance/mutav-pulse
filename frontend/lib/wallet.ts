@@ -39,34 +39,50 @@
  *   OR use signAndSubmit(xdr) for raw XDR signing + submission outside bindings.
  */
 
-import {
-  StellarWalletsKit,
-  Networks,
-} from "@creit.tech/stellar-wallets-kit";
-import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
-import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
-import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
+// ⚠️ A @creit.tech/stellar-wallets-kit acessa `localStorage` na AVALIAÇÃO do módulo.
+// Importá-la estaticamente quebra o prerender SSR: toda página passa pela root layout
+// → WalletProvider → este módulo, e o Next avalia o módulo no servidor. Por isso a kit
+// é carregada via import() dinâmico, só no cliente, dentro das funções abaixo.
+// O stellar-sdk é SSR-safe (não toca localStorage no load) e segue como import estático.
 import { rpc as StellarRpc, TransactionBuilder, Networks as StellarNetworks } from "@stellar/stellar-sdk";
 import { config } from "./config";
 
+// Tipo só-para-tipagem (apagado em runtime — não emite import).
+type WalletsKit = typeof import("@creit.tech/stellar-wallets-kit").StellarWalletsKit;
+
 // ─── Kit init ────────────────────────────────────────────────────────────────
 
+let _kit: WalletsKit | null = null;
 let _kitReady = false;
+
+/** Carrega a wallets-kit sob demanda (client-side). Idempotente. */
+async function getKit(): Promise<WalletsKit> {
+  if (!_kit) {
+    const { StellarWalletsKit } = await import("@creit.tech/stellar-wallets-kit");
+    _kit = StellarWalletsKit;
+  }
+  return _kit;
+}
 
 /**
  * Initialize the kit singleton. Call once on the client side (e.g. in
  * WalletProvider on mount). Safe to call multiple times — idempotent.
+ * Async: carrega a kit + módulos via import() dinâmico (nunca avaliados no SSR).
  */
-export function initKit(): void {
+export async function initKit(): Promise<void> {
   if (_kitReady) return;
+  const [{ StellarWalletsKit, Networks }, { FreighterModule }, { AlbedoModule }, { xBullModule }] =
+    await Promise.all([
+      import("@creit.tech/stellar-wallets-kit"),
+      import("@creit.tech/stellar-wallets-kit/modules/freighter"),
+      import("@creit.tech/stellar-wallets-kit/modules/albedo"),
+      import("@creit.tech/stellar-wallets-kit/modules/xbull"),
+    ]);
+  _kit = StellarWalletsKit;
   StellarWalletsKit.init({
     network: Networks.TESTNET,
     selectedWalletId: undefined,
-    modules: [
-      new FreighterModule(),
-      new AlbedoModule(),
-      new xBullModule(),
-    ],
+    modules: [new FreighterModule(), new AlbedoModule(), new xBullModule()],
   });
   _kitReady = true;
 }
@@ -78,8 +94,9 @@ export function initKit(): void {
  * Automatically initializes the kit if not already done.
  */
 export async function connect(): Promise<string> {
-  initKit();
-  const { address } = await StellarWalletsKit.authModal();
+  await initKit();
+  const kit = await getKit();
+  const { address } = await kit.authModal();
   return address;
 }
 
@@ -87,7 +104,8 @@ export async function connect(): Promise<string> {
  * Disconnect the active wallet module.
  */
 export async function disconnect(): Promise<void> {
-  await StellarWalletsKit.disconnect().catch((err) => {
+  const kit = await getKit();
+  await kit.disconnect().catch((err) => {
     console.error("[wallet] disconnect error:", err);
   });
 }
@@ -112,7 +130,8 @@ export function makeSignTransaction(
   opts?: { networkPassphrase?: string; address?: string },
 ) => Promise<{ signedTxXdr: string; signerAddress?: string }> {
   return async (xdr, opts) => {
-    return StellarWalletsKit.signTransaction(xdr, {
+    const kit = await getKit();
+    return kit.signTransaction(xdr, {
       networkPassphrase: opts?.networkPassphrase ?? config.networkPassphrase,
       address: opts?.address ?? address ?? undefined,
     });
@@ -147,7 +166,8 @@ export async function signAndSubmit(
   xdr: string,
   address?: string | null,
 ): Promise<string> {
-  const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+  const kit = await getKit();
+  const { signedTxXdr } = await kit.signTransaction(xdr, {
     networkPassphrase: config.networkPassphrase,
     address: address ?? undefined,
   });

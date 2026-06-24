@@ -18,10 +18,12 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { reads } from "@/lib/contracts";
+import { reads, type Attestation } from "@/lib/contracts";
+import { config } from "@/lib/config";
 import { MetricCard } from "@/components/MetricCard";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
+import { ZkSolvencyBadge } from "@/components/ZkSolvencyBadge";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { VenueDirectory } from "@/components/VenueDirectory";
 import { fmtUsd, fmtNav } from "@/lib/format";
@@ -78,6 +80,8 @@ interface TransparencyData {
   coverageRequired: bigint;
   guarantees: Array<{ id: bigint; guarantee: Guarantee; isCurrent: boolean }>;
   apy: number;
+  attestation: Attestation | null;
+  attestationError: string | undefined;
   loading: boolean;
   error: string | null;
 }
@@ -92,6 +96,8 @@ const INITIAL: TransparencyData = {
   coverageRequired: 0n,
   guarantees: [],
   apy: 0,
+  attestation: null,
+  attestationError: undefined,
   loading: true,
   error: null,
 };
@@ -145,6 +151,16 @@ export default function TransparencyPage() {
       const snaps = appendSnap(navPerShare);
       const apy = estimateApy(snaps);
 
+      // Selo de solvência ZK — isolado: é um add-on, falha aqui NÃO derruba o
+      // dashboard. Distingue "erro de leitura" (badge error) de "sem prova" (null).
+      let attestation: Attestation | null = null;
+      let attestationError: string | undefined;
+      try {
+        attestation = await reads.solvencyAttestation();
+      } catch (e) {
+        attestationError = e instanceof Error ? e.message : "Falha ao ler a prova ZK";
+      }
+
       // Phase 2: guarantee details (parallel per ID)
       const guarantees = await Promise.all(
         activeIds.map(async (id) => {
@@ -167,6 +183,8 @@ export default function TransparencyPage() {
         coverageRequired,
         guarantees,
         apy,
+        attestation,
+        attestationError,
         loading: false,
         error: null,
       });
@@ -302,7 +320,19 @@ export default function TransparencyPage() {
           </div>
         )}
 
-        {/* ── Solvency chip ─────────────────────────────────────────────── */}
+        {/* ── ZK solvency seal (proved, privacy-preserving) ─────────────── */}
+        <div style={{ marginBottom: "12px" }}>
+          <ZkSolvencyBadge
+            attestation={data.attestation}
+            loading={loading}
+            error={data.attestationError}
+            onReverify={fetchAll}
+            explorerUrl={`${config.explorerBase}/contract/${config.contracts.attestor}`}
+            nowMs={lastRefreshed?.getTime()}
+          />
+        </div>
+
+        {/* ── Solvency chip (public, on-chain invariant) ────────────────── */}
         <div style={{ marginBottom: "24px" }}>
           <SolvencyChip
             stableAssets={data.stableAssets}

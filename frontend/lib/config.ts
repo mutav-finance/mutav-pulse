@@ -15,6 +15,8 @@ export const config = {
     usdc: process.env.NEXT_PUBLIC_USDC_ID!,
     // Testnet-only demo faucet. Empty/undefined on mainnet.
     faucet: process.env.NEXT_PUBLIC_FAUCET_ID ?? "",
+    // ZK solvency attestor — read last_attestation for the ZkSolvencyBadge.
+    attestor: process.env.NEXT_PUBLIC_ATTESTOR_ID!,
   },
   // Classic asset behind the USDC SAC — needed to build the change_trust op and
   // to read the trustline/balance from Horizon.

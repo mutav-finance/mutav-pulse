@@ -1,7 +1,10 @@
 import { Client as VaultClient, type RedeemRequest, type StrategyAlloc } from "vault";
 import { Client as PolicyClient, type Guarantee } from "policy";
 import { Client as RegistryClient } from "registry";
+import { Client as AttestorClient, type Attestation } from "attestor";
 import { config } from "./config";
+
+export type { Attestation } from "attestor";
 
 function vaultClient(): VaultClient {
   return new VaultClient({
@@ -23,6 +26,14 @@ function registryClient(): RegistryClient {
   return new RegistryClient({
     rpcUrl: config.rpcUrl,
     contractId: config.contracts.registry,
+    networkPassphrase: config.networkPassphrase,
+  });
+}
+
+function attestorClient(): AttestorClient {
+  return new AttestorClient({
+    rpcUrl: config.rpcUrl,
+    contractId: config.contracts.attestor,
     networkPassphrase: config.networkPassphrase,
   });
 }
@@ -106,5 +117,13 @@ export const reads = {
   async registryActiveIds(): Promise<Array<number>> {
     const tx = await registryClient().active_ids();
     return tx.result;
+  },
+
+  /** Selo de solvência ZK: última atestação gravada on-chain (null se nunca houve).
+   *  `solvent` só é true p/ cobertura >= 100% (piso MIN_RATIO_BPS no attestor); o
+   *  frescor vem de `ts`/`ledger`. Leitura pública, sem carteira. */
+  async solvencyAttestation(): Promise<Attestation | null> {
+    const tx = await attestorClient().last_attestation();
+    return tx.result ?? null;
   },
 };
