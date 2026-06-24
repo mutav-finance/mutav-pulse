@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.0.0",
-  "description": "Reconstrução off-chain e prover do selo de solvência ZK (peça B em diante).",
+  "description": "Off-chain reconstruction and prover for the ZK solvency seal (piece B onward).",
   "scripts": {
     "derisk:merkle": "node derisk-merkle.mjs",
     "prove": "node prove.mjs",

@@ -77,8 +77,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize kit once on mount (client-side only). initKit é async (carrega a
-  // wallets-kit via import() dinâmico) — fire-and-forget aqui.
+  // Initialize kit once on mount (client-side only). initKit is async (loads the
+  // wallets-kit via dynamic import()) — fire-and-forget here.
   useEffect(() => {
     void initKit();
   }, []);

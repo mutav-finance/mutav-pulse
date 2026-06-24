@@ -4,10 +4,10 @@ use soroban_sdk::{contract, contractimpl, contracttype, vec, Address, Bytes, Byt
 use interfaces::{Guarantee, Registry as RegistryTrait};
 use soroban_poseidon::poseidon_hash;
 
-/// Profundidade fixa da árvore Merkle das garantias (2^5 = 32 garantias ativas no MVP).
-/// O circuito (peça B) tem que usar a MESMA profundidade.
-/// MVP: full-recompute O(n) por escrita. Para escala (100k+), migrar para Merkle Sum Tree
-/// incremental (atualização O(profundidade) + total de obrigações comprovado na raiz).
+/// Fixed depth of the guarantees Merkle tree (2^5 = 32 active guarantees in the MVP).
+/// The circuit (piece B) must use the SAME depth.
+/// MVP: full-recompute O(n) per write. For scale (100k+), migrate to an incremental
+/// Merkle Sum Tree (O(depth) update + total obligations proven in the root).
 const TREE_DEPTH: u32 = 5;
 
 #[contracttype]
@@ -17,7 +17,7 @@ enum DataKey {
     NextId,
     ActiveIds,    // Vec<u32>
     Guarantee(u32),
-    GuaranteesRoot, // BytesN<32> — selo Poseidon-Merkle das garantias ativas
+    GuaranteesRoot, // BytesN<32> — Poseidon-Merkle seal of the active guarantees
 }
 
 #[contract]
@@ -62,41 +62,41 @@ impl Registry {
         writer.require_auth();
     }
 
-    // --- Peça B: acumulador Poseidon-Merkle ---
+    // --- Piece B: Poseidon-Merkle accumulator ---
 
-    /// Poseidon de 2 entradas (t=3) — bate com o circomlib usado no circuito.
+    /// 2-input Poseidon (t=3) — matches the circomlib used in the circuit.
     fn hash2(e: &Env, a: U256, b: U256) -> U256 {
         poseidon_hash::<3, Bn254Fr>(e, &vec![e, a, b])
     }
 
-    /// Folha de uma garantia ativa = Poseidon(id, obrigação).
-    /// `obrigação = monthly_amount * (months_covered - months_used)` — mesma conta da
-    /// `coverage_required`. (Simplificação consciente: não filtra `paid_until > now`;
-    /// conta todas as ativas, tornando a obrigação provada um limite superior = lado seguro.)
+    /// Leaf of an active guarantee = Poseidon(id, obligation).
+    /// `obligation = monthly_amount * (months_covered - months_used)` — same computation as
+    /// `coverage_required`. (Conscious simplification: does not filter `paid_until > now`;
+    /// counts all active ones, making the proven obligation an upper bound = safe side.)
     ///
-    /// O writer (`policy`) garante `months_used <= months_covered` e `monthly_amount > 0` para
-    /// garantias ativas. Mesmo assim usamos aritmética saturante: se um dado malformado escapar,
-    /// a folha contribui obrigação 0 em vez de dar panic e travar o `put()` (a raiz fica errada,
-    /// mas a escrita não quebra). Para dados válidos o valor é idêntico.
+    /// The writer (`policy`) guarantees `months_used <= months_covered` and `monthly_amount > 0`
+    /// for active guarantees. We still use saturating arithmetic: if malformed data slips through,
+    /// the leaf contributes obligation 0 instead of panicking and locking up `put()` (the root is
+    /// wrong, but the write does not break). For valid data the value is identical.
     fn leaf(e: &Env, g: &Guarantee) -> U256 {
         let remaining = g.months_covered.saturating_sub(g.months_used) as i128;
         let obligation = g.monthly_amount.saturating_mul(remaining).max(0);
         Self::hash2(e, U256::from_u32(e, g.id), U256::from_u128(e, obligation as u128))
     }
 
-    /// Recalcula a raiz da árvore (profundidade fixa, folhas à esquerda, resto = zero).
-    /// Ordem das folhas = ordem de `active_ids()` (o prover off-chain lê a mesma ordem).
+    /// Recomputes the tree root (fixed depth, leaves to the left, rest = zero).
+    /// Leaf order = order of `active_ids()` (the off-chain prover reads the same order).
     fn compute_root(e: &Env) -> BytesN<32> {
         let active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
 
-        // Nível 0: as folhas das garantias ativas.
+        // Level 0: the leaves of the active guarantees.
         let mut level: Vec<U256> = Vec::new(e);
         for id in active.iter() {
             let g: Guarantee = e.storage().persistent().get(&DataKey::Guarantee(id)).unwrap();
             level.push_back(Self::leaf(e, &g));
         }
 
-        // Sobe TREE_DEPTH níveis; o sibling ausente é o "zero" daquele nível.
+        // Climbs TREE_DEPTH levels; the missing sibling is the "zero" of that level.
         let mut zero = U256::from_u32(e, 0);
         let mut d = 0u32;
         while d < TREE_DEPTH {
@@ -110,7 +110,7 @@ impl Registry {
                 j += 2;
             }
             if next.len() == 0 {
-                // árvore vazia: a raiz é a subárvore-zero deste nível.
+                // empty tree: the root is the zero-subtree of this level.
                 next.push_back(Self::hash2(e, zero.clone(), zero.clone()));
             }
             level = next;
@@ -152,13 +152,13 @@ impl RegistryTrait for Registry {
         let mut active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
         let present = active.iter().any(|x| x == g.id);
         if g.active && !present {
-            // A árvore tem capacidade fixa 2^TREE_DEPTH. Passar disso faria o
-            // `compute_root` devolver só a primeira sub-raiz (folhas excedentes
-            // somem da raiz E da soma de obrigações) → solvência falsa por omissão.
-            // Falhar alto em vez de corromper baixo: crescer exige upgrade coordenado
-            // (registry + circuito/VK), nunca silencioso.
+            // The tree has fixed capacity 2^TREE_DEPTH. Exceeding it would make
+            // `compute_root` return only the first sub-root (overflow leaves
+            // disappear from the root AND from the obligations sum) → false solvency
+            // by omission. Fail loud instead of corrupting silently: growing requires
+            // a coordinated upgrade (registry + circuit/VK), never silent.
             if active.len() >= (1u32 << TREE_DEPTH) {
-                panic!("registry: capacidade da arvore esgotada (max garantias ativas)");
+                panic!("registry: tree capacity exhausted (max active guarantees)");
             }
             active.push_back(g.id);
         } else if !g.active && present {

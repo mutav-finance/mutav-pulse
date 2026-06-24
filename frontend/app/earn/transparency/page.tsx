@@ -151,14 +151,14 @@ export default function TransparencyPage() {
       const snaps = appendSnap(navPerShare);
       const apy = estimateApy(snaps);
 
-      // Selo de solvência ZK — isolado: é um add-on, falha aqui NÃO derruba o
-      // dashboard. Distingue "erro de leitura" (badge error) de "sem prova" (null).
+      // ZK solvency seal — isolated: it's an add-on, a failure here does NOT take the
+      // dashboard down. Distinguishes a "read error" (badge error) from "no proof" (null).
       let attestation: Attestation | null = null;
       let attestationError: string | undefined;
       try {
         attestation = await reads.solvencyAttestation();
       } catch (e) {
-        attestationError = e instanceof Error ? e.message : "Falha ao ler a prova ZK";
+        attestationError = e instanceof Error ? e.message : "Failed to read the ZK proof";
       }
 
       // Phase 2: guarantee details (parallel per ID)

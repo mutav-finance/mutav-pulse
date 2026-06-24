@@ -11,8 +11,8 @@ export declare const networks: {
     };
 };
 /**
- * A "luz verde" gravada on-chain. `solvent` é sempre true quando gravada (uma
- * prova inválida reverte); o front lê o frescor por `ledger`/`ts`.
+ * The on-chain "green light". `solvent` is always true when recorded (an invalid
+ * proof reverts); the frontend reads freshness from `ledger`/`ts`.
  */
 export interface Attestation {
     ledger: u32;
@@ -21,7 +21,7 @@ export interface Attestation {
     ts: u64;
 }
 /**
- * Erros do attestor.
+ * Attestor errors.
  */
 export declare const AttestError: {
     0: {
@@ -34,32 +34,32 @@ export declare const AttestError: {
         message: string;
     };
     /**
-     * `now - nonce > WINDOW_SECS` — atestação velha demais.
+     * `now - nonce > WINDOW_SECS` — attestation too old.
      */
     3: {
         message: string;
     };
     /**
-     * `nonce > now` — atestação "do futuro".
+     * `nonce > now` — attestation "from the future".
      */
     4: {
         message: string;
     };
     /**
-     * registry/vault/oráculo ainda não foram setados.
+     * registry/vault/oracle have not been set yet.
      */
     5: {
         message: string;
     };
     /**
-     * `ratio_bps < MIN_RATIO_BPS` — faixa abaixo do piso de cobertura (100%).
+     * `ratio_bps < MIN_RATIO_BPS` — band below the coverage floor (100%).
      */
     6: {
         message: string;
     };
 };
 /**
- * Erros de verificação Groth16.
+ * Groth16 verification errors.
  */
 export declare const Groth16Error: {
     0: {
@@ -73,7 +73,7 @@ export declare const Groth16Error: {
     };
 };
 /**
- * Prova Groth16 = pontos A, B, C. B (G2) em ordem Soroban c1||c0.
+ * Groth16 proof = points A, B, C. B (G2) in Soroban order c1||c0.
  */
 export interface Groth16Proof {
     a: Buffer;
@@ -102,9 +102,9 @@ export interface Client {
     admin: (options?: MethodOptions) => Promise<AssembledTransaction<string>>;
     /**
      * Construct and simulate a attest transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     * Verifica a prova contra o estado on-chain ao vivo e grava a atestação.
-     * Públicos reconstruídos do estado real: prova feita p/ outro estado não verifica.
-     * `nonce` = timestamp assinado pelo oráculo (frescor). PERMISSIONLESS.
+     * Verifies the proof against the live on-chain state and records the attestation.
+     * Public inputs reconstructed from the real state: a proof made for another state won't verify.
+     * `nonce` = timestamp signed by the oracle (freshness). PERMISSIONLESS.
      */
     attest: ({ proof, ratio_bps, nonce }: {
         proof: Buffer;
@@ -131,8 +131,8 @@ export interface Client {
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
      * Construct and simulate a set_oracle transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     * Fixa a pubkey EdDSA do oráculo-banco (coords Ax/Ay como field elements BE).
-     * Sem isto, a peça A seria forjável (qualquer prover assinaria com a própria chave).
+     * Pins the bank-oracle EdDSA pubkey (Ax/Ay coords as BE field elements).
+     * Without this, piece A would be forgeable (any prover could sign with their own key).
      */
     set_oracle: ({ ax, ay }: {
         ax: Buffer;
@@ -146,7 +146,7 @@ export interface Client {
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
      * Construct and simulate a last_attestation transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     * Última atestação gravada (None se nunca houve). Leitura pública p/ o front.
+     * The last recorded attestation (None if there never was one). Public read for the frontend.
      */
     last_attestation: (options?: MethodOptions) => Promise<AssembledTransaction<Option<Attestation>>>;
 }

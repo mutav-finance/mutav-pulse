@@ -39,15 +39,15 @@
  *   OR use signAndSubmit(xdr) for raw XDR signing + submission outside bindings.
  */
 
-// ⚠️ A @creit.tech/stellar-wallets-kit acessa `localStorage` na AVALIAÇÃO do módulo.
-// Importá-la estaticamente quebra o prerender SSR: toda página passa pela root layout
-// → WalletProvider → este módulo, e o Next avalia o módulo no servidor. Por isso a kit
-// é carregada via import() dinâmico, só no cliente, dentro das funções abaixo.
-// O stellar-sdk é SSR-safe (não toca localStorage no load) e segue como import estático.
+// ⚠️ @creit.tech/stellar-wallets-kit touches `localStorage` at module EVALUATION.
+// Importing it statically breaks the SSR prerender: every page goes through the root
+// layout → WalletProvider → this module, and Next evaluates the module on the server.
+// That's why the kit is loaded via dynamic import(), client-side only, inside the
+// functions below. stellar-sdk is SSR-safe (no localStorage at load) and stays a static import.
 import { rpc as StellarRpc, TransactionBuilder, Networks as StellarNetworks } from "@stellar/stellar-sdk";
 import { config } from "./config";
 
-// Tipo só-para-tipagem (apagado em runtime — não emite import).
+// Type-only alias (erased at runtime — emits no import).
 type WalletsKit = typeof import("@creit.tech/stellar-wallets-kit").StellarWalletsKit;
 
 // ─── Kit init ────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ type WalletsKit = typeof import("@creit.tech/stellar-wallets-kit").StellarWallet
 let _kit: WalletsKit | null = null;
 let _kitReady = false;
 
-/** Carrega a wallets-kit sob demanda (client-side). Idempotente. */
+/** Loads the wallets-kit on demand (client-side). Idempotent. */
 async function getKit(): Promise<WalletsKit> {
   if (!_kit) {
     const { StellarWalletsKit } = await import("@creit.tech/stellar-wallets-kit");
@@ -67,7 +67,7 @@ async function getKit(): Promise<WalletsKit> {
 /**
  * Initialize the kit singleton. Call once on the client side (e.g. in
  * WalletProvider on mount). Safe to call multiple times — idempotent.
- * Async: carrega a kit + módulos via import() dinâmico (nunca avaliados no SSR).
+ * Async: loads the kit + modules via dynamic import() (never evaluated during SSR).
  */
 export async function initKit(): Promise<void> {
   if (_kitReady) return;

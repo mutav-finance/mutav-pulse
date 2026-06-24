@@ -1,452 +1,452 @@
-# Selo de Solvência ZK — Plano (MUTAV × Stellar Hacks: Real-World ZK)
+# ZK Solvency Seal — Plan (MUTAV × Stellar Hacks: Real-World ZK)
 
 > Hackathon: **Stellar Hacks: Real-World ZK** (DoraHacks / Stellar Development Foundation).
-> Entregável: repositório (e vídeo de demo — _fora do escopo deste plano por decisão do time_).
-> Palco: a página **`frontend/app/earn/transparency/page.tsx`** deste repo — front **Investidor** (dark + âmbar). Público = quem investe no fundo (holder de `mtvR`).
+> Deliverable: repository (and a demo video — _out of scope for this plan by team decision_).
+> Stage: the **`frontend/app/earn/transparency/page.tsx`** page in this repo — the **Investor** front (dark + amber). Audience = people who invest in the fund (holders of `mtvR`).
 
 ---
 
-## 1. A ideia em uma frase
+## 1. The idea in one sentence
 
-Hoje o `SolvencyChip` da página de transparência diz _"o fundo está coberto"_ — mas só prova com o que está **público na chain**. Vamos adicionar um **selo provado matematicamente (ZK)** que cobre **também o que é secreto**: dinheiro no banco (A), a lista de clientes (B) e o conjunto de carteiras (C). O investidor ganha um **"✅ coberto, e é verdade comprovada — suas cotas estão lastreadas"** sem que o fundo exponha nenhum desses dados.
+Today the `SolvencyChip` on the transparency page says _"the fund is covered"_ — but it only proves it with what is **public on-chain**. We'll add a **mathematically proven seal (ZK)** that also covers **what is secret**: money in the bank (A), the customer list (B), and the set of wallets (C). The investor gets a **"✅ covered, and it's provably true — your shares are backed"** without the fund exposing any of that data.
 
-É o padrão clássico **proof of reserves / proof of solvency** (o que exchanges sérias adotaram pós-FTX): provar solvência aos depositantes/investidores sem abrir a carteira inteira.
+This is the classic **proof of reserves / proof of solvency** pattern (the one serious exchanges adopted post-FTX): proving solvency to depositors/investors without opening the whole wallet.
 
-## 2. O que é ZK aqui (linguagem de gente)
+## 2. What ZK is here (plain language)
 
-Provar que uma afirmação é **verdadeira sem mostrar os dados por trás**. Analogia: provar que você tem +18 acendendo uma **luz verde**, sem entregar o RG. A prova é gerada **fora da chain** (no nosso computador) e **verificada on-chain** num contrato Soroban (barato e rápido — Protocolo 25/26, host functions BN254 + Poseidon).
+Proving that a statement is **true without showing the data behind it**. Analogy: proving you're 18+ by turning on a **green light**, without handing over your ID. The proof is generated **off-chain** (on our computer) and **verified on-chain** in a Soroban contract (cheap and fast — Protocol 25/26, BN254 + Poseidon host functions).
 
-## 3. A conta única
+## 3. The single equation
 
-As três peças alimentam **uma só prova**:
+The three pieces feed **one single proof**:
 
 ```
-Reservas (vault on-chain + A banco + C carteiras)  ≥  Obrigações (B lista de garantias) × faixa
+Reserves (vault on-chain + A bank + C wallets)  ≥  Obligations (B guarantee list) × band
 ```
 
-- **Sai público (a "luz verde"):** apenas `solvente = sim/não` + uma **faixa** de saúde (ex.: "≥100%", "≥120%") + carimbo de momento/ledger. Nunca os valores.
-- **Fica secreto:** valores das reservas, onde está o dinheiro, composição/estratégia, e a lista de clientes (LGPD).
+- **What goes public (the "green light"):** only `solvent = yes/no` + a health **band** (e.g., "≥100%", "≥120%") + a moment/ledger stamp. Never the values.
+- **What stays secret:** reserve values, where the money is, composition/strategy, and the customer list (LGPD).
 
 ---
 
-## 4. Escolha técnica — **ATUALIZADA** (Trilha A = Circom, recomendada)
+## 4. Technical choice — **UPDATED** (Track A = Circom, recommended)
 
-A pesquisa mudou a recomendação. Existem **peças prontas da Stellar/Nethermind em Circom** que cobrem quase exatamente o nosso caso — em especial a peça B (lista ancorada num Merkle root), que é a parte mais difícil e a mais importante.
+Research changed the recommendation. There are **ready-made Stellar/Nethermind pieces in Circom** that cover almost exactly our case — especially piece B (a list anchored in a Merkle root), which is the hardest and most important part.
 
-### ✅ Trilha A — Circom + snarkjs + circom2soroban (RECOMENDADA)
-- **Por quê:** a peça B é uma **árvore Merkle com Poseidon** (no nosso caso o circuito **recompõe a raiz inteira** de todas as folhas — ver 6.2 — não inclusão de 1 folha) — e o repo `stellar-private-payments` já traz esses blocos prontos (`main.circom` + **Poseidon**, dos quais reusamos o hashing da árvore), a ferramenta **`circom2soroban`** (converte chave de verificação/prova/inputs em Rust para o contrato) e o **`coinutils`** (reconstrói a Merkle tree). E o `soroban-examples/groth16_verifier` é um **verificador Groth16 oficial pronto** pra usar de base.
-- **Custo:** escrever verificação de assinatura (peças A/C) em Circom dá mais trabalho → usamos **EdDSA do circomlib** (`eddsaposeidon`), amigável a circuito. (A chave-oráculo é nossa/simulada de qualquer jeito, então não precisa ser a ed25519 da Stellar.)
+### ✅ Track A — Circom + snarkjs + circom2soroban (RECOMMENDED)
+- **Why:** piece B is a **Merkle tree with Poseidon** (in our case the circuit **recomputes the entire root** from all leaves — see 6.2 — not single-leaf inclusion) — and the `stellar-private-payments` repo already provides these ready-made building blocks (`main.circom` + **Poseidon**, of which we reuse the tree hashing), the **`circom2soroban`** tool (converts verification key/proof/inputs into Rust for the contract), and **`coinutils`** (reconstructs the Merkle tree). And `soroban-examples/groth16_verifier` is an **official ready-made Groth16 verifier** to use as a base.
+- **Cost:** writing signature verification (pieces A/C) in Circom is more work → we use **EdDSA from circomlib** (`eddsaposeidon`), which is circuit-friendly. (The oracle key is ours/simulated anyway, so it doesn't have to be Stellar's ed25519.)
 
-### 🅱️ Trilha B — RISC Zero (FALLBACK)
-- Escreve-se a regra em Rust comum; **Nethermind tem o verificador pronto** (`stellar-risc0-verifier`). Bom se a parte de assinatura no Circom travar.
-- **Contras:** provas mais pesadas (precisa Docker), verificador maior/não auditado (router + timelock + emergency-stop), e **a Merkle teria que ser escrita no guest** (não vem pronta).
+### 🅱️ Track B — RISC Zero (FALLBACK)
+- You write the rule in plain Rust; **Nethermind has the verifier ready** (`stellar-risc0-verifier`). Good if the signature part in Circom gets stuck.
+- **Cons:** heavier proofs (requires Docker), a larger/unaudited verifier (router + timelock + emergency-stop), and **the Merkle would have to be written in the guest** (not provided ready-made).
 
-> **Decisão:** começar pela Trilha A. O Dia 1 é só de-riscar essa trilha de ponta a ponta. Se a assinatura no Circom virar gargalo, A/C caem para um esquema de **commitment Poseidon** (mais simples) ou migramos só essa parte para a Trilha B.
+> **Decision:** start with Track A. Day 1 is purely de-risking that track end-to-end. If the signature in Circom becomes a bottleneck, A/C fall back to a **Poseidon commitment** scheme (simpler) or we migrate just that part to Track B.
 
-### Nota de orçamento on-chain ⚠️
-Verificar **uma** prova Groth16 custa ~**40 milhões de instruções (~40% do budget de uma transação no testnet)**. Logo: **uma prova agregada por atestação** (não várias), e o `solvency_attestor` precisa ser enxuto. Nosso design já é assim (uma prova cobre A+B+C).
+### On-chain budget note ⚠️
+Verifying **one** Groth16 proof costs ~**40 million instructions (~40% of a transaction's budget on testnet)**. Therefore: **one aggregated proof per attestation** (not several), and `solvency_attestor` must be lean. Our design is already this way (one proof covers A+B+C).
 
 ---
 
-## 5. Materiais da Stellar/Nethermind reaproveitáveis
+## 5. Reusable Stellar/Nethermind materials
 
-| Repo / recurso | O que nos dá | Onde usamos |
+| Repo / resource | What it gives us | Where we use it |
 |---|---|---|
-| **`stellar/soroban-examples` → `groth16_verifier`** | Exemplo Groth16 oficial — mas **BLS12-381 + soroban-sdk 25** (curva e SDK errados p/ nós, que precisamos de BN254 por causa do Poseidon). Útil só como referência do formato `proof.json`/`verification_key.json`/`public.json`. | Referência de formato; **NÃO** é a base do attestor. |
-| **`NethermindEth/stellar-private-payments`** (docs: `nethermindeth.github.io/stellar-private-payments`) | **`contracts/circom-groth16-verifier`** — verificador Groth16 **BN254 + sdk 26** usando host functions `env.crypto().bn254()` (`g1_mul`/`g1_add`/`pairing_check`); **`build.rs` + crate `circuit-keys`** = o "circom2soroban" (lê `verification_key.json` via `VERIFIER_VK_JSON` → embute `vk.rs`). Circuitos `merkleProof.circom`/`merkleTree.circom` + `poseidon2/`. | **Base real do `solvency_attestor`** (Stage 4); peça **B** do circuito; padrão de VK embutida. _Confirmado no de-risco._ |
-| **`stellar/rs-soroban-poseidon`** (crate `soroban-poseidon`) | Poseidon/Poseidon2 on-chain prontos (`poseidon_hash::<3, Bn254Fr>`); **BN254 = circomlib por construção** (sponge igual ao `poseidon.circom`). Apontado pela própria doc do soroban-sdk. | **Raiz Poseidon-Merkle on-chain no `registry`** (Stage 1), batendo com o circuito sem alinhar constantes à mão. _Roda na nossa VM — confirmado no de-risco._ |
-| **`NethermindEth/stellar-risc0-verifier`** | Verificador RISC Zero (VerifierRouter por seletor de 4 bytes, Groth16Verifier, TimelockController, EmergencyStop). `verify(journal, image_id, seal)`. _Não auditado._ | Trilha B (fallback). |
-| **`jayz22/soroban-examples` (branch `p25-preview`)** | Exemplos de uso das host functions P25 (BN254 `g1_add`/`g1_mul`/`pairing_check`, Poseidon `poseidon`/`poseidon2`). | Referência de API on-chain. |
-| **`indextree/ultrahonk_soroban_contract`** | Verificador UltraHonk (caminho Noir/barretenberg). | Só se um dia formos de Noir. |
-| **soroban-sdk migration docs** — `_migrating/v25_bn254` e `v25_poseidon` (docs.rs) | API exata de BN254 e Poseidon no contrato. | Implementação do `solvency_attestor`. |
-| **`stellar-protocol` CAP-0074 / CAP-0075** | Spec das host functions de curva/hash. | Referência de fundo. |
+| **`stellar/soroban-examples` → `groth16_verifier`** | Official Groth16 example — but **BLS12-381 + soroban-sdk 25** (wrong curve and SDK for us, since we need BN254 because of Poseidon). Useful only as a reference for the `proof.json`/`verification_key.json`/`public.json` format. | Format reference; **NOT** the basis of the attestor. |
+| **`NethermindEth/stellar-private-payments`** (docs: `nethermindeth.github.io/stellar-private-payments`) | **`contracts/circom-groth16-verifier`** — a Groth16 verifier for **BN254 + sdk 26** using the host functions `env.crypto().bn254()` (`g1_mul`/`g1_add`/`pairing_check`); **`build.rs` + the `circuit-keys` crate** = the "circom2soroban" (reads `verification_key.json` via `VERIFIER_VK_JSON` → embeds `vk.rs`). Circuits `merkleProof.circom`/`merkleTree.circom` + `poseidon2/`. | **Real base for `solvency_attestor`** (Stage 4); piece **B** of the circuit; embedded-VK pattern. _Confirmed in the de-risking._ |
+| **`stellar/rs-soroban-poseidon`** (crate `soroban-poseidon`) | Ready-made on-chain Poseidon/Poseidon2 (`poseidon_hash::<3, Bn254Fr>`); **BN254 = circomlib by construction** (sponge identical to `poseidon.circom`). Pointed to by the soroban-sdk docs themselves. | **On-chain Poseidon-Merkle root in `registry`** (Stage 1), matching the circuit without aligning constants by hand. _Runs on our VM — confirmed in the de-risking._ |
+| **`NethermindEth/stellar-risc0-verifier`** | RISC Zero verifier (VerifierRouter by 4-byte selector, Groth16Verifier, TimelockController, EmergencyStop). `verify(journal, image_id, seal)`. _Unaudited._ | Track B (fallback). |
+| **`jayz22/soroban-examples` (branch `p25-preview`)** | Examples of using the P25 host functions (BN254 `g1_add`/`g1_mul`/`pairing_check`, Poseidon `poseidon`/`poseidon2`). | On-chain API reference. |
+| **`indextree/ultrahonk_soroban_contract`** | UltraHonk verifier (Noir/barretenberg path). | Only if we ever go Noir. |
+| **soroban-sdk migration docs** — `_migrating/v25_bn254` and `v25_poseidon` (docs.rs) | The exact BN254 and Poseidon API in the contract. | Implementation of `solvency_attestor`. |
+| **`stellar-protocol` CAP-0074 / CAP-0075** | Spec of the curve/hash host functions. | Background reference. |
 
 ---
 
-## 6. Arquitetura técnica detalhada
+## 6. Detailed technical architecture
 
-### 6.1 Fluxo de ponta a ponta
+### 6.1 End-to-end flow
 ```
 [on-chain]                 [off-chain: prover service (Node/TS + snarkjs)]            [on-chain]
 registry.guarantees_root() ─┐
-vault.stable_assets()       ─┤→ monta witness (lista+paths B, banco+sig A,           solvency_attestor.attest(proof, public)
-                             │   carteiras+sig C) → snarkjs groth16 fullProve ──────→  ├─ verifica Groth16 (BN254 pairing_check)
-atestações assinadas (A,C) ─┘   → proof.json + public.json                            ├─ confere public.root == registry.guarantees_root() (live)
-                                                                                       ├─ confere public.stable == vault.stable_assets() (live)
-                                                                                       ├─ confere frescor (ledger/timestamp)
-                                                                                       └─ grava last_attestation{solvent, faixa, ledger, ts}
+vault.stable_assets()       ─┤→ build witness (list+paths B, bank+sig A,             solvency_attestor.attest(proof, public)
+                             │   wallets+sig C) → snarkjs groth16 fullProve ────────→  ├─ verify Groth16 (BN254 pairing_check)
+signed attestations (A,C)   ─┘   → proof.json + public.json                            ├─ check public.root == registry.guarantees_root() (live)
+                                                                                       ├─ check public.stable == vault.stable_assets() (live)
+                                                                                       ├─ check freshness (ledger/timestamp)
+                                                                                       └─ write last_attestation{solvent, band, ledger, ts}
                                                                                                   │
-frontend lê reads.solvencyAttestation() ←──────────────────────────────────────────────────────┘
+frontend reads reads.solvencyAttestation() ←─────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Especificação do circuito (`solvency.circom`) — MVP A+B
-**Sinais públicos** (entram na verificação on-chain):
-- `guarantees_root` — Poseidon-Merkle root das garantias ativas (lido do `registry`).
-- `vault_stable_assets` — lido do `vault` (amarra a prova ao estado on-chain atual).
-- `ratio_bps` — faixa provada em basis points (ex.: `10000` = 100%, `12000` = 120%).
-- `nonce` — anti-replay / frescor.
+### 6.2 Circuit specification (`solvency.circom`) — MVP A+B
+**Public signals** (enter the on-chain verification):
+- `guarantees_root` — Poseidon-Merkle root of the active guarantees (read from `registry`).
+- `vault_stable_assets` — read from `vault` (binds the proof to the current on-chain state).
+- `ratio_bps` — the proven band in basis points (e.g., `10000` = 100%, `12000` = 120%).
+- `nonce` — anti-replay / freshness.
 
-**Sinais privados** (witness, nunca saem):
-- Peça **B**: o circuito recebe **todas as folhas ativas** `(id, obrigação)` e **recompõe a raiz inteira** (depth-8, Poseidon), **exigindo `== guarantees_root`**; soma **todas** as `obrigações` → `obligations`. _Anti-omissão: omitir uma folha muda a raiz, que então não bate com a on-chain. **Não** usa provas de inclusão por-folha (que não impediriam omissão)._
-- Peça **A**: `bank_balance` + assinatura EdDSA do oráculo-banco (chave pública embutida). Verifica a assinatura → soma em `reserves`.
-- Peça **C** (stretch): `wallet_balances[]` + assinatura EdDSA do oráculo-custódia. Soma em `reserves`.
+**Private signals** (witness, never leave):
+- Piece **B**: the circuit receives **all active leaves** `(id, obligation)` and **recomputes the entire root** (depth-8, Poseidon), **requiring `== guarantees_root`**; it sums **all** the `obligations` → `obligations`. _Anti-omission: omitting a leaf changes the root, which then doesn't match the on-chain one. It does **not** use per-leaf inclusion proofs (which would not prevent omission)._
+- Piece **A**: `bank_balance` + the bank oracle's EdDSA signature (embedded public key). Verifies the signature → adds to `reserves`.
+- Piece **C** (stretch): `wallet_balances[]` + the custody oracle's EdDSA signature. Adds to `reserves`.
 
-**Restrição principal (a prova):**
+**Main constraint (the proof):**
 ```
 reserves = vault_stable_assets + bank_balance + Σ wallet_balances
 assert  reserves * 10000 >= obligations * ratio_bps
 ```
-Sem saída secreta: os sinais públicos já carregam a afirmação ("a esta root, neste estado de vault, a esta faixa: solvente").
+No secret output: the public signals already carry the statement ("at this root, in this vault state, at this band: solvent").
 
-### 6.3 Contrato `solvency_attestor` (Soroban, base = `circom-groth16-verifier` da Nethermind — BN254)
+### 6.3 `solvency_attestor` contract (Soroban, base = Nethermind's `circom-groth16-verifier` — BN254)
 ```
 attest(proof: Proof, public: PublicInputs) -> ()
-  1. groth16_verify(VK_EMBUTIDA, proof, public)            // BN254 pairing_check
-  2. require(public.guarantees_root == registry.guarantees_root())   // anti-prova-velha/forjada
-  3. require(public.vault_stable_assets == vault.stable_assets())    // amarra ao estado atual
-  4. require(env.ledger().timestamp() - public.nonce_ts <= JANELA)   // frescor
+  1. groth16_verify(EMBEDDED_VK, proof, public)           // BN254 pairing_check
+  2. require(public.guarantees_root == registry.guarantees_root())   // anti stale/forged proof
+  3. require(public.vault_stable_assets == vault.stable_assets())    // bind to current state
+  4. require(env.ledger().timestamp() - public.nonce_ts <= WINDOW)   // freshness
   5. storage.set(last_attestation, Attestation{ solvent: true, ratio_bps: public.ratio_bps,
                                                 ledger: env.ledger().sequence(), ts })
 
-last_attestation() -> Attestation                          // read público p/ o frontend
+last_attestation() -> Attestation                          // public read for the frontend
 ```
-A chave de verificação (`verification_key.json`) é **embutida no contrato** em tempo de build via o `build.rs` + crate `circuit-keys` da Nethermind (env `VERIFIER_VK_JSON` → `vk.rs`); não é parâmetro — garante que só provas do nosso circuito passam.
+The verification key (`verification_key.json`) is **embedded in the contract** at build time via Nethermind's `build.rs` + `circuit-keys` crate (env `VERIFIER_VK_JSON` → `vk.rs`); it is not a parameter — this guarantees that only proofs from our circuit pass.
 
-### 6.4 `registry` — novo `guarantees_root()` (peça B)
-- Manter um acumulador **Poseidon-Merkle** das garantias ativas (folha = `Poseidon(id, obrigação)`, com `obrigação = monthly_amount*(months_covered-months_used)`; o `active` é implícito porque só ativas viram folha), atualizado nas transições (criar/expirar/quitar) — respeitando "só `policy` escreve". Hash on-chain via crate **`soroban-poseidon`** (`poseidon_hash::<3, Bn254Fr>`), que bate com o `poseidon.circom` do circomlib usado no circuito.
-- Expor `guarantees_root() -> BytesN<32>` (leitura pública). É o "selo da lista" que o circuito e o attestor cruzam.
-- Manter a árvore reconstrutível off-chain (o `coinutils` do private-payments serve de referência) para o prover montar a **lista completa de folhas** (na ordem de `active_ids()`) que o circuito recompõe.
-- **Profundidade:** `TREE_DEPTH = 5` (32 garantias) no MVP — tem que casar com o circuito. Trocável depois via upgrade coordenado (registry + circuito/VK + attestor), sem mover fundos.
-- **⚠️ Escalabilidade (v2, pós-MVP):** o desenho atual é **full-recompute O(n)** por `put()` e por prova — não escala além de ~milhares de garantias. Para 100k+ (ex.: 200k contratos em ~5 anos), migrar para **Merkle Sum Tree incremental**: cada nó guarda a soma das obrigações abaixo (o **total fica na raiz**, lido O(1)) e cada escrita atualiza só o caminho da folha (O(profundidade), não O(n)). A prova ZK passa a provar o lado das **reservas** contra o total comprovado na raiz. A Nethermind tem um `smt/` de referência. A modularidade (registry trocável + `upgrade()`) permite essa migração sem mover dinheiro.
+### 6.4 `registry` — new `guarantees_root()` (piece B)
+- Maintain a **Poseidon-Merkle** accumulator of the active guarantees (leaf = `Poseidon(id, obligation)`, with `obligation = monthly_amount*(months_covered-months_used)`; `active` is implicit because only active ones become leaves), updated on transitions (create/expire/settle) — respecting "only `policy` writes". On-chain hashing via the **`soroban-poseidon`** crate (`poseidon_hash::<3, Bn254Fr>`), which matches the circomlib `poseidon.circom` used in the circuit.
+- Expose `guarantees_root() -> BytesN<32>` (public read). It is the "list seal" that the circuit and the attestor cross-check.
+- Keep the tree reconstructible off-chain (private-payments' `coinutils` serves as a reference) so the prover can build the **complete leaf list** (in the order of `active_ids()`) that the circuit recomputes.
+- **Depth:** `TREE_DEPTH = 5` (32 guarantees) in the MVP — it must match the circuit. Changeable later via a coordinated upgrade (registry + circuit/VK + attestor), without moving funds.
+- **⚠️ Scalability (v2, post-MVP):** the current design is **full-recompute O(n)** per `put()` and per proof — it doesn't scale beyond ~thousands of guarantees. For 100k+ (e.g., 200k contracts in ~5 years), migrate to an **incremental Merkle Sum Tree**: each node stores the sum of the obligations below it (the **total lives in the root**, read O(1)) and each write updates only the leaf's path (O(depth), not O(n)). The ZK proof then proves the **reserves** side against the total proven in the root. Nethermind has a reference `smt/`. The modularity (swappable registry + `upgrade()`) allows this migration without moving money.
 
 ### 6.5 Prover service (off-chain, Node/TS + snarkjs)
-1. Lê on-chain: garantias + `guarantees_root`, `vault.stable_assets`.
-2. Junta privados: atestação de banco assinada (A), snapshot de carteiras assinado (C), **lista completa de folhas** (B).
-3. `snarkjs groth16 fullProve` (ou WASM no browser, como no private-payments) → `proof.json` + `public.json`.
-4. Submete `solvency_attestor.attest(proof, public)`.
-> No hackathon, as chaves-oráculo (banco/custódia) são nossas e o serviço pode rodar via cron/manual. README deixa explícito o que é simulado.
+1. Reads on-chain: guarantees + `guarantees_root`, `vault.stable_assets`.
+2. Collects the privates: signed bank attestation (A), signed wallet snapshot (C), **complete leaf list** (B).
+3. `snarkjs groth16 fullProve` (or WASM in the browser, as in private-payments) → `proof.json` + `public.json`.
+4. Submits `solvency_attestor.attest(proof, public)`.
+> At the hackathon, the oracle keys (bank/custody) are ours and the service can run via cron/manually. The README makes explicit what is simulated.
 
 ---
 
-## 7. As três peças (A / B / C)
+## 7. The three pieces (A / B / C)
 
-### Peça A — Reserva no banco (dinheiro fora da blockchain)
-- **O que é:** parte da reserva está num banco; o explorer não vê. A peça A inclui esse dinheiro na prova sem mostrar extrato/conta.
-- **Como aplicar (técnico):** chave-oráculo do banco assina `(saldo, data, id_conta)` com **EdDSA-Poseidon (circomlib)**. O circuito **verifica a assinatura** e soma o saldo em `reserves`. O `solvency_attestor` confere frescor.
-- **Riscos:** "lixo entra, lixo sai" (confia no oráculo) → frescor + Open Finance no futuro; assinatura/chave → proteção/rotação; **simulado no hackathon → declarar no README**. Se a EdDSA no circuito travar: cair para **commitment Poseidon** do saldo (mais simples).
-- **Por que importa:** sem A, só se prova o on-chain — mas a reserva real do MUTAV mora parte no banco. A torna a prova **fiel à realidade**.
+### Piece A — Bank reserve (money off the blockchain)
+- **What it is:** part of the reserve sits in a bank; the explorer doesn't see it. Piece A includes that money in the proof without showing the statement/account.
+- **How to apply it (technical):** the bank oracle key signs `(balance, date, account_id)` with **EdDSA-Poseidon (circomlib)**. The circuit **verifies the signature** and adds the balance to `reserves`. `solvency_attestor` checks freshness.
+- **Risks:** "garbage in, garbage out" (trusts the oracle) → freshness + Open Finance in the future; signature/key → protection/rotation; **simulated at the hackathon → declare it in the README**. If EdDSA in the circuit gets stuck: fall back to a **Poseidon commitment** of the balance (simpler).
+- **Why it matters:** without A, you only prove the on-chain side — but MUTAV's real reserve partly lives in the bank. A makes the proof **faithful to reality**.
 
-### Peça B — Lista de garantias / clientes (as obrigações) 👑
-- **O que é:** a lista de contratos/clientes (sensível) fica **secreta**, mas prova-se que a conta usou a **lista inteira e verdadeira** — sem omitir ninguém.
-- **Como aplicar (técnico):** `registry.guarantees_root()` (Poseidon-Merkle) publicado on-chain. O circuito de inclusão (reuso do `main.circom` do private-payments) recomputa a root a partir das folhas+siblings privados e **exige `== guarantees_root`**; soma as obrigações. O `solvency_attestor` **reconfere a root ao vivo**.
-- **Riscos:** trapaça por omissão → **a root impede** (lista adulterada não bate); root desatualizada → atualizar a cada transição + frescor.
-- **Por que importa:** **joia da coroa** — transforma "número digitado" em **prova anti-trapaça**, protege o cliente (LGPD), e abre caminho pra **despoluir a `GuaranteeTable`** sem perder confiança. **É a peça com mais código pronto pra reusar.**
+### Piece B — Guarantee / customer list (the obligations) 👑
+- **What it is:** the contract/customer list (sensitive) stays **secret**, but it is proven that the equation used the **whole, true list** — without omitting anyone.
+- **How to apply it (technical):** `registry.guarantees_root()` (Poseidon-Merkle) published on-chain. The inclusion circuit (reusing private-payments' `main.circom`) recomputes the root from the private leaves+siblings and **requires `== guarantees_root`**; it sums the obligations. `solvency_attestor` **re-checks the root live**.
+- **Risks:** cheating by omission → **the root prevents it** (a tampered list won't match); stale root → update on every transition + freshness.
+- **Why it matters:** **the crown jewel** — it turns a "typed-in number" into an **anti-tamper proof**, protects the customer (LGPD), and opens the path to **decluttering the `GuaranteeTable`** without losing trust. **It's the piece with the most ready-made code to reuse.**
 
-### Peça C — Conjunto de carteiras do fundo (o "mapa")
-- **O que é:** soma o saldo de várias carteiras **sem revelar quais** são.
-- **Como aplicar (técnico):** snapshot assinado (EdDSA) dos saldos por carteira entra como witness; o circuito soma em `reserves`; endereços nunca saem. (Versão forte: prova de controle, não só saldo.)
-- **Riscos:** saldo ≠ controle → controle fica como melhoria; endereços inferíveis por valores específicos → agregar em faixas; **escopo → stretch goal** (primeiro a cortar).
-- **Por que importa:** protege estrutura/segurança e permite reserva **distribuída** sem expor o mapa.
+### Piece C — The fund's set of wallets (the "map")
+- **What it is:** sums the balance of several wallets **without revealing which** they are.
+- **How to apply it (technical):** a signed snapshot (EdDSA) of the per-wallet balances enters as the witness; the circuit adds it to `reserves`; addresses never leave. (Strong version: proof of control, not just balance.)
+- **Risks:** balance ≠ control → control becomes an improvement; addresses inferable from specific values → aggregate into bands; **scope → stretch goal** (first to cut).
+- **Why it matters:** protects structure/security and enables a **distributed** reserve without exposing the map.
 
-**Resumo:** **A** torna a prova **real** (inclui o banco), **B** torna a prova **honesta** (anti-trapaça + protege cliente), **C** torna a prova **completa** (todas as carteiras).
-
----
-
-## 8. Stages — Trilha A (Circom)
-
-Organização **vertical** (um grupo de stages por componente), cada stage quebrado em
-sub-passos pequenos e independentes — montagem tipo lego, peça por peça. Sem datas: a
-ordem é por dependência, não por relógio. Avançar só quando o **critério de saída** do
-sub-passo fecha.
-
-**Por que um Stage 0 antes do vertical:** o maior risco não é nenhum componente — é a
-toolchain (`circom2soroban` + `pairing_check` BN254 + host function `poseidon`) não rodar
-no nosso deploy de testnet. Vertical puro só descobre isso no attestor (4º componente).
-O Stage 0 é um spike fino e descartável que prova a viabilidade da Trilha A **antes** de
-investir em registry/circuito. Depois dele, os componentes são legos independentes.
-
-**Gate serial único:** só **prover → attestor** é estritamente sequencial (o attestor
-precisa da VK que sai do circuito). Todo o resto paraleliza: o **front (Stage 5) pode
-começar mockado** desde já; **registry (Stage 1)** e **circuito (Stage 2)** são testáveis
-isoladamente (root on-chain sozinha; prova local com snarkjs sem chain).
+**Summary:** **A** makes the proof **real** (includes the bank), **B** makes the proof **honest** (anti-tamper + protects the customer), **C** makes the proof **complete** (all wallets).
 
 ---
 
-### Stage 0 — De-risco da Trilha A (spike fino) ✅ CONCLUÍDO (Opção B: confirmação local, sem testnet)
-- **0.1** ✅ Toolchain instalada: **circom 2.2.3**, **snarkjs 0.7.6**, Node 25, **Stellar CLI 26.0.0**,
-  Rust 1.96 + wasm32. (circom era um binário pré-compilado em `~/.cargo/bin`.)
-- **0.2** ✅ Circuito trivial (`c = a*b`) → snarkjs (bn128) → `proof.json`/`public.json` →
-  `snarkjs groth16 verify` = **OK**. Esteira de proving validada na máquina.
-- **0.3** ✅ BN254 na VM de teste: mini-crate com `soroban-sdk 26.1.0` →
-  `env.crypto().bn254()`. `cargo test` passou: aritmética de curva (`g1_is_on_curve`,
-  `g1_add`, `g1_mul` → `G+G == 2G`) **e o `pairing_check`** — o núcleo do Groth16 —
-  executando de fato (testado por dois lados: `e(G1,G2) ≠ 1` e bilinearidade
-  `e(G1,G2)·e(-G1,G2) = 1`, com o gerador G2 no formato Ethereum `c1||c0` do host).
-  **Sem feature especial.** _(deploy real na testnet → adiado p/ Stage 4)_
-- **0.4** ✅ Poseidon on-chain: crate **`soroban-poseidon`** (`poseidon_hash::<3, Bn254Fr>`)
-  roda na VM de teste e **bate com o vetor canônico do circomlib** — `poseidon([1,2])` ==
-  `0x115cc0f5…7189a` (cross-check empírico, não só a palavra do README). Isso confirma a
-  invariante central do Stage 1: raiz on-chain == raiz do circuito. _(host fn crua:
-  `CryptoHazmat::poseidon2_permutation`, feature `hazmat-crypto` — mas usamos o crate.)_
-- **Saída alcançada:** Trilha A viável e provada localmente — toolchain, `pairing_check` e
-  Poseidon↔circomlib todos com evidência. **Continuam abertos (adiados p/ Stage 4, por
-  decisão da Opção B):** (a) a *emenda* completa — pegar um `proof.json` real do snarkjs e
-  verificá-lo dentro de um contrato (vendorizar a peça Nethermind); (b) deploy na testnet;
-  (c) **medir o custo real de instruções** (o "~40% do budget" é do plano, ainda não medido).
-- **Artefatos do spike:** em `scratchpad/zk-spike/` (descartável, fora do repo).
+## 8. Stages — Track A (Circom)
 
-> **Correções que o de-risco trouxe ao plano (ver Seções 5 e 6):**
-> 1. Verificador-base = `circom-groth16-verifier` da **Nethermind** (BN254 + sdk 26), **não** o
->    `groth16_verifier` oficial (esse é BLS12-381 + sdk 25 — curva e SDK errados p/ nós).
-> 2. "circom2soroban" = `build.rs` + crate `circuit-keys` da Nethermind (lê `verification_key.json`
->    via env `VERIFIER_VK_JSON` → gera `vk.rs` embutido).
-> 3. Poseidon on-chain = crate `soroban-poseidon` (org Stellar), circomlib-compatível.
+A **vertical** organization (one group of stages per component), each stage broken into
+small, independent sub-steps — lego-style assembly, piece by piece. No dates: the
+order is by dependency, not by the clock. Advance only when the **exit criterion** of the
+sub-step closes.
 
-### Stage 1 — Peça B: âncora da lista no `registry` ✅ CONCLUÍDO
-- **1.1** ✅ Folha = `Poseidon(id, obrigação)`, `obrigação = monthly_amount*(months_covered-months_used)`
-  (mesma conta da `coverage_required`). Árvore binária de **profundidade fixa 8** (até 256
-  garantias), folhas à esquerda, sibling ausente = 0, pai = `Poseidon(esq, dir)`. Ordem das
-  folhas = ordem de `active_ids()`. Só garantias **ativas** são folhas.
-  _Simplificação consciente:_ não filtra `paid_until > now` (conta todas as ativas) → obrigação
-  provada é limite superior = lado seguro; na demo (garantias em dia) bate exato.
-- **1.2** ✅ `registry` recalcula a raiz a cada `put()` via `soroban-poseidon`
-  (`poseidon_hash::<3, Bn254Fr>`), respeitando o writer-gating.
-- **1.3** ✅ `guarantees_root() -> BytesN<32>` (no `interfaces` + `RegistryClient`, leitura pública).
-- **1.4** ✅ Reconstrução off-chain em `prover/merkle.mjs` (circomlibjs): `computeRoot` sobre a
-  **lista completa de folhas** (ordem de `active_ids()`). Sem provas de inclusão por-folha — a
-  anti-omissão vem de recompor a raiz inteira (ver 6.2). `prover/derisk-merkle.mjs` imprime as
-  raízes de referência (n=2, n=3) usadas nos cross-checks.
-- **1.5** ✅ Cross-check on-chain `==` off-chain: teste `root_matches_offchain_circomlibjs` afirma
-  que a raiz do `registry` (soroban-poseidon) bate com a do circomlibjs — **duas implementações
-  Poseidon independentes concordando**. Testes: `cargo +stable-x86_64-pc-windows-gnu test -p registry --lib` (4/4).
-- **Saída:** selo da lista on-chain, reconstruível off-chain, sem expor a lista. _Demoável sozinho._
+**Why a Stage 0 before the vertical:** the biggest risk isn't any single component — it's the
+toolchain (`circom2soroban` + BN254 `pairing_check` + the `poseidon` host function) not running
+on our testnet deploy. A pure vertical only discovers that at the attestor (the 4th component).
+Stage 0 is a thin, throwaway spike that proves Track A's viability **before**
+investing in registry/circuit. After it, the components are independent legos.
 
-> **Nota de ambiente (Windows):** esta máquina não tem o linker MSVC; o `rust-toolchain.toml`
-> força MSVC e o build padrão quebra. **Tudo roda com o toolchain gnu** (que tem linker funcional):
-> - **Testes de host:** `cargo +stable-x86_64-pc-windows-gnu test -p <crate> --lib` (só a lib —
->   `cargo test --workspace` estoura "export ordinal too large" no **cdylib nativo**).
-> - **Build wasm p/ deploy:** `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
->   uma vez, depois `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. **Não
->   precisa de MSVC** — o "export ordinal too large" é específico do cdylib nativo, não do alvo wasm.
->   _(Confirmado no Stage 2.5: os 7 wasm buildaram e o registry deployou na testnet.)_
+**Single serial gate:** only **prover → attestor** is strictly sequential (the attestor
+needs the VK produced by the circuit). Everything else parallelizes: the **front (Stage 5) can
+start mocked** right away; **registry (Stage 1)** and **circuit (Stage 2)** are testable
+in isolation (root on-chain on its own; local proof with snarkjs without the chain).
 
-### Stage 2 — Circuito `solvency.circom`
-Incremental: cada sub-passo compila e prova localmente (snarkjs, sem chain).
-- **2.0** ✅ Elo do Poseidon verificado: `circuits/leaf_check.circom` (circomlib `Poseidon(2)`)
-  produz `Poseidon(0,600)` == `0x247c2fa2…` — **idêntico** à folha do `registry` (soroban-poseidon)
-  e à off-chain (circomlibjs). Os três Poseidon batem.
-- **2.1** ✅ `circuits/solvency_b.circom`: recompõe a raiz depth-5 das 32 folhas `(id, obrigação, ativo)`
-  e soma as obrigações. **Verificado:** raiz do circuito == raiz do `registry` (`0x2fc574f6…`) e soma = 1200
-  no caso n=2. ~32k constraints (prova leve). Folha inativa = 0; árvore perfeita (sem padding ímpar).
-  _Binding anti-omissão:_ a raiz é sinal público; o attestor (Stage 4) confere `== guarantees_root` on-chain.
-- **2.2** ✅ `circuits/solvency.circom`: raiz amarrada (`b.root === guarantees_root`) + reservas
-  (`vault_stable_assets`) + comparação de faixa (`reserves*10000 >= obligations*ratio_bps`, via
-  `GreaterEqThan(200)`). **Verificado:** aceita solvente; rejeita insolvente, raiz adulterada e
-  faixa 120% insuficiente.
-- **2.3** ✅ peça A: `EdDSAPoseidonVerifier` (circomlib) verifica a assinatura do oráculo-banco
-  sobre `M = Poseidon(saldo, nonce)` → soma `bank_balance` às reservas (saldo nunca sai). Públicos:
-  `nonce`, `oracle_Ax/Ay`. **Verificado:** banco cobre sozinho / combinado aceitam; insolvente e
-  saldo adulterado pós-assinatura rejeitam. Gerador de assinatura: `circuits/gen_input.mjs` (chave
-  do oráculo simulada/fixa). Circuito ~41k constraints.
-- **finale** ✅ Prova Groth16 real gerada e **verificada off-chain** (`snarkjs groth16 verify` = OK):
+---
+
+### Stage 0 — De-risking Track A (thin spike) ✅ DONE (Option B: local confirmation, no testnet)
+- **0.1** ✅ Toolchain installed: **circom 2.2.3**, **snarkjs 0.7.6**, Node 25, **Stellar CLI 26.0.0**,
+  Rust 1.96 + wasm32. (circom was a pre-compiled binary in `~/.cargo/bin`.)
+- **0.2** ✅ Trivial circuit (`c = a*b`) → snarkjs (bn128) → `proof.json`/`public.json` →
+  `snarkjs groth16 verify` = **OK**. The proving pipeline validated on the machine.
+- **0.3** ✅ BN254 on the test VM: a mini-crate with `soroban-sdk 26.1.0` →
+  `env.crypto().bn254()`. `cargo test` passed: curve arithmetic (`g1_is_on_curve`,
+  `g1_add`, `g1_mul` → `G+G == 2G`) **and `pairing_check`** — the core of Groth16 —
+  actually executing (tested from two angles: `e(G1,G2) ≠ 1` and bilinearity
+  `e(G1,G2)·e(-G1,G2) = 1`, with the G2 generator in the host's Ethereum `c1||c0` format).
+  **No special feature.** _(real testnet deploy → deferred to Stage 4)_
+- **0.4** ✅ On-chain Poseidon: the **`soroban-poseidon`** crate (`poseidon_hash::<3, Bn254Fr>`)
+  runs on the test VM and **matches the canonical circomlib vector** — `poseidon([1,2])` ==
+  `0x115cc0f5…7189a` (an empirical cross-check, not just the README's word). This confirms the
+  central invariant of Stage 1: on-chain root == circuit root. _(raw host fn:
+  `CryptoHazmat::poseidon2_permutation`, feature `hazmat-crypto` — but we use the crate.)_
+- **Exit achieved:** Track A viable and proven locally — toolchain, `pairing_check`, and
+  Poseidon↔circomlib all with evidence. **Still open (deferred to Stage 4, by
+  Option B's decision):** (a) the full *splice* — taking a real `proof.json` from snarkjs and
+  verifying it inside a contract (vendoring the Nethermind piece); (b) testnet deploy;
+  (c) **measuring the real instruction cost** (the "~40% of the budget" is from the plan, not yet measured).
+- **Spike artifacts:** in `scratchpad/zk-spike/` (throwaway, outside the repo).
+
+> **Corrections the de-risking brought to the plan (see Sections 5 and 6):**
+> 1. Base verifier = Nethermind's `circom-groth16-verifier` (BN254 + sdk 26), **not** the
+>    official `groth16_verifier` (that's BLS12-381 + sdk 25 — wrong curve and SDK for us).
+> 2. "circom2soroban" = Nethermind's `build.rs` + `circuit-keys` crate (reads `verification_key.json`
+>    via env `VERIFIER_VK_JSON` → generates the embedded `vk.rs`).
+> 3. On-chain Poseidon = the `soroban-poseidon` crate (Stellar org), circomlib-compatible.
+
+### Stage 1 — Piece B: anchoring the list in `registry` ✅ DONE
+- **1.1** ✅ Leaf = `Poseidon(id, obligation)`, `obligation = monthly_amount*(months_covered-months_used)`
+  (same equation as `coverage_required`). A binary tree of **fixed depth 8** (up to 256
+  guarantees), leaves on the left, missing sibling = 0, parent = `Poseidon(left, right)`. Leaf
+  order = order of `active_ids()`. Only **active** guarantees are leaves.
+  _Conscious simplification:_ it doesn't filter `paid_until > now` (counts all active ones) → the proven
+  obligation is an upper bound = the safe side; in the demo (guarantees up to date) it matches exactly.
+- **1.2** ✅ `registry` recomputes the root on every `put()` via `soroban-poseidon`
+  (`poseidon_hash::<3, Bn254Fr>`), respecting the writer-gating.
+- **1.3** ✅ `guarantees_root() -> BytesN<32>` (in `interfaces` + `RegistryClient`, public read).
+- **1.4** ✅ Off-chain reconstruction in `prover/merkle.mjs` (circomlibjs): `computeRoot` over the
+  **complete leaf list** (order of `active_ids()`). No per-leaf inclusion proofs — the
+  anti-omission comes from recomputing the entire root (see 6.2). `prover/derisk-merkle.mjs` prints the
+  reference roots (n=2, n=3) used in the cross-checks.
+- **1.5** ✅ On-chain `==` off-chain cross-check: the test `root_matches_offchain_circomlibjs` asserts
+  that the `registry` root (soroban-poseidon) matches the circomlibjs one — **two independent Poseidon
+  implementations agreeing**. Tests: `cargo +stable-x86_64-pc-windows-gnu test -p registry --lib` (4/4).
+- **Exit:** on-chain list seal, reconstructible off-chain, without exposing the list. _Demoable on its own._
+
+> **Environment note (Windows):** this machine doesn't have the MSVC linker; `rust-toolchain.toml`
+> forces MSVC and the default build breaks. **Everything runs with the gnu toolchain** (which has a working linker):
+> - **Host tests:** `cargo +stable-x86_64-pc-windows-gnu test -p <crate> --lib` (lib only —
+>   `cargo test --workspace` blows up with "export ordinal too large" in the **native cdylib**).
+> - **Wasm build for deploy:** `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
+>   once, then `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. **No
+>   MSVC needed** — the "export ordinal too large" is specific to the native cdylib, not the wasm target.
+>   _(Confirmed in Stage 2.5: the 7 wasm built and the registry deployed to testnet.)_
+
+### Stage 2 — `solvency.circom` circuit
+Incremental: each sub-step compiles and proves locally (snarkjs, no chain).
+- **2.0** ✅ Poseidon link verified: `circuits/leaf_check.circom` (circomlib `Poseidon(2)`)
+  produces `Poseidon(0,600)` == `0x247c2fa2…` — **identical** to the `registry` leaf (soroban-poseidon)
+  and to the off-chain one (circomlibjs). All three Poseidons match.
+- **2.1** ✅ `circuits/solvency_b.circom`: recomputes the depth-5 root of the 32 leaves `(id, obligation, active)`
+  and sums the obligations. **Verified:** the circuit root == the `registry` root (`0x2fc574f6…`) and sum = 1200
+  in the n=2 case. ~32k constraints (light proof). Inactive leaf = 0; perfect tree (no odd padding).
+  _Anti-omission binding:_ the root is a public signal; the attestor (Stage 4) checks `== guarantees_root` on-chain.
+- **2.2** ✅ `circuits/solvency.circom`: bound root (`b.root === guarantees_root`) + reserves
+  (`vault_stable_assets`) + band comparison (`reserves*10000 >= obligations*ratio_bps`, via
+  `GreaterEqThan(200)`). **Verified:** accepts solvent; rejects insolvent, a tampered root, and an
+  insufficient 120% band.
+- **2.3** ✅ piece A: `EdDSAPoseidonVerifier` (circomlib) verifies the bank oracle's signature
+  over `M = Poseidon(balance, nonce)` → adds `bank_balance` to the reserves (the balance never leaves). Publics:
+  `nonce`, `oracle_Ax/Ay`. **Verified:** bank covering alone / combined are accepted; insolvent and
+  a balance tampered post-signature are rejected. Signature generator: `circuits/gen_input.mjs` (the oracle's
+  key is simulated/fixed). Circuit ~41k constraints.
+- **finale** ✅ Real Groth16 proof generated and **verified off-chain** (`snarkjs groth16 verify` = OK):
   powers-of-tau 2^16 → `solvency_final.zkey` → `proof.json`/`public.json`/`verification_key.json`.
-  A VK vai embutida no attestor (Stage 4).
-- **2.4** _(stretch — primeiro a cortar)_ peça C: somar `wallet_balances[]` assinados (mesmo padrão da A).
-- **Saída:** ✅ MVP **A+B** completo — `proof.json`/`public.json`/`verification_key.json` gerados.
+  The VK is embedded in the attestor (Stage 4).
+- **2.4** _(stretch — first to cut)_ piece C: sum signed `wallet_balances[]` (same pattern as A).
+- **Exit:** ✅ MVP **A+B** complete — `proof.json`/`public.json`/`verification_key.json` generated.
 
-### Stage 2.5 — Deploy na testnet (pré-requisito do Stage 3 e do Stage 4) ✅ CONCLUÍDO
-Tudo até aqui rodou **local** (o Stage 0 adiou o deploy de propósito). Tanto o prover
-(Stage 3 lê estado on-chain real) quanto o attestor (Stage 4 mora on-chain) precisam de
-um deploy vivo. Por isso esta etapa entra **antes** do Stage 3.
+### Stage 2.5 — Testnet deploy (prerequisite for Stage 3 and Stage 4) ✅ DONE
+Everything up to here ran **locally** (Stage 0 deferred the deploy on purpose). Both the prover
+(Stage 3 reads real on-chain state) and the attestor (Stage 4 lives on-chain) need a
+live deploy. That's why this step comes **before** Stage 3.
 
-**Decisão (registry-only):** o core de 2026-06-22 (`vault`/`policy`/`registry`) já estava
-vivo e seedado, mas o **admin é `GBE3QZQS…` — chave que não temos** (só `mutav-test` =
-`GCG2L74G…`), então o `registry` vivo (sem `guarantees_root`) **não pôde ser `upgrade()`-ado**.
-Saída escolhida: deployar um **registry novo** sob nosso admin e **reusar o vault existente**
-(que só precisamos *ler* — `stable_assets` é permissionless). O registry novo fica desacoplado
-da `policy` antiga (writer = nós); seed direto via `put()`.
+**Decision (registry-only):** the 2026-06-22 core (`vault`/`policy`/`registry`) was already
+live and seeded, but the **admin is `GBE3QZQS…` — a key we don't have** (only `mutav-test` =
+`GCG2L74G…`), so the live `registry` (without `guarantees_root`) **could not be `upgrade()`-d**.
+Chosen way out: deploy a **new registry** under our admin and **reuse the existing vault**
+(which we only need to *read* — `stable_assets` is permissionless). The new registry stays decoupled
+from the old `policy` (writer = us); seeded directly via `put()`.
 
-- **2.5.1** ✅ Build wasm com `stellar contract build` (NÃO `cargo build --release` — spec-shaking
-  da soroban-sdk 26.1). ⚠️ **Windows:** **NÃO precisa de MSVC** — basta o toolchain **gnu** com o
-  target wasm instalado: `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
-  e então `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. (O gnu tem linker
-  funcional p/ os proc-macros do host; o "export ordinal too large" só afeta o **cdylib nativo** de
-  `cargo test --workspace`, não o target `wasm32v1-none`. A nota anterior de que "o build wasm
-  precisa de MSVC" estava errada — corrigida aqui.)
-- **2.5.2** ✅ Deploy do `registry` novo (admin = `mutav-test`) + `set_writer(mutav-test)`. Vault
-  reusado (sem re-wire). **Contract IDs (testnet):**
-  - **REGISTRY (novo, com `guarantees_root`):** `CCIIYG572C5HUJKPDVSCYWAJNUUPOEEXKXIURA3DMAPTMETE3HHOU3FC`
-  - **VAULT (existente, read-only):** `CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO`
+- **2.5.1** ✅ Wasm build with `stellar contract build` (NOT `cargo build --release` — soroban-sdk 26.1
+  spec-shaking). ⚠️ **Windows:** **no MSVC needed** — just the **gnu** toolchain with the
+  wasm target installed: `rustup target add wasm32v1-none --toolchain stable-x86_64-pc-windows-gnu`
+  and then `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu stellar contract build`. (The gnu toolchain has a working linker
+  for the host proc-macros; the "export ordinal too large" only affects the **native cdylib** of
+  `cargo test --workspace`, not the `wasm32v1-none` target. The earlier note that "the wasm build
+  needs MSVC" was wrong — corrected here.)
+- **2.5.2** ✅ Deploy of the new `registry` (admin = `mutav-test`) + `set_writer(mutav-test)`. Vault
+  reused (no re-wire). **Contract IDs (testnet):**
+  - **REGISTRY (new, with `guarantees_root`):** `CCIIYG572C5HUJKPDVSCYWAJNUUPOEEXKXIURA3DMAPTMETE3HHOU3FC`
+  - **VAULT (existing, read-only):** `CCOIGCO7JTWHFDAEQPXDONJABKFP2PQ5OBDUWHBTASUPZ4EMFCNESICO`
   - **USDC SAC:** `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`
-  - (registry/vault/policy antigos administrados por `GBE3QZQS…`; o `solvency_attestor` entra no Stage 4.)
-- **2.5.3** ✅ Seed: 4 garantias `[0,1,2,3]` espelhando o livro real do deploy antigo
-  (obrigações 18.000 + 12.000 + 4.800 + 14.400 = **49.200 USDC**). Vault `stable_assets` =
-  **50.420 USDC** → solvente (~**102,5%**).
-- **2.5.4** ✅ Cross-check ao vivo: `guarantees_root()` on-chain ==
-  `prover/merkle.mjs` off-chain == `0x2962a3bbb708bf58677b8a51a5605c5d45d03c87981e11b790606ff4d3342231`.
-- **Saída:** ✅ registry novo deployado e semeado na testnet; `guarantees_root` + `stable_assets`
-  prontos para o prover (Stage 3) e para o attestor (Stage 4).
+  - (old registry/vault/policy administered by `GBE3QZQS…`; `solvency_attestor` enters in Stage 4.)
+- **2.5.3** ✅ Seed: 4 guarantees `[0,1,2,3]` mirroring the real book of the old deploy
+  (obligations 18,000 + 12,000 + 4,800 + 14,400 = **49,200 USDC**). Vault `stable_assets` =
+  **50,420 USDC** → solvent (~**102.5%**).
+- **2.5.4** ✅ Live cross-check: on-chain `guarantees_root()` ==
+  off-chain `prover/merkle.mjs` == `0x2962a3bbb708bf58677b8a51a5605c5d45d03c87981e11b790606ff4d3342231`.
+- **Exit:** ✅ new registry deployed and seeded on testnet; `guarantees_root` + `stable_assets`
+  ready for the prover (Stage 3) and the attestor (Stage 4).
 
-> **⏳ PENDÊNCIA — decisão para quando a chave `GBE3QZQS…` estiver disponível** (admin do core de
-> 2026-06-22; ver [[zk-testnet-deploy-state]]). O registry-only acima é um **contorno** da falta dessa
-> chave: o registry novo é semeado **à mão** (writer = nós), então a anti-omissão prova que o prover usou
-> a lista inteira *que está no registry* — mas a fidelidade registry↔livro-real é uma **suposição**, não
-> uma garantia da chain. Com a chave em mãos, eliminar o hand-seed e amarrar a prova ao livro REAL escrito
-> pela `policy`. Duas rotas:
-> - **(A) Recomendada — `upgrade()` in-place do registry ANTIGO.** Adicionar `guarantees_root()` é mudança
->   **aditiva** (nova variante `DataKey::GuaranteesRoot` no fim do enum; o fallback `unwrap_or_else(compute_root)`
->   já cobre um registry que tem garantias mas ainda não gravou a raiz). Mantém a `policy` como writer → a raiz
->   passa a **acompanhar a realidade sozinha**, sem cópia manual. Depois, re-apontar attestor + prover para o
->   registry antigo. **Verificar antes do upgrade:** layout de storage preservado e `active_ids` já existente no
->   registry antigo — é a única decisão de risco (upgrade in-place exige layout compatível).
-> - **(B) Alternativa — redeploy do core inteiro** (registry+policy+vault) sob nossa chave + re-wire
->   `policy → registry novo` via `bootstrap.sh`. Slate limpo, porém mais disruptivo (re-deploy + tratar os
->   fundos do vault).
-> **Decisão do time:** seguir **(A)** se o layout do registry antigo for compatível; cair para **(B)** se não
-> for. jubscodes executa esta decisão durante a revisão, já com a chave na mão.
+> **⏳ PENDING — decision for when the `GBE3QZQS…` key is available** (admin of the
+> 2026-06-22 core; see [[zk-testnet-deploy-state]]). The registry-only above is a **workaround** for the lack of that
+> key: the new registry is seeded **by hand** (writer = us), so the anti-omission proves that the prover used
+> the whole list *that is in the registry* — but the registry↔real-book fidelity is an **assumption**, not
+> a chain guarantee. With the key in hand, eliminate the hand-seed and bind the proof to the REAL book written
+> by the `policy`. Two routes:
+> - **(A) Recommended — in-place `upgrade()` of the OLD registry.** Adding `guarantees_root()` is an **additive**
+>   change (a new `DataKey::GuaranteesRoot` variant at the end of the enum; the `unwrap_or_else(compute_root)` fallback
+>   already covers a registry that has guarantees but hasn't yet written the root). It keeps the `policy` as the writer → the root
+>   then **tracks reality on its own**, without a manual copy. Afterwards, re-point the attestor + prover to the
+>   old registry. **Verify before the upgrade:** preserved storage layout and `active_ids` already existing in the
+>   old registry — this is the only risky decision (in-place upgrade requires a compatible layout).
+> - **(B) Alternative — redeploy the whole core** (registry+policy+vault) under our key + re-wire
+>   `policy → new registry` via `bootstrap.sh`. A clean slate, but more disruptive (re-deploy + handling the
+>   vault's funds).
+> **Team decision:** go with **(A)** if the old registry's layout is compatible; fall back to **(B)** if it isn't.
+> jubscodes executes this decision during the review, with the key already in hand.
 
-### Stage 3 — Prover service (Node/TS + snarkjs) ✅ 3.1–3.3 (3.4 aguarda Stage 4)
-Implementado em **`prover/prove.mjs`** (`npm run prove [bank_balance] [ratio_bps]`).
-- **3.1** ✅ Lê on-chain (testnet, via `stellar contract invoke`): `registry.active_ids()` +
-  `get(id)` por garantia + `guarantees_root()`; `vault.stable_assets()`.
-- **3.2** ✅ Monta o witness — B: folhas reais na ordem de `active_ids`, padding a 2^5; recompõe a
-  raiz off-chain (`merkle.mjs`) e **fail-fast se != raiz on-chain**. A (opção B): atestação de banco
-  **simulada** com saldo, assinada EdDSA-Poseidon por chave-oráculo fixa (mesma do `gen_input.mjs`).
-- **3.3** ✅ `snarkjs groth16 fullProve` (wasm + `solvency_final.zkey` do Stage 2) → `prover/out/`
-  `proof.json`/`public.json`/`input.json` de **dados reais**. Re-verifica off-chain + confere os
-  públicos (`root`==on-chain, `stable`==on-chain, `ratio`). _Run real:_ obrig. 49.200 + reservas
-  vault 50.420 + banco sim. 10.000 → **cobertura 122,8%**, prova verde.
-- **3.4** ✅ Submeter ao attestor: `prover/encode-for-soroban.mjs` converte `proof.json`/`public.json`
-  → proof 256 bytes + públicos; `attest` submetido na testnet (tx `355bee82…`) → `last_attestation`
-  gravado. `nonce` agora é timestamp (frescor). _(gate de integração fechado.)_
-- **Saída:** ✅ prova de dados reais gerada **e verificada on-chain**.
+### Stage 3 — Prover service (Node/TS + snarkjs) ✅ 3.1–3.3 (3.4 awaits Stage 4)
+Implemented in **`prover/prove.mjs`** (`npm run prove [bank_balance] [ratio_bps]`).
+- **3.1** ✅ Reads on-chain (testnet, via `stellar contract invoke`): `registry.active_ids()` +
+  `get(id)` per guarantee + `guarantees_root()`; `vault.stable_assets()`.
+- **3.2** ✅ Builds the witness — B: real leaves in the order of `active_ids`, padded to 2^5; recomputes the
+  root off-chain (`merkle.mjs`) and **fail-fast if != on-chain root**. A (option B): a **simulated** bank
+  attestation with a balance, EdDSA-Poseidon signed by a fixed oracle key (same as `gen_input.mjs`).
+- **3.3** ✅ `snarkjs groth16 fullProve` (wasm + the `solvency_final.zkey` from Stage 2) → `prover/out/`
+  `proof.json`/`public.json`/`input.json` of **real data**. Re-verifies off-chain + checks the
+  publics (`root`==on-chain, `stable`==on-chain, `ratio`). _Real run:_ obl. 49,200 + vault
+  reserves 50,420 + sim. bank 10,000 → **coverage 122.8%**, green proof.
+- **3.4** ✅ Submit to the attestor: `prover/encode-for-soroban.mjs` converts `proof.json`/`public.json`
+  → proof 256 bytes + publics; `attest` submitted on testnet (tx `355bee82…`) → `last_attestation`
+  written. `nonce` is now a timestamp (freshness). _(integration gate closed.)_
+- **Exit:** ✅ real-data proof generated **and verified on-chain**.
 
-### Stage 4 — `solvency_attestor` (Soroban) ✅ CONCLUÍDO
-Crate `contracts/solvency-attestor`. Attestor na testnet:
+### Stage 4 — `solvency_attestor` (Soroban) ✅ DONE
+Crate `contracts/solvency-attestor`. Attestor on testnet:
 **`CBYXNYYZRD5SOBU3HP5GWV7I64GISOF5H4SWN2UTXZ7FIF6LSVII36MT`** (admin=`mutav-test`,
-wired p/ registry `CCIIYG57…` + vault `CCOIGCO7…` + oráculo fixo).
-- **4.0** ✅ Vendorizado enxuto o `circom-groth16-verifier` da Nethermind (BN254): `build.rs`
-  embute a `verification_key.json` como consts (só `serde_json`+`num-bigint`, sem `ark-*`/`circuit-keys`).
-- **4.1** ✅ `groth16_verify` (BN254 `pairing_check`) com VK **embutida**. **Emenda fechada:** teste de
-  host verifica a prova REAL do snarkjs DENTRO do contrato (item aberto do Stage 0).
-- **4.2** ✅ Cross-check live **implícito**: `attest` lê `registry.guarantees_root()` e
-  `vault.stable_assets()` AO VIVO e usa como públicos — prova feita p/ outro estado não verifica.
-- **4.3** ✅ Frescor: `nonce` = timestamp assinado pelo oráculo; janela `WINDOW_SECS=3600`
-  (`StaleProof`/`ProofFromFuture`). **Pinning da pubkey-oráculo** em storage (`set_oracle`) fecha a
-  forja da peça A (findings 1 e 2 da revisão do Stage 3).
-- **4.4** ✅ Grava/expõe `last_attestation -> Option<Attestation{solvent, ratio_bps, ledger, ts}>`.
-  _Atestação real gravada:_ `{solvent:true, ratio_bps:10000, ledger:3249257, ts:1782260148}`.
-- **4.5** ✅ Deploy + submit real na testnet. **Custo medido:** ~**37,96M instruções** (~38% do budget
-  de 1 tx — bate com a estimativa "~40%"); `minResourceFee` ≈ 45.424 stroops. _(últimos 2 itens
-  abertos do Stage 0 — deploy e medição de custo — fechados.)_
-- **Saída:** ✅ a "luz verde" mora on-chain e é re-verificável; ciclo prover→attestor completo.
+wired to registry `CCIIYG57…` + vault `CCOIGCO7…` + fixed oracle).
+- **4.0** ✅ Leanly vendored Nethermind's `circom-groth16-verifier` (BN254): `build.rs`
+  embeds the `verification_key.json` as consts (only `serde_json`+`num-bigint`, no `ark-*`/`circuit-keys`).
+- **4.1** ✅ `groth16_verify` (BN254 `pairing_check`) with the **embedded** VK. **Splice closed:** a host
+  test verifies the REAL snarkjs proof INSIDE the contract (the open item from Stage 0).
+- **4.2** ✅ Live cross-check **implicit**: `attest` reads `registry.guarantees_root()` and
+  `vault.stable_assets()` LIVE and uses them as publics — a proof made for another state doesn't verify.
+- **4.3** ✅ Freshness: `nonce` = a timestamp signed by the oracle; window `WINDOW_SECS=3600`
+  (`StaleProof`/`ProofFromFuture`). **Pinning the oracle pubkey** in storage (`set_oracle`) closes the
+  forgery of piece A (findings 1 and 2 from the Stage 3 review).
+- **4.4** ✅ Writes/exposes `last_attestation -> Option<Attestation{solvent, ratio_bps, ledger, ts}>`.
+  _Real attestation written:_ `{solvent:true, ratio_bps:10000, ledger:3249257, ts:1782260148}`.
+- **4.5** ✅ Deploy + real submit on testnet. **Measured cost:** ~**37.96M instructions** (~38% of a 1-tx
+  budget — matches the "~40%" estimate); `minResourceFee` ≈ 45,424 stroops. _(the last 2 open
+  items from Stage 0 — deploy and cost measurement — closed.)_
+- **Exit:** ✅ the "green light" lives on-chain and is re-verifiable; the prover→attestor cycle is complete.
 
-### Revisão Stages 0–4 — fixes aplicados (pós-ciclo completo)
-Revisão cruzada com o caminho inteiro vivo. Consistência end-to-end de encoding/ordem
-**provada** pelo `attest` real passar on-chain; binding ao estado vivo **provado adversarialmente**
-(nonce/ratio errados → `InvalidProof`; controle → `Ok`). Fixes aplicados e **deployados via
-`upgrade()`** (registry `CCIIYG57…` + attestor `CBYXNYYZ…`; storage preservado, root e
-`last_attestation` intactos):
-- **#1 [ALTO soundness]** `registry.put()` rejeita a `2^TREE_DEPTH+1`-ésima garantia ativa.
-  Acima da capacidade o `compute_root` truncava a raiz silenciosamente (folhas excedentes somem
-  da raiz E da soma → solvência falsa por omissão). Agora falha alto. _(Confirmado empírico:
-  `root(33)==root(32)`.)_ Teste `put_rejects_beyond_tree_capacity`.
-- **#2 [MED]** attestor estende TTL do instance storage (`attest` + setters) — selo não expira.
-- **#3** attestor emite evento `attested` (confirmado on-chain) — front reage sem polling.
-- **#4** nota: VK embutida e `solvency_final.zkey` são um par — manter em sincronia (Stage 7).
-- **#7** prover satura `obligationOf` (>=0) igual ao `leaf()` do registry.
-- _Não aplicados:_ **#5** (replay — não é vetor: idempotente vs estado vivo) e **#6** (embutir
-  oráculo na VK — exige circuito + regenerar VK/zkey/prova + redeploy; stretch).
-- **Observação (escala):** o recompute O(n) por `put` (seção 6.4) já pesa perto da capacidade 32
-  (no teste, 32 puts cumulativos estouram o budget do `Env`); o cap (#1) limita o pior caso. A
-  migração para Merkle Sum Tree incremental (6.4) continua sendo o caminho v2.
+### Stages 0–4 review — fixes applied (post full-cycle)
+Cross-review with the entire path live. End-to-end consistency of encoding/order
+**proven** by the real `attest` passing on-chain; binding to the live state **proven adversarially**
+(wrong nonce/ratio → `InvalidProof`; control → `Ok`). Fixes applied and **deployed via
+`upgrade()`** (registry `CCIIYG57…` + attestor `CBYXNYYZ…`; storage preserved, root and
+`last_attestation` intact):
+- **#1 [HIGH soundness]** `registry.put()` rejects the `2^TREE_DEPTH+1`-th active guarantee.
+  Above capacity, `compute_root` silently truncated the root (excess leaves disappear
+  from the root AND from the sum → false solvency by omission). It now fails loud. _(Confirmed empirically:
+  `root(33)==root(32)`.)_ Test `put_rejects_beyond_tree_capacity`.
+- **#2 [MED]** the attestor extends the instance storage TTL (`attest` + setters) — the seal doesn't expire.
+- **#3** the attestor emits an `attested` event (confirmed on-chain) — the front reacts without polling.
+- **#4** note: the embedded VK and `solvency_final.zkey` are a pair — keep them in sync (Stage 7).
+- **#7** the prover saturates `obligationOf` (>=0) just like the registry's `leaf()`.
+- _Not applied:_ **#5** (replay — not a vector: idempotent vs. live state) and **#6** (embedding the
+  oracle in the VK — requires circuit + regenerating VK/zkey/proof + redeploy; stretch).
+- **Observation (scale):** the O(n) recompute per `put` (section 6.4) already weighs heavily near capacity 32
+  (in the test, 32 cumulative puts blow the `Env` budget); the cap (#1) limits the worst case. The
+  migration to an incremental Merkle Sum Tree (6.4) remains the v2 path.
 
-### Stage 5 — Selo no dashboard (front Investidor)
-Pode começar **mockado** em paralelo aos stages 1–4.
-- **5.1** `reads.solvencyAttestation()` em `lib/contracts.ts` (mock até o attestor estar live).
-- **5.2** `ZkSolvencyBadge` acima do `SolvencyChip` em `transparency/page.tsx` (padrão
-  `loading`/`error`; Precision Brutalism; skill `impeccable`).
-- **5.3** Drawer "Como funciona?" + estado vermelho honesto + "re-verificar você mesmo".
-- ⚠️ ler `node_modules/next/dist/docs/` **antes** de codar (breaking changes — ver `frontend/AGENTS.md`).
-- **Saída:** selo funcional lendo o attestor.
+### Stage 5 — Seal on the dashboard (Investor front)
+Can start **mocked** in parallel with stages 1–4.
+- **5.1** `reads.solvencyAttestation()` in `lib/contracts.ts` (mock until the attestor is live).
+- **5.2** `ZkSolvencyBadge` above the `SolvencyChip` in `transparency/page.tsx` (the
+  `loading`/`error` pattern; Precision Brutalism; the `impeccable` skill).
+- **5.3** "How does it work?" drawer + honest red state + "re-verify it yourself".
+- ⚠️ read `node_modules/next/dist/docs/` **before** coding (breaking changes — see `frontend/AGENTS.md`).
+- **Exit:** a functional seal reading the attestor.
 
-### Stage 6 — Robustez + cenário anti-trapaça ✅ (6.1+6.2; 6.3 cortado)
-Demo reproduzível em **`prover/anti-tamper.mjs`** (`npm run anti-tamper [bank] [ratio] [--submit]`),
-lendo o estado real da testnet. Os quatro sinais, verificados ao vivo:
-- **6.1** ✅ HONESTO → lista completa + raiz real → prova verifica off-chain (cobertura 122,8%) → **selo verde**.
-- **6.2** ✅ Anti-trapaça, dois ângulos:
-  - **Omissão + raiz REAL:** esconder a maior garantia (passivo 492.000 → 312.000) mantendo a
-    `guarantees_root` on-chain → a prova é **IMPOSSÍVEL de gerar** (o circuito exige
-    `b.root === guarantees_root`; folhas adulteradas recompõem outra raiz → constraint falha na linha 110).
-  - **Omissão + raiz FALSA:** adultera folhas E raiz pública juntas → a prova até gera (raiz falsa
-    `0x264bc63c…` ≠ raiz real `0x2962a3bb…`). Com `--submit`, a prova forjada foi enviada ao attestor
-    e **reverteu on-chain (`InvalidProof`)** — o attestor lê a raiz REAL ao vivo. **Selo vermelho. Trapaça barrada.**
-  - _(Insolvência → vermelho já é coberto pelo pre-check do `prove.mjs`: sem reservas, o `fullProve` nem gera.)_
-- **6.3** ✂️ peça **C** (carteiras) — stretch, cortado sem quebrar a demo (A+B é o MVP premiável).
-- **Saída:** ✅ fluxo redondo e à prova de ataque, demonstrável com um comando.
+### Stage 6 — Robustness + anti-tamper scenario ✅ (6.1+6.2; 6.3 cut)
+Reproducible demo in **`prover/anti-tamper.mjs`** (`npm run anti-tamper [bank] [ratio] [--submit]`),
+reading the real testnet state. The four signals, verified live:
+- **6.1** ✅ HONEST → complete list + real root → proof verifies off-chain (coverage 122.8%) → **green seal**.
+- **6.2** ✅ Anti-tamper, two angles:
+  - **Omission + REAL root:** hiding the largest guarantee (liability 492,000 → 312,000) while keeping the
+    on-chain `guarantees_root` → the proof is **IMPOSSIBLE to generate** (the circuit requires
+    `b.root === guarantees_root`; tampered leaves recompute a different root → the constraint fails at line 110).
+  - **Omission + FAKE root:** tamper with the leaves AND the public root together → the proof does generate (fake root
+    `0x264bc63c…` ≠ real root `0x2962a3bb…`). With `--submit`, the forged proof was sent to the attestor
+    and **reverted on-chain (`InvalidProof`)** — the attestor reads the REAL root live. **Red seal. Cheating blocked.**
+  - _(Insolvency → red is already covered by `prove.mjs`'s pre-check: with no reserves, `fullProve` doesn't even generate.)_
+- **6.3** ✂️ piece **C** (wallets) — stretch, cut without breaking the demo (A+B is the award-worthy MVP).
+- **Exit:** ✅ a round, attack-proof flow, demonstrable with a single command.
 
-### Stage 7 — README + entrega
-- Arquitetura, real vs. simulado, como rodar/reconferir; limpar repo; submeter.
-- **⚠️ Lembrete VK↔zkey (par indivisível):** `circuits/verification_key.json` (versionado, embutido no
-  attestor via `build.rs`) e `circuits/solvency_final.zkey` (**NÃO** versionado — ~19MB, gitignorado) são um
-  PAR de **um** trusted setup. Mexer no circuito OU refazer o setup invalida o par → o attestor passa a
-  rejeitar provas válidas. Ao regerar, regerar a cadeia inteira E re-deployar a wasm do attestor:
+### Stage 7 — README + delivery
+- Architecture, real vs. simulated, how to run/re-check; clean up the repo; submit.
+- **⚠️ VK↔zkey reminder (indivisible pair):** `circuits/verification_key.json` (versioned, embedded in the
+  attestor via `build.rs`) and `circuits/solvency_final.zkey` (**NOT** versioned — ~19MB, gitignored) are a
+  PAIR from **one** trusted setup. Touching the circuit OR redoing the setup invalidates the pair → the attestor starts
+  rejecting valid proofs. When regenerating, regenerate the entire chain AND re-deploy the attestor's wasm:
   ```
   circom solvency.circom --r1cs --wasm --sym -l node_modules -p bn128
   snarkjs groth16 setup solvency.r1cs pot16_final.ptau solvency_0.zkey
   snarkjs zkey contribute solvency_0.zkey solvency_final.zkey -e="..."
   snarkjs zkey export verificationkey solvency_final.zkey verification_key.json
-  # fixture do teste: node gen_input.mjs 0 10000 2000 → (gen witness → groth16 prove) →
+  # test fixture: node gen_input.mjs 0 10000 2000 → (gen witness → groth16 prove) →
   #   node ../prover/encode-for-soroban.mjs . --rust > ../contracts/solvency-attestor/src/test_fixture.rs
-  # por fim: stellar contract build (wasm nova com VK nova) + upgrade() em CBYXNYYZ…
+  # finally: stellar contract build (new wasm with new VK) + upgrade() on CBYXNYYZ…
   ```
-  Sensor existente: o teste `verifies_real_snarkjs_proof` quebra se a VK embutida divergir do `proof.json`
-  fixture. Como o `zkey` não entra no repo, o README **precisa** dizer como regerá-lo (só a VK viaja).
+  Existing sensor: the test `verifies_real_snarkjs_proof` breaks if the embedded VK diverges from the `proof.json`
+  fixture. Since the `zkey` doesn't go into the repo, the README **must** say how to regenerate it (only the VK travels).
 
 ---
 
-**MVP garantido:** **A + B** (Stages 0–6 sem o sub-passo C) já é projeto premiável.
-**C** é stretch — primeiro a cortar, sem quebrar a demo.
+**Guaranteed MVP:** **A + B** (Stages 0–6 without the C sub-step) is already an award-worthy project.
+**C** is stretch — first to cut, without breaking the demo.
 
-## 9. O selo no dashboard (front Investidor)
+## 9. The seal on the dashboard (Investor front)
 
-Componente `ZkSolvencyBadge`, acima do `SolvencyChip` em `transparency/page.tsx`:
+The `ZkSolvencyBadge` component, above the `SolvencyChip` in `transparency/page.tsx`:
 
 ```
-🟢  RESERVA PROVADA · LASTRO VERIFICADO
-As reservas do fundo cobrem 100%+ das garantias emitidas —
-provado de forma independente, sem expor carteiras nem dados de clientes.
-Suas cotas mtvR estão lastreadas.
-Conferido: há poucos minutos
-[ Re-verificar agora ]   [ Como funciona? ▾ ]
+🟢  RESERVE PROVEN · BACKING VERIFIED
+The fund's reserves cover 100%+ of the issued guarantees —
+independently proven, without exposing wallets or customer data.
+Your mtvR shares are backed.
+Checked: a few minutes ago
+[ Re-verify now ]   [ How does it work? ▾ ]
 ```
 
-**UX (abstrair blockchain):**
-- Visão padrão sem hashes/endereços/ledger — só estado (🟢/🔴), frase em PT, faixa, data amigável.
-- "Como funciona? ▾" → 3 bullets simples, sem jargão de ZK.
-- "Detalhes técnicos" (no drawer) → link do `solvency_attestor` no explorer + botão "re-verificar você mesmo" (preserva a auto-verificação que a página já tem).
-- Estado vermelho honesto se a prova falhou/expirou ("cobertura não confirmada no momento").
+**UX (abstract away the blockchain):**
+- The default view has no hashes/addresses/ledger — just the state (🟢/🔴), a sentence in PT, the band, a friendly date.
+- "How does it work? ▾" → 3 simple bullets, no ZK jargon.
+- "Technical details" (in the drawer) → a link to the `solvency_attestor` on the explorer + a "re-verify it yourself" button (preserving the self-verification the page already has).
+- An honest red state if the proof failed/expired ("coverage not confirmed at the moment").
 
-**Encaixe técnico:**
-- `lib/contracts.ts`: novo read `reads.solvencyAttestation()` → `last_attestation`.
-- `ZkSolvencyBadge` segue o padrão `loading`/`error` da página; visual Precision Brutalism (front Investidor) + skill `impeccable`.
-- ⚠️ `frontend/AGENTS.md`: esta versão do Next.js tem breaking changes — **ler `node_modules/next/dist/docs/` antes de codar o componente**.
+**Technical fit:**
+- `lib/contracts.ts`: a new read `reads.solvencyAttestation()` → `last_attestation`.
+- `ZkSolvencyBadge` follows the page's `loading`/`error` pattern; Precision Brutalism visual (Investor front) + the `impeccable` skill.
+- ⚠️ `frontend/AGENTS.md`: this version of Next.js has breaking changes — **read `node_modules/next/dist/docs/` before coding the component**.
 
-## 10. Riscos gerais
-1. **Toolchain travar** → Dia 1 dedicado a de-riscar a Trilha A; fallback RISC Zero (Trilha B) para a parte que travar.
-2. **Assinatura no circuito (A/C)** → fallback para commitment Poseidon, mais simples.
-3. **Atestações simuladas** (banco/carteira) → normal e aceito; declarado no README (real = matemática da prova + verificação on-chain).
-4. **Budget de instruções** → uma prova agregada por atestação; attestor enxuto (~40% do budget por pairing).
-5. **Escopo** → A+B é o MVP; C é cortável sem quebrar a demo.
+## 10. General risks
+1. **Toolchain getting stuck** → Day 1 dedicated to de-risking Track A; RISC Zero fallback (Track B) for whatever gets stuck.
+2. **Signature in the circuit (A/C)** → fall back to a Poseidon commitment, simpler.
+3. **Simulated attestations** (bank/wallet) → normal and accepted; declared in the README (real = the proof's math + on-chain verification).
+4. **Instruction budget** → one aggregated proof per attestation; a lean attestor (~40% of the budget per pairing).
+5. **Scope** → A+B is the MVP; C is cuttable without breaking the demo.
 
-## 11. Componentes a construir (mapa)
-- `contracts/registry`: + acumulador Poseidon-Merkle + `guarantees_root()`.
-- `circuits/solvency.circom`: recomposição da raiz Merkle inteira (B) + EdDSA (A/C) + soma + comparação de faixa. _(reusa o Poseidon/hashing do `main.circom` do private-payments + `eddsaposeidon` do circomlib.)_
-- `prover/` (Node/TS + snarkjs): lê testnet + atestações; gera `proof.json`/`public.json`; chama `attest`.
-- `contracts/solvency_attestor` (Soroban, base `groth16_verifier`): verifica Groth16, checa root/stable/frescor, grava `last_attestation`.
-- `frontend`: `ZkSolvencyBadge` + `reads.solvencyAttestation()` em `transparency/page.tsx`.
+## 11. Components to build (map)
+- `contracts/registry`: + Poseidon-Merkle accumulator + `guarantees_root()`.
+- `circuits/solvency.circom`: full Merkle root recomposition (B) + EdDSA (A/C) + sum + band comparison. _(reuses the Poseidon/hashing from private-payments' `main.circom` + circomlib's `eddsaposeidon`.)_
+- `prover/` (Node/TS + snarkjs): reads testnet + attestations; generates `proof.json`/`public.json`; calls `attest`.
+- `contracts/solvency_attestor` (Soroban, base `groth16_verifier`): verifies Groth16, checks root/stable/freshness, writes `last_attestation`.
+- `frontend`: `ZkSolvencyBadge` + `reads.solvencyAttestation()` in `transparency/page.tsx`.
 
-## 12. Referências
+## 12. References
 **Repos / templates**
 - soroban-examples (groth16_verifier): https://github.com/stellar/soroban-examples/tree/main/groth16_verifier
 - Stellar Private Payments (Nethermind): https://github.com/NethermindEth/stellar-private-payments — docs: https://nethermindeth.github.io/stellar-private-payments/
@@ -458,51 +458,51 @@ Conferido: há poucos minutos
 
 **Specs / blogs / docs**
 - Prototyping Privacy Pools on Stellar (design): https://stellar.org/blog/ecosystem/prototyping-privacy-pools-on-stellar
-- Verificador RISC Zero (passo a passo): https://stellar.org/blog/developers/risc-zero-verifier
-- Protocolo 25 "X-Ray": https://stellar.org/blog/developers/announcing-stellar-x-ray-protocol-25
-- 5 casos reais de ZK (SDF): https://stellar.org/blog/developers/5-real-world-zero-knowledge-use-cases
-- Docs oficiais de ZK no Stellar: https://developers.stellar.org/docs/build/apps/zk
+- RISC Zero verifier (step by step): https://stellar.org/blog/developers/risc-zero-verifier
+- Protocol 25 "X-Ray": https://stellar.org/blog/developers/announcing-stellar-x-ray-protocol-25
+- 5 real-world ZK use cases (SDF): https://stellar.org/blog/developers/5-real-world-zero-knowledge-use-cases
+- Official ZK docs on Stellar: https://developers.stellar.org/docs/build/apps/zk
 - CAP-0074 (BN254): https://github.com/stellar/stellar-protocol/blob/master/core/cap-0074.md
 - Hackathon: https://dorahacks.io/hackathon/stellar-hacks-zk/detail
 
-**Ferramentas ZK**
+**ZK tools**
 - Circom: https://docs.circom.io · snarkjs: https://github.com/iden3/snarkjs · circomlib: https://github.com/iden3/circomlib
 - Noir: https://noir-lang.org/docs/ · RISC Zero: https://dev.risczero.com/
 
 ---
 
-## Anexo A — Spike de de-risco do Stage 0 (código + resultados)
+## Appendix A — Stage 0 de-risking spike (code + results)
 
-> Registro do de-risco da Opção B (confirmação local, sem testnet). O código rodou em
-> `scratchpad/zk-spike/` (descartável, deletado após documentação). Reproduzível com a
-> toolchain abaixo. Tudo passou.
+> Record of the Option B de-risking (local confirmation, no testnet). The code ran in
+> `scratchpad/zk-spike/` (throwaway, deleted after documentation). Reproducible with the
+> toolchain below. Everything passed.
 
-### A.0 Toolchain confirmada
-| Ferramenta | Versão |
+### A.0 Confirmed toolchain
+| Tool | Version |
 |---|---|
-| circom | 2.2.3 (binário pré-compilado em `~/.cargo/bin`) |
+| circom | 2.2.3 (pre-compiled binary in `~/.cargo/bin`) |
 | snarkjs | 0.7.6 |
 | Node | 25.9.0 |
 | Stellar CLI | 26.0.0 |
 | Rust / target | 1.96.0 / `wasm32v1-none` |
-| soroban-sdk (no teste) | 26.1.0 |
+| soroban-sdk (in the test) | 26.1.0 |
 | soroban-poseidon | 26.0.0 (`git: stellar/rs-soroban-poseidon`) |
 
-### A.1 Parte 1 — esteira circom + snarkjs gera/valida prova BN254
+### A.1 Part 1 — the circom + snarkjs pipeline generates/validates a BN254 proof
 
-Circuito trivial (`multiplier.circom`):
+Trivial circuit (`multiplier.circom`):
 ```circom
 pragma circom 2.0.0;
 template Multiplier() {
-    signal input a;   // privado
-    signal input b;   // privado
-    signal output c;  // público
+    signal input a;   // private
+    signal input b;   // private
+    signal output c;  // public
     c <== a * b;
 }
 component main = Multiplier();
 ```
 
-Pipeline (curva bn128 = BN254):
+Pipeline (bn128 curve = BN254):
 ```bash
 circom multiplier.circom --r1cs --wasm --sym -p bn128
 snarkjs powersoftau new bn128 12 pot12_0000.ptau
@@ -517,10 +517,10 @@ snarkjs groth16 prove multiplier_final.zkey witness.wtns proof.json public.json
 snarkjs groth16 verify verification_key.json public.json proof.json
 ```
 
-**Resultado:** `public.json = ["33"]` (só o público `c` vazou; `a=3`/`b=11` ficaram secretos)
-e `[INFO] snarkJS: OK!` — prova válida.
+**Result:** `public.json = ["33"]` (only the public `c` leaked; `a=3`/`b=11` stayed secret)
+and `[INFO] snarkJS: OK!` — a valid proof.
 
-### A.2 Parte 2 — BN254 + Poseidon on-chain no soroban-sdk 26.1.0
+### A.2 Part 2 — BN254 + Poseidon on-chain on soroban-sdk 26.1.0
 
 `Cargo.toml` (deps):
 ```toml
@@ -531,26 +531,26 @@ soroban-poseidon = { git = "https://github.com/stellar/rs-soroban-poseidon" }
 soroban-sdk = { version = "26.1.0", features = ["testutils"] }
 ```
 
-Testes (`src/lib.rs`, resumidos) — 3 verificações independentes:
+Tests (`src/lib.rs`, abridged) — 3 independent checks:
 ```rust
-// (1) Aritmética de curva: gerador na curva + G + G == 2*G.
+// (1) Curve arithmetic: generator on the curve + G + G == 2*G.
 #[test] fn bn254_curve_ops_work() {
     let env = Env::default(); let bn = env.crypto().bn254();
-    let g = g1_gen(&env);                       // gerador G1 = (1, 2)
+    let g = g1_gen(&env);                       // generator G1 = (1, 2)
     assert!(bn.g1_is_on_curve(&g));
     let two = Bn254Fr::from_u256(U256::from_u32(&env, 2));
     assert_eq!(bn.g1_add(&g, &g).to_array(), bn.g1_mul(&g, &two).to_array());
 }
 
-// (2) pairing_check (núcleo do Groth16) executa de fato — testado por dois lados.
+// (2) pairing_check (the core of Groth16) actually runs — tested from two sides.
 #[test] fn bn254_pairing_check_real() {
     let env = Env::default(); let bn = env.crypto().bn254();
     let (g1g, g2g, neg) = (g1_gen(&env), g2_gen(&env), g1_neg_gen(&env));
     assert!(!bn.pairing_check(vec![&env, g1g.clone()], vec![&env, g2g.clone()])); // e(G1,G2) != 1
-    assert!( bn.pairing_check(vec![&env, g1g, neg], vec![&env, g2g.clone(), g2g])); // bilinearidade = 1
+    assert!( bn.pairing_check(vec![&env, g1g, neg], vec![&env, g2g.clone(), g2g])); // bilinearity = 1
 }
 
-// (3) Poseidon on-chain bate com o vetor canônico do circomlib: poseidon([1,2]) com t=3.
+// (3) on-chain Poseidon matches the circomlib canonical vector: poseidon([1,2]) with t=3.
 #[test] fn poseidon_matches_circomlib() {
     use soroban_poseidon::poseidon_hash;
     let env = Env::default();
@@ -561,15 +561,15 @@ Testes (`src/lib.rs`, resumidos) — 3 verificações independentes:
 }
 ```
 
-Detalhes de codificação confirmados no de-risco (úteis p/ Stage 1/4):
-- **G1**: `x || y`, cada `Fp` big-endian (32+32 = 64 bytes).
-- **G2**: formato Ethereum do host → `c1 || c0` por `Fp2`, cada `Fp` big-endian (4×32 = 128 bytes).
-  (ref. `soroban-env-host` `crypto/bn254.rs`, ~linhas 99-102.)
-- **-G1** de `(1,2)` = `(1, p-2)`, `p` = primo do campo base BN254.
-- Poseidon: `CryptoHazmat::poseidon2_permutation` é a host fn crua (feature `hazmat-crypto`);
-  usamos o crate `soroban-poseidon` (`poseidon_hash::<3, Bn254Fr>`), que casa com o circomlib.
+Encoding details confirmed in the de-risking (useful for Stage 1/4):
+- **G1**: `x || y`, each `Fp` big-endian (32+32 = 64 bytes).
+- **G2**: the host's Ethereum format → `c1 || c0` per `Fp2`, each `Fp` big-endian (4×32 = 128 bytes).
+  (ref. `soroban-env-host` `crypto/bn254.rs`, ~lines 99-102.)
+- **-G1** of `(1,2)` = `(1, p-2)`, `p` = the BN254 base field prime.
+- Poseidon: `CryptoHazmat::poseidon2_permutation` is the raw host fn (feature `hazmat-crypto`);
+  we use the `soroban-poseidon` crate (`poseidon_hash::<3, Bn254Fr>`), which matches circomlib.
 
-**Resultado (`cargo test`):**
+**Result (`cargo test`):**
 ```
 running 3 tests
 test bn254_curve_ops_work ... ok
@@ -578,8 +578,8 @@ test bn254_pairing_check_real ... ok
 test result: ok. 3 passed; 0 failed
 ```
 
-### A.3 Conclusão do de-risco
-Trilha A viável e provada localmente (toolchain, `pairing_check`, Poseidon↔circomlib).
-**Em aberto p/ Stage 4** (por decisão da Opção B): a emenda completa (prova real do snarkjs
-verificada dentro de um contrato Soroban), deploy na testnet, e a medição real do custo de
-instruções (o "~40% do budget" segue não-medido).
+### A.3 De-risking conclusion
+Track A viable and proven locally (toolchain, `pairing_check`, Poseidon↔circomlib).
+**Open for Stage 4** (by Option B's decision): the full splice (a real snarkjs proof
+verified inside a Soroban contract), testnet deploy, and the real measurement of the instruction
+cost (the "~40% of the budget" remains unmeasured).

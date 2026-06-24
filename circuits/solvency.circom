@@ -1,13 +1,13 @@
 pragma circom 2.0.0;
 
-// Circuito de solvência — MVP (peça B + reservas on-chain + comparação de faixa).
-// Sinais PÚBLICOS: guarantees_root, vault_stable_assets, ratio_bps (o attestor cruza
-// os dois primeiros com o estado on-chain ao vivo). Sinais PRIVADOS: as folhas.
+// Solvency circuit — MVP (part B + on-chain reserves + band comparison).
+// PUBLIC signals: guarantees_root, vault_stable_assets, ratio_bps (the attestor cross-checks
+// the first two against the live on-chain state). PRIVATE signals: the leaves.
 //
-// Afirmação provada: as folhas recompõem `guarantees_root` (anti-omissão) E
-// reservas * 10000 >= obrigações * ratio_bps  (solvência na faixa pedida).
+// Proven claim: the leaves recompose `guarantees_root` (anti-omission) AND
+// reserves * 10000 >= obligations * ratio_bps  (solvency at the requested band).
 //
-// 2.3 somará bank_balance (peça A, atestação EdDSA) ao lado das reservas.
+// 2.3 will add bank_balance (part A, EdDSA attestation) alongside the reserves.
 
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
@@ -17,18 +17,18 @@ include "circomlib/circuits/bitify.circom";
 template Leaf() {
     signal input id;
     signal input obligation;
-    signal input active;           // 0 ou 1
+    signal input active;           // 0 or 1
     signal output out;
 
-    active * (active - 1) === 0;   // booleano
+    active * (active - 1) === 0;   // boolean
 
     component h = Poseidon(2);
     h.inputs[0] <== id;
     h.inputs[1] <== obligation;
-    out <== active * h.out;        // ativo ? Poseidon(id,obrigação) : 0
+    out <== active * h.out;        // active ? Poseidon(id, obligation) : 0
 }
 
-// Recompõe a raiz Poseidon-Merkle (árvore perfeita de 2^depth folhas) e soma obrigações.
+// Recompose the Poseidon-Merkle root (perfect tree of 2^depth leaves) and sum obligations.
 template MerkleRootAndSum(depth) {
     var N = 1 << depth;
     signal input id[N];
@@ -79,23 +79,23 @@ template MerkleRootAndSum(depth) {
 template Solvency(depth) {
     var N = 1 << depth;
 
-    // privados (a lista — nunca sai)
+    // private (the list — never leaves)
     signal input id[N];
     signal input obligation[N];
     signal input active[N];
 
-    // peça A — atestação do banco (privados: saldo + assinatura do oráculo)
+    // part A — bank attestation (private: balance + oracle signature)
     signal input bank_balance;
     signal input bank_R8x;
     signal input bank_R8y;
     signal input bank_S;
 
-    // públicos (cruzados com on-chain pelo attestor)
+    // public (cross-checked against on-chain by the attestor)
     signal input guarantees_root;
     signal input vault_stable_assets;
     signal input ratio_bps;
-    signal input nonce;            // frescor (anti-replay)
-    signal input oracle_Ax;        // chave pública do oráculo-banco
+    signal input nonce;            // freshness (anti-replay)
+    signal input oracle_Ax;        // bank-oracle public key
     signal input oracle_Ay;
 
     component b = MerkleRootAndSum(depth);
@@ -106,11 +106,11 @@ template Solvency(depth) {
         b.active[i] <== active[i];
     }
 
-    // Anti-omissão: a raiz recomposta tem que ser a raiz on-chain.
+    // Anti-omission: the recomposed root must be the on-chain root.
     b.root === guarantees_root;
 
-    // Peça A: verifica a assinatura EdDSA-Poseidon do oráculo sobre M = Poseidon(saldo, nonce).
-    // Assinatura válida => o saldo do banco é o que o oráculo atestou (saldo nunca sai).
+    // Part A: verify the oracle's EdDSA-Poseidon signature over M = Poseidon(balance, nonce).
+    // Valid signature => the bank balance is what the oracle attested (balance never leaves).
     component mhash = Poseidon(2);
     mhash.inputs[0] <== bank_balance;
     mhash.inputs[1] <== nonce;
@@ -123,23 +123,23 @@ template Solvency(depth) {
     ev.R8y <== bank_R8y;
     ev.M <== mhash.out;
 
-    // Reservas = vault on-chain + saldo do banco (atestado).
+    // Reserves = on-chain vault + bank balance (attested).
     signal reserves;
     reserves <== vault_stable_assets + bank_balance;
 
-    // Range-check: amarra reservas e obrigações a 128 bits ANTES de comparar.
-    // Sem isto, GreaterEqThan(200) só é sólido se os operandos couberem em 200 bits —
-    // uma invariante implícita que pendurava a corretude na magnitude do que o oráculo
-    // assina. Com o range-check a soundness do comparador é auto-contida: 128 bits cobrem
-    // qualquer valor real (stroops << 2^128) e impedem o "dar a volta" no campo.
+    // Range-check: bind reserves and obligations to 128 bits BEFORE comparing.
+    // Without this, GreaterEqThan(200) is only sound if the operands fit in 200 bits —
+    // an implicit invariant that hung correctness on the magnitude of what the oracle
+    // signs. With the range-check the comparator's soundness is self-contained: 128 bits cover
+    // any real value (stroops << 2^128) and prevent field wraparound.
     component reservesBits = Num2Bits(128);
     reservesBits.in <== reserves;
     component oblBits = Num2Bits(128);
     oblBits.in <== b.obligations;
 
-    // Solvência: reserves * 10000 >= obligations * ratio_bps.
-    // (reserves < 2^128 => reserves*10000 < 2^142 < 2^200; ratio_bps é u32 on-chain
-    //  => obligations*ratio_bps < 2^160 < 2^200 — operandos seguros p/ GreaterEqThan(200).)
+    // Solvency: reserves * 10000 >= obligations * ratio_bps.
+    // (reserves < 2^128 => reserves*10000 < 2^142 < 2^200; ratio_bps is u32 on-chain
+    //  => obligations*ratio_bps < 2^160 < 2^200 — operands safe for GreaterEqThan(200).)
     component ge = GreaterEqThan(200);
     ge.in[0] <== reserves * 10000;
     ge.in[1] <== b.obligations * ratio_bps;

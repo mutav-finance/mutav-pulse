@@ -1,9 +1,9 @@
-// Cross-check da peça B: reconstrói a raiz off-chain (circomlibjs) para conjuntos
-// conhecidos e imprime os hex, pra cravar nos testes do registry (on-chain == off-chain).
+// Cross-check of piece B: reconstructs the off-chain root (circomlibjs) for known
+// sets and prints the hex, to hardcode into the registry tests (on-chain == off-chain).
 //
-// Garantias = mesmos valores do teste Rust: monthly_amount=100, months_covered=6,
-// months_used=0  =>  obrigação = 100 * (6 - 0) = 600, para cada id.
-// Testamos n=2 (par) e n=3 (ímpar, exercita o padding de folha ímpar).
+// Guarantees = same values as the Rust test: monthly_amount=100, months_covered=6,
+// months_used=0  =>  obligation = 100 * (6 - 0) = 600, for each id.
+// We test n=2 (even) and n=3 (odd, exercises the odd-leaf padding).
 
 import { makeHasher, leaf, computeRoot, toHex32 } from "./merkle.mjs";
 

@@ -14,31 +14,31 @@ export const networks = {
     }
 };
 /**
- * Erros do attestor.
+ * Attestor errors.
  */
 export const AttestError = {
     0: { message: "InvalidProof" },
     1: { message: "MalformedPublicInputs" },
     2: { message: "MalformedProof" },
     /**
-     * `now - nonce > WINDOW_SECS` — atestação velha demais.
+     * `now - nonce > WINDOW_SECS` — attestation too old.
      */
     3: { message: "StaleProof" },
     /**
-     * `nonce > now` — atestação "do futuro".
+     * `nonce > now` — attestation "from the future".
      */
     4: { message: "ProofFromFuture" },
     /**
-     * registry/vault/oráculo ainda não foram setados.
+     * registry/vault/oracle have not been set yet.
      */
     5: { message: "NotConfigured" },
     /**
-     * `ratio_bps < MIN_RATIO_BPS` — faixa abaixo do piso de cobertura (100%).
+     * `ratio_bps < MIN_RATIO_BPS` — band below the coverage floor (100%).
      */
     6: { message: "RatioTooLow" }
 };
 /**
- * Erros de verificação Groth16.
+ * Groth16 verification errors.
  */
 export const Groth16Error = {
     0: { message: "InvalidProof" },

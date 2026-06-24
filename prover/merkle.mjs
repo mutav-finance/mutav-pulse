@@ -1,26 +1,26 @@
-// Reconstrução off-chain da árvore Poseidon-Merkle das garantias (peça B).
+// Off-chain reconstruction of the guarantees' Poseidon-Merkle tree (piece B).
 //
-// Tem que casar BYTE-A-BYTE com o `registry` on-chain:
-//  - folha = Poseidon(id, obrigação), obrigação = monthly_amount * (months_covered - months_used)
-//  - árvore binária de profundidade fixa TREE_DEPTH, folhas à esquerda, sibling ausente = 0
-//  - nó pai = Poseidon(esquerda, direita)
-//  - ordem das folhas = ordem de `registry.active_ids()`
+// It must match the on-chain `registry` BYTE-FOR-BYTE:
+//  - leaf = Poseidon(id, obligation), obligation = monthly_amount * (months_covered - months_used)
+//  - fixed-depth binary tree TREE_DEPTH, leaves to the left, missing sibling = 0
+//  - parent node = Poseidon(left, right)
+//  - leaf order = order of `registry.active_ids()`
 //
-// O Poseidon do circomlibjs é o mesmo do circomlib e do crate soroban-poseidon (BN254, t=3).
+// circomlibjs's Poseidon is the same as circomlib's and the soroban-poseidon crate's (BN254, t=3).
 //
-// ARQUITETURA DO CIRCUITO (peça B) — IMPORTANTE:
-// O circuito (Stage 2) RECOMPÕE A RAIZ INTEIRA a partir de TODAS as folhas e exige
-// `raiz_recomposta == guarantees_root` (a raiz on-chain, da lista completa) + soma TODAS as
-// obrigações. É isso que impede a omissão: deixar uma garantia de fora muda a raiz, que então
-// não bate com a on-chain. Por isso o prover entrega a LISTA COMPLETA DE FOLHAS (ordenada como
-// `active_ids()`) — e NÃO provas de inclusão por-folha (caminhos Merkle), que não impediriam
-// omissão. Logo, este módulo expõe `computeRoot` + a lista de folhas, sem `merklePath`.
+// CIRCUIT ARCHITECTURE (piece B) — IMPORTANT:
+// The circuit (Stage 2) RECOMPUTES THE ENTIRE ROOT from ALL leaves and requires
+// `recomputed_root == guarantees_root` (the on-chain root, from the full list) + sums ALL
+// obligations. That is what prevents omission: leaving a guarantee out changes the root, which
+// then no longer matches the on-chain one. That is why the prover supplies the FULL LIST OF LEAVES
+// (ordered like `active_ids()`) — and NOT per-leaf inclusion proofs (Merkle paths), which would not
+// prevent omission. Hence this module exposes `computeRoot` + the leaf list, without `merklePath`.
 
 import { buildPoseidon } from "circomlibjs";
 
 export const TREE_DEPTH = 5;
 
-/** Constrói o hasher Poseidon (t=3 / 2 entradas). Retorna h2(a,b) -> bigint. */
+/** Builds the Poseidon hasher (t=3 / 2 inputs). Returns h2(a,b) -> bigint. */
 export async function makeHasher() {
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
@@ -28,12 +28,12 @@ export async function makeHasher() {
   return { h2, F };
 }
 
-/** Folha de uma garantia. */
+/** Leaf of a guarantee. */
 export function leaf(h2, id, obligation) {
   return h2(BigInt(id), BigInt(obligation));
 }
 
-/** Raiz da árvore de profundidade fixa (folhas à esquerda, resto = zero). */
+/** Root of the fixed-depth tree (leaves to the left, rest = zero). */
 export function computeRoot(h2, leaves, depth = TREE_DEPTH) {
   let level = leaves.slice();
   let zero = 0n;
@@ -51,7 +51,7 @@ export function computeRoot(h2, leaves, depth = TREE_DEPTH) {
   return level[0];
 }
 
-/** bigint -> "0x" + 64 hex chars big-endian (formato de BytesN<32> do registry). */
+/** bigint -> "0x" + 64 hex chars big-endian (registry's BytesN<32> format). */
 export function toHex32(x) {
   return "0x" + x.toString(16).padStart(64, "0");
 }

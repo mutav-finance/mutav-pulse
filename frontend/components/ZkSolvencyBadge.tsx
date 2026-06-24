@@ -1,59 +1,60 @@
 "use client";
 
 /**
- * ZkSolvencyBadge — o selo de solvência provado por ZK (zk-SNARK Groth16).
+ * ZkSolvencyBadge — the ZK-proven solvency seal (zk-SNARK Groth16).
  *
- * Acima do SolvencyChip na página de transparência. Onde o SolvencyChip prova
- * a solvência com o que está PÚBLICO na chain, este selo prova — sem expor nada —
- * que as reservas (inclusive o que é secreto) cobrem TODAS as garantias.
+ * Sits above the SolvencyChip on the transparency page. Where the SolvencyChip
+ * proves solvency from what is PUBLIC on-chain, this seal proves — without
+ * exposing anything — that the reserves (including what is secret) cover ALL
+ * the guarantees.
  *
- * Lê `reads.solvencyAttestation()` (last_attestation do attestor). O contrato só
- * grava `solvent:true` para cobertura >= 100% (piso MIN_RATIO_BPS), então o verde
- * carrega significado on-chain. A atestação expõe apenas a FAIXA (`ratio_bps`) +
- * frescor (`ts`/`ledger`) — nunca valores, carteiras ou clientes.
+ * Reads `reads.solvencyAttestation()` (the attestor's last_attestation). The
+ * contract only records `solvent:true` for coverage >= 100% (the MIN_RATIO_BPS
+ * floor), so green carries on-chain meaning. The attestation exposes only the
+ * BAND (`ratio_bps`) + freshness (`ts`/`ledger`) — never values, wallets, or clients.
  *
- * UX (abstrai a blockchain): visão padrão sem hashes/endereços; "Como funciona?"
- * em 3 bullets sem jargão; detalhes técnicos + re-verificação no drawer; estado
- * vermelho honesto se a prova falhou/expirou.
+ * UX (abstracts the blockchain away): default view has no hashes/addresses; a
+ * "How does it work?" drawer with 3 jargon-free bullets; technical details +
+ * re-verification in the drawer; honest red state if the proof failed/expired.
  *
- * Design: Precision Brutalism / Investidor (dark + âmbar escasso). O âmbar marca
- * a identidade "provado" (barra de acento + ações); o verde/vermelho é o estado.
+ * Design: Precision Brutalism / Investidor (dark + scarce amber). Amber marks the
+ * "proven" identity (accent bar + actions); green/red is the state.
  */
 
 import { useState } from "react";
 import type { Attestation } from "@/lib/contracts";
 
-/** Acima disto a prova é considerada velha demais para o selo ficar verde. */
+/** Above this the proof is considered too old for the seal to stay green. */
 const STALE_AFTER_S = 24 * 3600; // 24h
-/** Piso de cobertura (bps) — espelha MIN_RATIO_BPS do attestor. */
+/** Coverage floor (bps) — mirrors the attestor's MIN_RATIO_BPS. */
 const MIN_RATIO_BPS = 10_000;
 
 interface ZkSolvencyBadgeProps {
   attestation: Attestation | null;
   loading?: boolean;
   error?: string;
-  /** Re-lê a atestação on-chain (botão "Re-verificar agora"). */
+  /** Re-reads the attestation on-chain (the "Re-verify now" button). */
   onReverify?: () => void;
-  /** Link do attestor no explorador (detalhes técnicos / re-verificação independente). */
+  /** Attestor link on the explorer (technical details / independent re-verification). */
   explorerUrl?: string;
-  /** "Agora" em ms (epoch) — vindo do `lastRefreshed` da página. Mantém o render
-   *  puro (sem Date.now()) e o "Conferido há X" coerente com a última leitura. */
+  /** "Now" in ms (epoch) — comes from the page's `lastRefreshed`. Keeps the render
+   *  pure (no Date.now()) and the "Checked X ago" consistent with the last read. */
   nowMs?: number;
 }
 
 type Status = "loading" | "error" | "proven" | "stale" | "unproven";
 
 function relTime(ageS: number): string {
-  if (ageS < 90) return "há poucos instantes";
+  if (ageS < 90) return "moments ago";
   const m = Math.floor(ageS / 60);
-  if (m < 60) return `há ${m} min`;
+  if (m < 60) return `${m} min ago`;
   const h = Math.floor(ageS / 3600);
-  if (h < 24) return `há ${h} h`;
+  if (h < 24) return `${h} h ago`;
   const d = Math.floor(ageS / 86400);
-  return `há ${d} dia${d > 1 ? "s" : ""}`;
+  return `${d} day${d > 1 ? "s" : ""} ago`;
 }
 
-/** Mono span com tabular-nums. */
+/** Mono span with tabular-nums. */
 function Mono({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <span
@@ -75,9 +76,9 @@ export function ZkSolvencyBadge({
 }: ZkSolvencyBadgeProps) {
   const [open, setOpen] = useState(false);
 
-  // ── Deriva o estado ────────────────────────────────────────────────────────
-  // `now` vem da página (nowMs); render puro, sem Date.now(). Sem nowMs (antes da
-  // 1ª leitura) o selo está em loading e não usa idade — ageS fica null.
+  // ── Derive the state ─────────────────────────────────────────────────────────
+  // `now` comes from the page (nowMs); pure render, no Date.now(). Without nowMs
+  // (before the 1st read) the seal is in loading and doesn't use age — ageS is null.
   const nowS = nowMs != null ? Math.floor(nowMs / 1000) : null;
   const ageS = attestation && nowS != null ? nowS - Number(attestation.ts) : null;
   const meetsFloor = !!attestation && attestation.solvent && attestation.ratio_bps >= MIN_RATIO_BPS;
@@ -91,7 +92,7 @@ export function ZkSolvencyBadge({
 
   const band = attestation ? `${(attestation.ratio_bps / 100).toFixed(0)}%` : "100%";
 
-  // Cores por estado (âmbar = identidade "provado"; verde/vermelho = estado).
+  // Colors by state (amber = "proven" identity; green/red = state).
   const accent =
     status === "proven"
       ? "var(--color-success)"
@@ -101,7 +102,7 @@ export function ZkSolvencyBadge({
           ? "var(--color-error)"
           : "var(--color-border)";
 
-  // ── Estados curtos (loading / error) ────────────────────────────────────────
+  // ── Short states (loading / error) ───────────────────────────────────────────
   if (status === "loading") {
     return (
       <Shell accent="var(--color-border)" barColor="var(--color-border)">
@@ -111,7 +112,7 @@ export function ZkSolvencyBadge({
             className="font-mono"
             style={{ fontSize: "12px", color: "var(--color-text-3)", letterSpacing: "0.06em" }}
           >
-            VERIFICANDO PROVA…
+            VERIFYING PROOF…
           </span>
         </div>
       </Shell>
@@ -127,46 +128,46 @@ export function ZkSolvencyBadge({
             className="font-mono"
             style={{ fontSize: "12px", color: "var(--color-error)", letterSpacing: "0.06em" }}
           >
-            SELO INDISPONÍVEL
+            SEAL UNAVAILABLE
           </span>
           <span className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
-            não foi possível ler a prova on-chain
+            could not read the on-chain proof
           </span>
         </div>
       </Shell>
     );
   }
 
-  // ── Headline por estado ─────────────────────────────────────────────────────
+  // ── Headline by state ────────────────────────────────────────────────────────
   const headline =
     status === "proven"
-      ? "RESERVA PROVADA · LASTRO VERIFICADO"
+      ? "RESERVE PROVEN · BACKING VERIFIED"
       : status === "stale"
-        ? "PROVA DESATUALIZADA"
-        : "LASTRO NÃO CONFIRMADO";
+        ? "PROOF OUTDATED"
+        : "BACKING NOT CONFIRMED";
 
   const body =
     status === "proven" ? (
       <>
-        As reservas do fundo cobrem no mínimo <strong style={{ color: "var(--color-text)" }}>{band}</strong>{" "}
-        das garantias emitidas — provado de forma independente, sem expor carteiras nem dados de clientes.{" "}
-        Suas cotas <Mono style={{ fontSize: "0.95em" }}>mtvR</Mono> estão lastreadas.
+        The fund&apos;s reserves cover at least <strong style={{ color: "var(--color-text)" }}>{band}</strong>{" "}
+        of the issued guarantees — proven independently, without exposing wallets or client data.{" "}
+        Your <Mono style={{ fontSize: "0.95em" }}>mtvR</Mono> shares are backed.
       </>
     ) : status === "stale" ? (
       <>
-        A última prova de solvência foi registrada {ageS !== null ? relTime(ageS) : ""} e não foi
-        reconfirmada nas últimas 24h. A cobertura pode estar desatualizada — re-verifique abaixo.
+        The last solvency proof was recorded {ageS !== null ? relTime(ageS) : ""} and hasn&apos;t been
+        reconfirmed in the last 24h. Coverage may be outdated — re-verify below.
       </>
     ) : (
       <>
-        Não há prova de solvência válida registrada no momento. Isto é honesto por construção: se os
-        números não fechassem, o selo ficaria assim automaticamente.
+        There is no valid solvency proof on record right now. This is honest by construction: if the
+        numbers didn&apos;t add up, the seal would look like this automatically.
       </>
     );
 
   return (
-    <Shell accent={accent} barColor={accent} role="status" ariaLabel={`Selo ZK: ${headline}`}>
-      {/* Linha de status */}
+    <Shell accent={accent} barColor={accent} role="status" ariaLabel={`ZK seal: ${headline}`}>
+      {/* Status line */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         <Dot color={accent} />
         <span
@@ -175,7 +176,7 @@ export function ZkSolvencyBadge({
         >
           {headline}
         </span>
-        {/* Tag "ZK" — identidade da prova (âmbar escasso) */}
+        {/* "ZK" tag — proof identity (scarce amber) */}
         <span
           className="font-mono"
           style={{
@@ -187,7 +188,7 @@ export function ZkSolvencyBadge({
             padding: "1px 5px",
             opacity: 0.9,
           }}
-          title="Prova de conhecimento-zero (zk-SNARK Groth16) verificada on-chain"
+          title="Zero-knowledge proof (zk-SNARK Groth16) verified on-chain"
         >
           ZK
         </span>
@@ -204,7 +205,7 @@ export function ZkSolvencyBadge({
                   textTransform: "uppercase",
                 }}
               >
-                COBERTURA
+                COVERAGE
               </span>
               <Mono style={{ fontSize: "13px", color: "var(--color-success)" }}>≥ {band}</Mono>
             </div>
@@ -212,7 +213,7 @@ export function ZkSolvencyBadge({
         )}
       </div>
 
-      {/* Corpo */}
+      {/* Body */}
       <p
         className="font-body"
         style={{
@@ -226,7 +227,7 @@ export function ZkSolvencyBadge({
         {body}
       </p>
 
-      {/* Frescor + ações */}
+      {/* Freshness + actions */}
       <div
         style={{
           display: "flex",
@@ -241,7 +242,7 @@ export function ZkSolvencyBadge({
             className="font-mono"
             style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
           >
-            Conferido {relTime(ageS)}
+            Checked {relTime(ageS)}
           </span>
         )}
 
@@ -260,7 +261,7 @@ export function ZkSolvencyBadge({
               cursor: "pointer",
             }}
           >
-            ↻ Re-verificar agora
+            ↻ Re-verify now
           </button>
         )}
 
@@ -279,11 +280,11 @@ export function ZkSolvencyBadge({
             cursor: "pointer",
           }}
         >
-          Como funciona? {open ? "▴" : "▾"}
+          How does it work? {open ? "▴" : "▾"}
         </button>
       </div>
 
-      {/* Drawer "Como funciona?" */}
+      {/* "How does it work?" drawer */}
       {open && (
         <div
           style={{
@@ -305,9 +306,9 @@ export function ZkSolvencyBadge({
             }}
           >
             {[
-              "Provamos com matemática que as reservas cobrem todas as garantias — sem revelar valores, carteiras nem dados de clientes.",
-              "A conferência roda sozinha dentro de um contrato na blockchain. Ninguém precisa confiar na nossa palavra.",
-              "Se algum número não fechasse, o selo ficaria vermelho automaticamente — não dá para forjar.",
+              "We prove mathematically that the reserves cover every guarantee — without revealing values, wallets, or client data.",
+              "The check runs on its own inside a contract on the blockchain. No one has to take our word for it.",
+              "If any number didn't add up, the seal would turn red automatically — it can't be forged.",
             ].map((t, i) => (
               <li key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                 <span
@@ -327,7 +328,7 @@ export function ZkSolvencyBadge({
             ))}
           </ul>
 
-          {/* Detalhes técnicos */}
+          {/* Technical details */}
           <div
             style={{
               marginTop: "14px",
@@ -343,7 +344,7 @@ export function ZkSolvencyBadge({
               className="font-mono"
               style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.04em" }}
             >
-              Prova zk-SNARK (Groth16 · BN254) verificada on-chain
+              zk-SNARK proof (Groth16 · BN254) verified on-chain
             </span>
             {explorerUrl && (
               <a
@@ -359,7 +360,7 @@ export function ZkSolvencyBadge({
                   borderBottom: "1px solid var(--color-accent-dim)",
                 }}
               >
-                re-verificar você mesmo no explorador ↗
+                re-verify it yourself on the explorer ↗
               </a>
             )}
           </div>
@@ -369,9 +370,9 @@ export function ZkSolvencyBadge({
   );
 }
 
-// ── Primitivos visuais ─────────────────────────────────────────────────────────
+// ── Visual primitives ────────────────────────────────────────────────────────
 
-/** Casca do selo: barra de acento à esquerda (Precision Brutalism) + superfície. */
+/** Seal shell: left accent bar (Precision Brutalism) + surface. */
 function Shell({
   children,
   accent,
@@ -403,7 +404,7 @@ function Shell({
 }
 
 function Dot({ color }: { color: string }) {
-  // Quadrado estático colorido pelo estado (padrão do SolvencyChip / STYLE.md §3.5).
+  // Static square colored by state (SolvencyChip pattern / STYLE.md §3.5).
   return (
     <span
       aria-hidden="true"

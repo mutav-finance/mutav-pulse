@@ -1,10 +1,10 @@
-// Gera o input do circuito solvency.circom (peça A + B) com uma assinatura
-// EdDSA-Poseidon real do oráculo-banco (chave simulada/fixa para o hackathon).
+// Generates the input for the solvency.circom circuit (part A + B) with a real
+// EdDSA-Poseidon signature from the bank oracle (simulated/fixed key for the hackathon).
 //
-// Uso: node gen_input.mjs <vault_stable_assets> <ratio_bps> <bank_balance> [tamper]
-//   tamper => adultera o bank_balance DEPOIS de assinar (deve fazer a prova falhar).
+// Usage: node gen_input.mjs <vault_stable_assets> <ratio_bps> <bank_balance> [tamper]
+//   tamper => tampers with bank_balance AFTER signing (should make the proof fail).
 //
-// Garantias fixas: 2 ativas (id 0 e 1, obrigação 600 cada) => obrigações = 1200.
+// Fixed guarantees: 2 active (id 0 and 1, obligation 600 each) => obligations = 1200.
 
 import { buildPoseidon, buildEddsa } from "circomlibjs";
 import fs from "fs";
@@ -16,16 +16,16 @@ const TREE_DEPTH = 5;
 const poseidon = await buildPoseidon();
 const eddsa = await buildEddsa();
 const F = poseidon.F;
-const h2 = (a, b) => F.toObject(poseidon([a, b])); // -> bigint, igual ao prover/registry
+const h2 = (a, b) => F.toObject(poseidon([a, b])); // -> bigint, same as prover/registry
 
-// --- garantias (2 ativas) ---
+// --- guarantees (2 active) ---
 const N = 32;
 const id = Array(N).fill("0");
 const ob = Array(N).fill("0");
 const ac = Array(N).fill("0");
 id[1] = "1"; ob[0] = "600"; ob[1] = "600"; ac[0] = "1"; ac[1] = "1";
 
-// raiz off-chain depth-5 (mesma do registry/prover)
+// off-chain depth-5 root (same as registry/prover)
 const leaf = (gid, gob) => h2(BigInt(gid), BigInt(gob));
 let level = [leaf(0, 600), leaf(1, 600)];
 let zero = 0n;
@@ -40,10 +40,10 @@ for (let d = 0; d < TREE_DEPTH; d++) {
 }
 const root = level[0].toString();
 
-// --- atestação do banco (EdDSA-Poseidon) ---
+// --- bank attestation (EdDSA-Poseidon) ---
 const prv = Buffer.from("0001020304050607080900010203040506070809000102030405060708090001", "hex");
 const pub = eddsa.prv2pub(prv);
-const Mf = poseidon([BigInt(bank), BigInt(NONCE)]); // M = Poseidon(saldo, nonce), elemento de campo
+const Mf = poseidon([BigInt(bank), BigInt(NONCE)]); // M = Poseidon(balance, nonce), field element
 const sig = eddsa.signPoseidon(prv, Mf);
 
 const bankInput = mode === "tamper" ? (BigInt(bank) + 1n).toString() : bank;
@@ -62,4 +62,4 @@ const input = {
   oracle_Ay: F.toObject(pub[1]).toString(),
 };
 fs.writeFileSync("sv_input.json", JSON.stringify(input));
-console.error(`gerado: vault=${vault} bank=${bankInput}${mode === "tamper" ? " (adulterado)" : ""} ratio=${ratio} obrig=1200 root=0x${BigInt(root).toString(16)}`);
+console.error(`generated: vault=${vault} bank=${bankInput}${mode === "tamper" ? " (tampered)" : ""} ratio=${ratio} obl=1200 root=0x${BigInt(root).toString(16)}`);

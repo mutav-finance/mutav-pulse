@@ -1,7 +1,7 @@
 #![cfg(test)]
-//! "Emenda" do Stage 4: a prova real do snarkjs (circuits/proof.json, fixa e
-//! commitada) verifica DENTRO do contrato, contra a VK embutida pelo build.rs.
-//! Fecha o item que o Stage 0 deixou em aberto (prova real verificada in-contract).
+//! Stage 4 "amendment": the real snarkjs proof (circuits/proof.json, fixed and
+//! committed) verifies INSIDE the contract, against the VK embedded by build.rs.
+//! Closes the item Stage 0 left open (real proof verified in-contract).
 
 use soroban_sdk::crypto::bn254::Bn254Fr;
 use soroban_sdk::{Bytes, BytesN, Env, Vec, U256};
@@ -42,7 +42,7 @@ fn verifies_real_snarkjs_proof() {
     assert_eq!(
         groth16_verify(&env, proof, pubs),
         Ok(true),
-        "prova real do snarkjs deve verificar in-contract (emenda)"
+        "the real snarkjs proof must verify in-contract (amendment)"
     );
 }
 
@@ -50,7 +50,7 @@ fn verifies_real_snarkjs_proof() {
 fn rejects_tampered_public_input() {
     let env = Env::default();
     let (proof, _) = load(&env);
-    // adultera o 1º público (guarantees_root) -> pareamento falha.
+    // tampers with the 1st public input (guarantees_root) -> pairing fails.
     let mut pubs: Vec<Bn254Fr> = Vec::new(&env);
     pubs.push_back(Bn254Fr::from_u256(U256::from_u32(&env, 12345)));
     for h in PUBLIC_HEX.iter().skip(1) {
@@ -67,15 +67,15 @@ fn rejects_wrong_public_input_count() {
     let env = Env::default();
     let (proof, _) = load(&env);
     let mut pubs: Vec<Bn254Fr> = Vec::new(&env);
-    pubs.push_back(fe(&env, PUBLIC_HEX[0])); // só 1 de 6
+    pubs.push_back(fe(&env, PUBLIC_HEX[0])); // only 1 of 6
     assert!(matches!(
         groth16_verify(&env, proof, pubs),
         Err(Groth16Error::MalformedPublicInputs)
     ));
 }
 
-// --- attest() end-to-end com mocks de registry/vault ---
-// O fixture (circuits/proof.json) tem: root=PUBLIC_HEX[0], stable=0, ratio=10000,
+// --- attest() end-to-end with registry/vault mocks ---
+// The fixture (circuits/proof.json) has: root=PUBLIC_HEX[0], stable=0, ratio=10000,
 // nonce=1, oracle=(PUBLIC_HEX[4], PUBLIC_HEX[5]).
 
 use soroban_sdk::testutils::{Address as _, Ledger as _};
@@ -96,7 +96,7 @@ struct MockVault;
 #[contractimpl]
 impl MockVault {
     pub fn stable_assets(_e: Env) -> i128 {
-        0 // == public[1] do fixture
+        0 // == public[1] of the fixture
     }
 }
 
@@ -123,7 +123,7 @@ fn setup(e: &Env) -> SolvencyAttestorClient<'_> {
 #[test]
 fn attest_happy_path_records_attestation() {
     let env = Env::default();
-    env.ledger().with_mut(|l| l.timestamp = 100); // now=100, nonce=1 -> fresco
+    env.ledger().with_mut(|l| l.timestamp = 100); // now=100, nonce=1 -> fresh
     let c = setup(&env);
 
     assert!(c.last_attestation().is_none());
@@ -138,7 +138,7 @@ fn attest_happy_path_records_attestation() {
 #[test]
 fn attest_rejects_stale_proof() {
     let env = Env::default();
-    env.ledger().with_mut(|l| l.timestamp = 1 + 3600 + 1); // fora da janela
+    env.ledger().with_mut(|l| l.timestamp = 1 + 3600 + 1); // outside the window
     let c = setup(&env);
     let r = c.try_attest(&proof_bytes(&env), &10_000u32, &1u64);
     assert_eq!(r, Err(Ok(AttestError::StaleProof)));
@@ -158,19 +158,19 @@ fn attest_rejects_wrong_ratio() {
     let env = Env::default();
     env.ledger().with_mut(|l| l.timestamp = 100);
     let c = setup(&env);
-    // ratio 12000 != public[2] (10000) do fixture -> prova não verifica.
+    // ratio 12000 != public[2] (10000) of the fixture -> proof does not verify.
     let r = c.try_attest(&proof_bytes(&env), &12_000u32, &1u64);
     assert_eq!(r, Err(Ok(AttestError::InvalidProof)));
 }
 
 #[test]
 fn attest_rejects_ratio_below_floor() {
-    // Faixa < 100% (10_000 bps) é rejeitada ANTES de verificar a prova — o piso
-    // garante que `solvent:true` só seja gravado p/ cobertura >= 100%.
+    // Band < 100% (10_000 bps) is rejected BEFORE verifying the proof — the floor
+    // ensures `solvent:true` is only recorded for coverage >= 100%.
     let env = Env::default();
     env.ledger().with_mut(|l| l.timestamp = 100);
     let c = setup(&env);
     let r = c.try_attest(&proof_bytes(&env), &5_000u32, &1u64);
     assert_eq!(r, Err(Ok(AttestError::RatioTooLow)));
-    assert!(c.last_attestation().is_none(), "nada deve ser gravado");
+    assert!(c.last_attestation().is_none(), "nothing must be recorded");
 }

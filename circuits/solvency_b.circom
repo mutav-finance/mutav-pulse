@@ -1,33 +1,33 @@
 pragma circom 2.0.0;
 
-// Peça B (Stage 2.1): recompõe a raiz Poseidon-Merkle inteira a partir de TODAS as
-// folhas e soma as obrigações. Tem que casar byte-a-byte com o `registry` (depth 5).
+// Part B (Stage 2.1): recompose the entire Poseidon-Merkle root from ALL the
+// leaves and sum the obligations. Must match the `registry` byte-for-byte (depth 5).
 //
-// Anti-omissão: a raiz recomposta é amarrada (no design final, 2.2+) à guarantees_root
-// on-chain. Omitir/alterar uma folha muda a raiz → não bate → prova falha.
+// Anti-omission: the recomposed root is bound (in the final design, 2.2+) to the on-chain
+// guarantees_root. Omitting/altering a leaf changes the root → mismatch → proof fails.
 //
-// Profundidade 5 => 2^5 = 32 folhas (árvore perfeita, sem padding ímpar).
-// Folha inativa = 0 (mesmo "empty leaf" do registry). Folha ativa = Poseidon(id, obrigação).
+// Depth 5 => 2^5 = 32 leaves (perfect tree, no odd padding).
+// Inactive leaf = 0 (same "empty leaf" as the registry). Active leaf = Poseidon(id, obligation).
 
 include "circomlib/circuits/poseidon.circom";
 
 template Leaf() {
     signal input id;
     signal input obligation;
-    signal input active;       // 0 ou 1
+    signal input active;       // 0 or 1
     signal output out;
 
-    active * (active - 1) === 0;   // active é booleano
+    active * (active - 1) === 0;   // active is boolean
 
     component h = Poseidon(2);
     h.inputs[0] <== id;
     h.inputs[1] <== obligation;
 
-    out <== active * h.out;        // ativo ? Poseidon(id,obrigação) : 0
+    out <== active * h.out;        // active ? Poseidon(id, obligation) : 0
 }
 
 template SolvencyB(depth) {
-    var N = 1 << depth;            // nº de folhas (32 p/ depth 5)
+    var N = 1 << depth;            // number of leaves (32 for depth 5)
 
     signal input id[N];
     signal input obligation[N];
@@ -36,9 +36,9 @@ template SolvencyB(depth) {
     signal output root;
     signal output obligations;
 
-    // --- folhas ---
+    // --- leaves ---
     component leaves[N];
-    signal node[2 * N - 1];       // [0..N-1] folhas, depois níveis internos, último = raiz
+    signal node[2 * N - 1];       // [0..N-1] leaves, then internal levels, last = root
     var i;
     for (i = 0; i < N; i++) {
         leaves[i] = Leaf();
@@ -48,10 +48,10 @@ template SolvencyB(depth) {
         node[i] <== leaves[i].out;
     }
 
-    // --- fold perfeito (N-1 hashers) ---
+    // --- perfect fold (N-1 hashers) ---
     component hashers[N - 1];
-    var idx = 0;                  // início do nível atual
-    var nxt = N;                  // início do próximo nível
+    var idx = 0;                  // start of the current level
+    var nxt = N;                  // start of the next level
     var width = N;
     var h = 0;
     while (width > 1) {
@@ -69,7 +69,7 @@ template SolvencyB(depth) {
     }
     root <== node[2 * N - 2];
 
-    // --- soma das obrigações (só ativas contam; active é 0/1) ---
+    // --- sum of obligations (only active ones count; active is 0/1) ---
     signal partial[N + 1];
     partial[0] <== 0;
     for (i = 0; i < N; i++) {

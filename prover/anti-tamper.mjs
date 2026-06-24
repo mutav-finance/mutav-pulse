@@ -1,21 +1,21 @@
-// Demo anti-trapaça (Stage 6.2) — a "joia da coroa" do selo ZK.
+// Anti-tamper demo (Stage 6.2) — the "crown jewel" of the ZK seal.
 //
-// Prova, de forma reproduzível e ao vivo (lê o estado real da testnet), que NÃO dá
-// para forjar solvência escondendo ou encolhendo uma garantia:
+// Proves, reproducibly and live (reads the real testnet state), that you CANNOT
+// forge solvency by hiding or shrinking a guarantee:
 //
-//   [1] HONESTO          → prova verifica (selo verde).
-//   [2] OMISSÃO + raiz real → a prova é IMPOSSÍVEL de gerar: o circuito exige que as
-//                            folhas recomponham a `guarantees_root` ON-CHAIN; tirar uma
-//                            garantia muda a raiz recomposta → constraint falha.
-//   [3] OMISSÃO + raiz falsa → a prova até gera (para a árvore adulterada), MAS a raiz
-//                            pública (falsa) ≠ raiz on-chain. O attestor lê a raiz AO VIVO,
-//                            então a verificação on-chain rejeita (selo vermelho).
-//                            Com --submit, submete de verdade e mostra o revert on-chain.
+//   [1] HONEST           → proof verifies (green seal).
+//   [2] OMISSION + real root → the proof is IMPOSSIBLE to generate: the circuit requires the
+//                            leaves to recompute the ON-CHAIN `guarantees_root`; removing a
+//                            guarantee changes the recomputed root → constraint fails.
+//   [3] OMISSION + fake root → the proof does generate (for the tampered tree), BUT the public
+//                            (fake) root ≠ on-chain root. The attestor reads the root LIVE,
+//                            so on-chain verification rejects it (red seal).
+//                            With --submit, it really submits and shows the on-chain revert.
 //
-// Uso: node anti-tamper.mjs [bank_balance] [ratio_bps] [--submit]
+// Usage: node anti-tamper.mjs [bank_balance] [ratio_bps] [--submit]
 //
-// O que é REAL vs SIMULADO: igual ao prove.mjs — garantias/raiz/reservas são reais da
-// testnet; a atestação de banco (peça A) é simulada (chave-oráculo fixa do hackathon).
+// What is REAL vs SIMULATED: same as prove.mjs — guarantees/root/reserves are real from the
+// testnet; the bank attestation (piece A) is simulated (fixed hackathon oracle key).
 
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -33,11 +33,11 @@ const ATTESTOR = "CBYXNYYZRD5SOBU3HP5GWV7I64GISOF5H4SWN2UTXZ7FIF6LSVII36MT";
 
 const argv = process.argv.slice(2).filter((a) => a !== "--submit");
 const SUBMIT = process.argv.includes("--submit");
-const BANK_BALANCE = BigInt(argv[0] ?? "100000000000"); // 10.000 USDC simulado
+const BANK_BALANCE = BigInt(argv[0] ?? "100000000000"); // 10,000 USDC simulated
 const RATIO_BPS = (argv[1] ?? "10000").toString();
 const NONCE = Math.floor(Date.now() / 1000).toString();
 
-// Chave-oráculo do banco — FIXA/simulada (mesma do prove.mjs / gen_input.mjs).
+// Bank oracle key — FIXED/simulated (same as prove.mjs / gen_input.mjs).
 const ORACLE_PRV = Buffer.from(
   "0001020304050607080900010203040506070809000102030405060708090001",
   "hex",
@@ -54,7 +54,7 @@ function read(id, fn, ...args) {
   try {
     return JSON.parse(execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim());
   } catch (e) {
-    throw new Error(`falha ao ler ${fn} de ${id}:\n${(e.stderr || e.message || "").toString().trim()}`);
+    throw new Error(`failed to read ${fn} from ${id}:\n${(e.stderr || e.message || "").toString().trim()}`);
   }
 }
 
@@ -64,7 +64,7 @@ const obligationOf = (g) => {
   return ob > 0n ? ob : 0n;
 };
 
-/** Monta o input do circuito a partir de folhas/obrigações + a raiz pública pedida. */
+/** Assembles the circuit input from leaves/obligations + the requested public root. */
 function buildInput({ ids, obligations, actives, root, stable, sig, pub, F }) {
   const N = 1 << TREE_DEPTH;
   const id = Array(N).fill("0");
@@ -90,16 +90,16 @@ function buildInput({ ids, obligations, actives, root, stable, sig, pub, F }) {
   };
 }
 
-// --- encoding p/ o attestor (inline, igual ao encode-for-soroban.mjs) ---
+// --- encoding for the attestor (inline, same as encode-for-soroban.mjs) ---
 const fe = (dec) => BigInt(dec).toString(16).padStart(64, "0");
 const g1 = (p) => fe(p[0]) + fe(p[1]);
 const g2 = (p) => fe(p[0][1]) + fe(p[0][0]) + fe(p[1][1]) + fe(p[1][0]);
 const proofHex = (proof) => g1(proof.pi_a) + g2(proof.pi_b) + g1(proof.pi_c);
 
 async function main() {
-  console.error(`\n══ DEMO ANTI-TRAPAÇA — selo de solvência ZK (testnet) ══\n`);
+  console.error(`\n══ ANTI-TAMPER DEMO — ZK solvency seal (testnet) ══\n`);
 
-  // --- estado real on-chain ---
+  // --- real on-chain state ---
   const activeIds = read(REGISTRY, "active_ids");
   const onchainRootHex = read(REGISTRY, "guarantees_root");
   const stable = BigInt(read(VAULT, "stable_assets"));
@@ -119,21 +119,21 @@ async function main() {
   const rootTrueHex = toHex32(rootTrue).slice(2);
 
   if (rootTrueHex !== onchainRootHex) {
-    throw new Error(`raiz off-chain (${rootTrueHex}) != on-chain (${onchainRootHex}) — abortando`);
+    throw new Error(`off-chain root (${rootTrueHex}) != on-chain (${onchainRootHex}) — aborting`);
   }
   const totalOb = obs.reduce((a, b) => a + b, 0n);
-  console.error(`Estado real: ${activeIds.length} garantias · obrigações=${totalOb} · reservas(vault)=${stable} · banco(sim)=${BANK_BALANCE}`);
-  console.error(`Raiz on-chain = 0x${onchainRootHex}\n`);
+  console.error(`Real state: ${activeIds.length} guarantees · obligations=${totalOb} · reserves(vault)=${stable} · bank(sim)=${BANK_BALANCE}`);
+  console.error(`On-chain root = 0x${onchainRootHex}\n`);
 
-  // alvo da trapaça: a garantia de MAIOR obrigação (esconder o maior passivo)
+  // cheating target: the guarantee with the LARGEST obligation (hide the biggest liability)
   let j = 0;
   for (let i = 1; i < obs.length; i++) if (obs[i] > obs[j]) j = i;
-  console.error(`Alvo da trapaça: garantia id=${ids[j]} (obrigação=${obs[j]}, a maior) — tentando ESCONDER.\n`);
+  console.error(`Cheating target: guarantee id=${ids[j]} (obligation=${obs[j]}, the largest) — trying to HIDE it.\n`);
 
   // ───────────────────────────────────────────────────────────────────────────
-  // [1] HONESTO → verde
+  // [1] HONEST → green
   // ───────────────────────────────────────────────────────────────────────────
-  console.error(`[1] HONESTO — lista completa, raiz real…`);
+  console.error(`[1] HONEST — full list, real root…`);
   const honestInput = buildInput({
     ids, obligations: obs, actives: obs.map(() => true),
     root: rootTrue, stable, sig, pub, F,
@@ -143,94 +143,94 @@ async function main() {
     const vkey = JSON.parse(fs.readFileSync(path.join(CIRCUITS, "verification_key.json"), "utf8"));
     const ok = await snarkjs.groth16.verify(vkey, publicSignals, proof);
     const cov = totalOb === 0n ? "∞" : Number((stable + BANK_BALANCE) * 10000n / totalOb) / 100;
-    console.error(`    ✅ prova gerada e ${ok ? "VERIFICADA" : "NÃO verificou"} off-chain · cobertura=${cov}% → SELO VERDE\n`);
+    console.error(`    ✅ proof generated and ${ok ? "VERIFIED" : "did NOT verify"} off-chain · coverage=${cov}% → GREEN SEAL\n`);
   } catch (e) {
-    console.error(`    ⚠️  honesto falhou (estado insolvente na faixa ${RATIO_BPS}?): ${e.message}\n`);
+    console.error(`    ⚠️  honest case failed (insolvent state at band ${RATIO_BPS}?): ${e.message}\n`);
   }
 
-  // arrays adulterados: esconde a garantia j (active=0, obrigação some da soma)
+  // tampered arrays: hide guarantee j (active=0, its obligation drops from the sum)
   const tamperActives = obs.map((_, i) => i !== j);
   const tamperLeaves = honestLeaves.map((lf, i) => (i === j ? 0n : lf));
   const rootFalse = computeRoot(h2, tamperLeaves);
   const tamperedTotal = obs.reduce((a, b, i) => (i === j ? a : a + b), 0n);
 
   // ───────────────────────────────────────────────────────────────────────────
-  // [2] OMISSÃO mantendo a raiz ON-CHAIN → prova impossível
+  // [2] OMISSION keeping the ON-CHAIN root → impossible proof
   // ───────────────────────────────────────────────────────────────────────────
-  console.error(`[2] OMISSÃO + raiz REAL — esconde id=${ids[j]} mas declara a raiz on-chain…`);
-  console.error(`    (obrigações cairiam ${totalOb} → ${tamperedTotal}, fingindo menos passivo)`);
+  console.error(`[2] OMISSION + REAL root — hides id=${ids[j]} but declares the on-chain root…`);
+  console.error(`    (obligations would drop ${totalOb} → ${tamperedTotal}, faking less liability)`);
   const omitInput = buildInput({
     ids, obligations: obs, actives: tamperActives,
-    root: rootTrue, /* raiz REAL, incompatível com as folhas adulteradas */
+    root: rootTrue, /* REAL root, incompatible with the tampered leaves */
     stable, sig, pub, F,
   });
   try {
     await snarkjs.groth16.fullProve(omitInput, WASM, ZKEY);
-    console.error(`    ❌ FALHA DE SEGURANÇA: a prova foi gerada (não deveria!)\n`);
+    console.error(`    ❌ SECURITY FAILURE: the proof was generated (it should not be!)\n`);
     process.exitCode = 2;
   } catch (e) {
-    // Só conta como "rejeitado" se foi a CONSTRAINT da raiz (solvency.circom:110,
-    // `b.root === guarantees_root`). Erro de outro tipo (path/snarkjs/OOM) não prova
-    // nada — um demo de anti-trapaça não pode pintar verde por engano.
+    // Only counts as "rejected" if it was the root CONSTRAINT (solvency.circom:110,
+    // `b.root === guarantees_root`). Any other error (path/snarkjs/OOM) proves
+    // nothing — an anti-tamper demo cannot paint green by mistake.
     const m = (e.message || e).toString();
     if (/line: 110|Solvency|Assert/i.test(m)) {
-      console.error(`    ✅ REJEITADO na geração: a raiz recomposta das folhas adulteradas ≠ raiz on-chain`);
-      console.error(`       → o circuito exige b.root === guarantees_root. Omitir é IMPOSSÍVEL mantendo a raiz real.\n`);
+      console.error(`    ✅ REJECTED at generation: the root recomputed from the tampered leaves ≠ on-chain root`);
+      console.error(`       → the circuit requires b.root === guarantees_root. Omitting is IMPOSSIBLE while keeping the real root.\n`);
     } else {
-      console.error(`    ⚠️  falhou por motivo INESPERADO (não a constraint da raiz): ${m}\n`);
+      console.error(`    ⚠️  failed for an UNEXPECTED reason (not the root constraint): ${m}\n`);
       process.exitCode = 2;
     }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // [3] OMISSÃO + raiz FALSA → prova gera, mas o attestor pega ao vivo
+  // [3] OMISSION + FAKE root → proof generates, but the attestor catches it live
   // ───────────────────────────────────────────────────────────────────────────
-  console.error(`[3] OMISSÃO + raiz FALSA — adultera as folhas E a raiz pública juntas…`);
+  console.error(`[3] OMISSION + FAKE root — tampers the leaves AND the public root together…`);
   const forgeInput = buildInput({
     ids, obligations: obs, actives: tamperActives,
-    root: rootFalse, /* raiz da árvore adulterada — casa com as folhas */
+    root: rootFalse, /* root of the tampered tree — matches the leaves */
     stable, sig, pub, F,
   });
   let forged;
   try {
     forged = await snarkjs.groth16.fullProve(forgeInput, WASM, ZKEY);
-    console.error(`    • prova forjada gerada (para a árvore adulterada) — off-chain ela "fecha"`);
+    console.error(`    • forged proof generated (for the tampered tree) — off-chain it "checks out"`);
   } catch (e) {
-    console.error(`    (forja insolvente na faixa pedida — esperado se o passivo escondido não bastasse): ${e.message}\n`);
+    console.error(`    (forgery insolvent at the requested band — expected if the hidden liability was not enough): ${e.message}\n`);
     return;
   }
   const rootFalseHex = toHex32(rootFalse).slice(2);
-  console.error(`    • raiz FALSA  = 0x${rootFalseHex}`);
-  console.error(`    • raiz REAL   = 0x${onchainRootHex}`);
-  console.error(`    • ${rootFalseHex === onchainRootHex ? "IGUAIS (?!)" : "DIFERENTES"} → o attestor lê a raiz REAL ao vivo e rejeita a prova forjada.\n`);
+  console.error(`    • FAKE root  = 0x${rootFalseHex}`);
+  console.error(`    • REAL root  = 0x${onchainRootHex}`);
+  console.error(`    • ${rootFalseHex === onchainRootHex ? "EQUAL (?!)" : "DIFFERENT"} → the attestor reads the REAL root live and rejects the forged proof.\n`);
 
   if (SUBMIT) {
-    console.error(`    --submit: enviando a prova FORJADA ao attestor (deve REVERTER com InvalidProof)…`);
+    console.error(`    --submit: sending the FORGED proof to the attestor (should REVERT with InvalidProof)…`);
     const hex = proofHex(forged.proof);
     const cmd = ["stellar", "contract", "invoke", "--id", ATTESTOR, "--source", SOURCE,
       "--network", NETWORK, "--send=yes", "--", "attest",
       "--proof", hex, "--ratio_bps", RATIO_BPS, "--nonce", NONCE].join(" ");
     try {
       execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-      console.error(`    ❌ FALHA DE SEGURANÇA: o attestor ACEITOU a prova forjada (não deveria!)`);
+      console.error(`    ❌ SECURITY FAILURE: the attestor ACCEPTED the forged proof (it should not!)`);
       process.exitCode = 2;
     } catch (e) {
-      // Só é "barrada" se o REVERT veio do CONTRATO (InvalidProof). Falha de rede/infra
-      // no invoke não chegou ao attestor — não pode ser reportada como trapaça barrada.
+      // Only "blocked" if the REVERT came from the CONTRACT (InvalidProof). A network/infra
+      // failure in the invoke never reached the attestor — it cannot be reported as cheating blocked.
       const why = (e.stderr || e.message || "").toString();
       if (/InvalidProof|Error\(Contract/.test(why)) {
-        console.error(`    ✅ REVERTEU on-chain (InvalidProof) → SELO VERMELHO. Trapaça barrada.\n`);
+        console.error(`    ✅ REVERTED on-chain (InvalidProof) → RED SEAL. Cheating blocked.\n`);
       } else {
-        console.error(`    ⚠️  o invoke falhou, mas NÃO por erro de contrato (rede/infra?) — inconclusivo:`);
+        console.error(`    ⚠️  the invoke failed, but NOT due to a contract error (network/infra?) — inconclusive:`);
         console.error(`        ${why.split("\n").find((l) => l.trim()) ?? why}\n`);
         process.exitCode = 2;
       }
     }
   } else {
-    console.error(`    (rode com --submit para ver o attestor REVERTER a prova forjada on-chain.)\n`);
+    console.error(`    (run with --submit to see the attestor REVERT the forged proof on-chain.)\n`);
   }
 
-  console.error(`══ Conclusão: a anti-omissão se sustenta — raiz on-chain + verificação ao vivo. ══`);
+  console.error(`══ Conclusion: anti-omission holds — on-chain root + live verification. ══`);
 }
 
 main().catch((e) => { console.error("\n❌", e.message ?? e); process.exit(1); });

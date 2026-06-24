@@ -119,9 +119,9 @@ export const reads = {
     return tx.result;
   },
 
-  /** Selo de solvência ZK: última atestação gravada on-chain (null se nunca houve).
-   *  `solvent` só é true p/ cobertura >= 100% (piso MIN_RATIO_BPS no attestor); o
-   *  frescor vem de `ts`/`ledger`. Leitura pública, sem carteira. */
+  /** ZK solvency seal: the last attestation recorded on-chain (null if there never
+   *  was one). `solvent` is only true for coverage >= 100% (the MIN_RATIO_BPS floor
+   *  in the attestor); freshness comes from `ts`/`ledger`. Public read, no wallet. */
   async solvencyAttestation(): Promise<Attestation | null> {
     const tx = await attestorClient().last_attestation();
     return tx.result ?? null;

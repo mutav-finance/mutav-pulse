@@ -35,7 +35,7 @@ pub trait Registry {
     fn put(env: Env, g: Guarantee);
     fn get(env: Env, id: u32) -> Guarantee;
     fn active_ids(env: Env) -> Vec<u32>;
-    /// Poseidon-Merkle root das garantias ativas — o "selo da lista" (peça B do ZK).
+    /// Poseidon-Merkle root of the active guarantees — the "list seal" (piece B of the ZK).
     fn guarantees_root(env: Env) -> BytesN<32>;
 }
 
