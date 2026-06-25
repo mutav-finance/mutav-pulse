@@ -17,7 +17,7 @@
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops, stroopsToInput, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput, parseToStroops, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
 import type { RedeemRequest } from "vault";
@@ -94,19 +94,21 @@ export function RedeemPanel({
   // Hover state for CTA button
   const [isHovered, setIsHovered] = useState(false);
 
-  // Parse share input to stroops
-  const sharesStroops: bigint | null = (() => {
-    const parsed = parseFloat(rawInput);
-    if (!rawInput || isNaN(parsed) || parsed <= 0) return null;
-    return BigInt(Math.round(parsed * STROOP_SCALE_NUM));
-  })();
+  // Parse share input to stroops — exact decimal-string parse, no float.
+  const sharesStroops: bigint | null = parseToStroops(rawInput);
 
   const shareBalanceDisplay = fromStroops(balance);
-  const canSubmit = sharesStroops !== null && redeemStatus !== "pending" && balance > 0n;
+  // Requested shares exceed the user's MTVR balance — block submit + hint.
+  const exceedsBalance = sharesStroops !== null && sharesStroops > balance;
+  const canSubmit =
+    sharesStroops !== null &&
+    !exceedsBalance &&
+    redeemStatus !== "pending" &&
+    balance > 0n;
 
   async function handleRequestRedeem(e: React.FormEvent) {
     e.preventDefault();
-    if (!sharesStroops || redeemStatus === "pending") return;
+    if (!sharesStroops || exceedsBalance || redeemStatus === "pending") return;
 
     setRedeemStatus("pending");
     setRedeemError(null);
@@ -293,6 +295,28 @@ export function RedeemPanel({
               MTVR
             </span>
           </div>
+
+          {/* Exceeds-balance hint — inline, mirrors the error styling */}
+          {exceedsBalance && (
+            <p
+              className="font-mono"
+              role="alert"
+              style={{
+                fontSize: "11px",
+                color: "var(--color-error)",
+                marginTop: "6px",
+                letterSpacing: "0.01em",
+                lineHeight: 1.4,
+              }}
+            >
+              Exceeds balance — you hold{" "}
+              {shareBalanceDisplay.toLocaleString("en-US", {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4,
+              })}{" "}
+              MTVR
+            </p>
+          )}
         </div>
 
         {/* Max button — fill input with full balance */}

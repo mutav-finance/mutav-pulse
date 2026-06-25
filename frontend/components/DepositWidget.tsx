@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
-import { fmtNav, STROOP_SCALE, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
+import { fmtNav, STROOP_SCALE, parseToStroops, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
 
@@ -42,13 +42,8 @@ export function DepositWidget({
   const [lastHash, setLastHash] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Parse USDC input to stroops (bigint)
-  const usdcStroops: bigint | null = (() => {
-    const parsed = parseFloat(rawInput);
-    if (!rawInput || isNaN(parsed) || parsed <= 0) return null;
-    // Convert to stroops: multiply by 1e7 (Stellar precision)
-    return BigInt(Math.round(parsed * STROOP_SCALE_NUM));
-  })();
+  // Parse USDC input to stroops (bigint) — exact decimal-string parse, no float.
+  const usdcStroops: bigint | null = parseToStroops(rawInput);
 
   // Estimated shares: amount_stroops * 1e7 / nav_per_share
   const estimatedShares: bigint | null =

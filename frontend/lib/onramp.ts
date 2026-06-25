@@ -35,7 +35,16 @@ export interface UsdcInfo {
  */
 export async function getUsdcInfo(address: string): Promise<UsdcInfo> {
   const res = await fetch(`${config.horizonUrl}/accounts/${address}`);
-  if (!res.ok) return { hasTrustline: false, balance: "0" };
+  // 404 = account not found on Horizon → genuinely no trustline (unfunded
+  // or never created). Any other non-OK status is a transient/server error
+  // and must NOT be silently read as "no trustline" — throw so callers can
+  // surface it and retry instead of mislabelling the on-ramp state.
+  if (res.status === 404) return { hasTrustline: false, balance: "0" };
+  if (!res.ok) {
+    throw new Error(
+      `Horizon request failed (${res.status} ${res.statusText}) while reading the USDC trustline.`,
+    );
+  }
   const data = await res.json();
   const line = (data.balances ?? []).find(
     (b: { asset_code?: string; asset_issuer?: string }) =>
