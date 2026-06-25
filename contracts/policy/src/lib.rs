@@ -1,8 +1,19 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
 use interfaces::{Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
 
 const BPS_DENOM: i128 = 10_000;
+
+/// Underwriting errors surfaced as stable `#[contracterror]` codes. Numbered in
+/// the `3xx` band to stay clear of the registry `2xx` and strategy `4xx` codes.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum PolicyError {
+    /// `fee_bps` exceeds 100% (10_000 bps). Previously accepted silently, which
+    /// let a guarantee charge a premium above its own monthly amount.
+    FeeTooHigh = 300,
+}
 
 #[contracttype]
 enum DataKey {
@@ -47,17 +58,22 @@ impl Policy {
         premium_of(&g)
     }
 
-    pub fn sign_guarantee(e: &Env, landlord: Address, monthly_amount: i128, months_covered: u32, fee_bps: u32, period_secs: u64) -> u32 {
+    pub fn sign_guarantee(e: &Env, landlord: Address, monthly_amount: i128, months_covered: u32, fee_bps: u32, period_secs: u64) -> Result<u32, PolicyError> {
         Self::admin(e).require_auth();
         assert!(monthly_amount > 0 && months_covered > 0, "invalid guarantee");
         assert!(fee_bps > 0 && period_secs > 0, "invalid premium terms");
+        // Bound the fee at 100% (10_000 bps). Above this a single period's premium
+        // would exceed the monthly amount it insures.
+        if fee_bps > BPS_DENOM as u32 {
+            return Err(PolicyError::FeeTooHigh);
+        }
         let reg = Self::registry(e);
         let id = reg.next_id();
         reg.put(&Guarantee {
             id, landlord, monthly_amount, months_covered, months_used: 0,
             fee_bps, period_secs, paid_until: 0, active: true,
         });
-        id
+        Ok(id)
     }
 
     pub fn pay_premium(e: &Env, payer: Address, id: u32) {

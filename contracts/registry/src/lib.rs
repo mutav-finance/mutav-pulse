@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Vec};
-use interfaces::{Guarantee, Registry as RegistryTrait};
+use interfaces::{Guarantee, Registry as RegistryTrait, RegistryError};
 
 #[contracttype]
 enum DataKey {
@@ -79,8 +79,11 @@ impl RegistryTrait for Registry {
         e.storage().persistent().set(&DataKey::Guarantee(g.id), &g);
     }
 
-    fn get(e: Env, id: u32) -> Guarantee {
-        e.storage().persistent().get(&DataKey::Guarantee(id)).unwrap()
+    fn get(e: Env, id: u32) -> Result<Guarantee, RegistryError> {
+        e.storage()
+            .persistent()
+            .get(&DataKey::Guarantee(id))
+            .ok_or(RegistryError::GuaranteeNotFound)
     }
 
     fn active_ids(e: Env) -> Vec<u32> {

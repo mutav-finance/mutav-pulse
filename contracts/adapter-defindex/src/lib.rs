@@ -1,7 +1,22 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, token, vec, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, token, vec, Address, BytesN, Env};
 use strategy::Strategy;
 use interfaces::DefindexVaultClient;
+
+/// Adapter-side errors surfaced as stable `#[contracterror]` codes. Numbered in
+/// the `5xx` band to stay clear of the registry `2xx`, policy `3xx`, and
+/// strategy `4xx` codes. The `Strategy` trait returns plain `i128` (no `Result`),
+/// so a malformed external response is surfaced via `panic_with_error!` — a
+/// trap carrying a stable code rather than the opaque host trap that the prior
+/// `Vec::get(0).unwrap()` produced.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum AdapterError {
+    /// The DeFindex vault returned an empty per-asset vector where a single
+    /// underlying amount was expected (unexpected external-vault shape).
+    MalformedVaultResponse = 500,
+}
 
 #[contracttype]
 enum DataKey {
@@ -41,6 +56,16 @@ impl AdapterDefindex {
     fn df_shares(e: &Env) -> i128 {
         token::TokenClient::new(e, &Self::vault(e)).balance(&e.current_contract_address())
     }
+
+    /// First element of a DeFindex single-asset response vector. Traps with the
+    /// typed `MalformedVaultResponse` code (instead of an opaque unwrap trap) if
+    /// the external vault returns an empty vector.
+    fn first_amount(e: &Env, v: &soroban_sdk::Vec<i128>) -> i128 {
+        match v.get(0) {
+            Some(x) => x,
+            None => panic_with_error!(e, AdapterError::MalformedVaultResponse),
+        }
+    }
 }
 
 #[contractimpl]
@@ -54,7 +79,7 @@ impl Strategy for AdapterDefindex {
         // Read df_shares once; derive value inline to avoid a redundant cross-contract read.
         let shares = AdapterDefindex::df_shares(&e);
         if shares <= 0 { return 0; }
-        let value = AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares).get(0).unwrap();
+        let value = AdapterDefindex::first_amount(&e, &AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares));
         if value <= 0 { return 0; }
         // amount * shares is i128; overflows only above ~1e19 raw units — unreachable at USDC 7-decimal scale.
         let burn = if amount >= value { shares } else { (amount * shares + value - 1) / value };
@@ -62,7 +87,7 @@ impl Strategy for AdapterDefindex {
         // withdrawal fee and floor-rounds at most like our mock.
         // TODO(testnet): set min_amounts_out to a real floor (e.g. amount) once real-vault withdraw behavior is confirmed.
         let out = AdapterDefindex::dfx(&e).withdraw(&burn, &vec![&e, 0], &e.current_contract_address());
-        let received = out.get(0).unwrap();
+        let received = AdapterDefindex::first_amount(&e, &out);
         token::TokenClient::new(&e, &AdapterDefindex::underlying_addr(&e))
             .transfer(&e.current_contract_address(), &to, &received);
         received
@@ -74,7 +99,7 @@ impl Strategy for AdapterDefindex {
         if shares <= 0 {
             return 0;
         }
-        AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares).get(0).unwrap()
+        AdapterDefindex::first_amount(&e, &AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares))
     }
 
     fn underlying(e: Env) -> Address {

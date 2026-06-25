@@ -69,6 +69,74 @@ fn divest_full_value_exits_cleanly() {
     assert_eq!(c.adapter.balance(), 0);
 }
 
+/// A malformed DeFindex vault double that returns an EMPTY per-asset vector
+/// (the real ABI guarantees a single element). It also shims the token
+/// `balance(Address)` the adapter reads for its df-share count, so the read is
+/// non-zero and execution reaches the vec parse. No fungible-token machinery —
+/// just the two surfaces the adapter touches. Used to prove the adapter
+/// surfaces the typed `MalformedVaultResponse` error instead of an opaque
+/// unwrap trap.
+mod malformed {
+    use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, Val, Vec};
+    use interfaces::DefindexVault as DefindexVaultTrait;
+
+    #[contract]
+    pub struct MalformedDefindex;
+
+    #[contractimpl]
+    impl MalformedDefindex {
+        pub fn __constructor(_e: &Env, _underlying: Address) {}
+        /// Token-ABI shim: the adapter reads df-shares via `TokenClient::balance`.
+        /// Report a fixed non-zero balance so `balance()` reaches the vec parse.
+        pub fn balance(_e: &Env, _id: Address) -> i128 { 1_000 }
+    }
+
+    #[contractimpl]
+    impl DefindexVaultTrait for MalformedDefindex {
+        fn deposit(e: Env, _ad: Vec<i128>, _am: Vec<i128>, _from: Address, _i: bool) -> Val {
+            0i128.into_val(&e)
+        }
+        fn withdraw(e: Env, _df: i128, _m: Vec<i128>, _from: Address) -> Vec<i128> {
+            // Empty vector — the malformed shape under test.
+            Vec::<i128>::new(&e)
+        }
+        fn get_asset_amounts_per_shares(e: Env, _s: i128) -> Vec<i128> {
+            // Empty vector — the malformed shape under test.
+            Vec::<i128>::new(&e)
+        }
+    }
+}
+
+/// balance() against a vault returning an empty per-asset vector traps with the
+/// typed MalformedVaultResponse code rather than an opaque unwrap trap.
+#[test]
+fn balance_traps_typed_on_malformed_vault_response() {
+    use crate::AdapterError;
+    use malformed::{MalformedDefindex, MalformedDefindexClient};
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let issuer = Address::generate(&e);
+    let sac = e.register_stellar_asset_contract_v2(issuer);
+    let underlying = sac.address();
+
+    let bad_id = e.register(MalformedDefindex, (underlying.clone(),));
+    let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
+    let adapter = AdapterDefindexClient::new(&e, &adapter_id);
+    adapter.set_vault(&bad_id);
+
+    // The malformed mock reports a fixed non-zero df-share balance, so
+    // balance() reaches the vec parse and traps with the typed code.
+    let _ = MalformedDefindexClient::new(&e, &bad_id);
+
+    // `balance` returns a plain i128 (no Result), so the typed panic surfaces as
+    // a generic contract Error in the outer Err arm. Compare its code.
+    match adapter.try_balance() {
+        Err(Ok(err)) => assert_eq!(err, AdapterError::MalformedVaultResponse.into()),
+        _ => panic!("expected MalformedVaultResponse typed trap"),
+    }
+}
+
 use vault::{Vault, VaultClient};
 use mock_policy::MockPolicy;
 
