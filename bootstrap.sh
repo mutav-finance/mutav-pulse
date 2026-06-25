@@ -14,7 +14,7 @@ VAULT=$(dep vault.wasm --admin "$ADMIN" --underlying "$USDC_SAC")
 POLICY=$(dep policy.wasm --admin "$ADMIN")
 MOCK=$(dep mock_strategy.wasm --underlying "$USDC_SAC")
 
-inv "$REGISTRY" set_writer --policy "$POLICY"
+inv "$REGISTRY" set_writer --writer "$POLICY"
 inv "$POLICY" set_vault --addr "$VAULT"
 inv "$POLICY" set_registry --addr "$REGISTRY"
 inv "$POLICY" set_coverage_ratio_bps --bps 10000

@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { AssembledTransaction, Client as ContractClient, ClientOptions as ContractClientOptions, MethodOptions } from "@stellar/stellar-sdk/contract";
+import { AssembledTransaction, Client as ContractClient, ClientOptions as ContractClientOptions, MethodOptions, Result } from "@stellar/stellar-sdk/contract";
 import type { u32, u64, i128 } from "@stellar/stellar-sdk/contract";
 export * from "@stellar/stellar-sdk";
 export * as contract from "@stellar/stellar-sdk/contract";
@@ -7,7 +7,20 @@ export * as rpc from "@stellar/stellar-sdk/rpc";
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CCS7FPL7FRB3JPW2C3HEXCPKL24BXNXKY22KEAXVSRNCLXIDONDIPDJF";
+        readonly contractId: "CDAYVNXHJD2T4QO66ECBX6LNA2SD2HCP66H23FPYWW7VSUR74QJ2K2VK";
+    };
+};
+/**
+ * Underwriting errors surfaced as stable `#[contracterror]` codes. Numbered in
+ * the `3xx` band to stay clear of the registry `2xx` and strategy `4xx` codes.
+ */
+export declare const PolicyError: {
+    /**
+     * `fee_bps` exceeds 100% (10_000 bps). Previously accepted silently, which
+     * let a guarantee charge a premium above its own monthly amount.
+     */
+    300: {
+        message: string;
     };
 };
 /**
@@ -25,6 +38,22 @@ export interface Guarantee {
     paid_until: u64;
     period_secs: u64;
 }
+/**
+ * Errors surfaced across the registry boundary. Defined here (not in the
+ * `registry` crate) because the `Registry` trait's return type references it,
+ * so every consumer of the generated `RegistryClient` sees the same stable
+ * `#[contracterror]` codes. Numbered in the `2xx` band to stay clear of the
+ * `4xx` strategy codes in `defindex-hodl`.
+ */
+export declare const RegistryError: {
+    /**
+     * No guarantee is stored under the requested id (previously a host trap
+     * from `Option::unwrap` on missing storage).
+     */
+    200: {
+        message: string;
+    };
+};
 export interface Client {
     /**
      * Construct and simulate a admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -88,7 +117,7 @@ export interface Client {
         months_covered: u32;
         fee_bps: u32;
         period_secs: u64;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<Result<u32>>>;
     /**
      * Construct and simulate a monthly_premium transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -139,7 +168,7 @@ export declare class Client extends ContractClient {
         pay_premium: (json: string) => AssembledTransaction<null>;
         set_registry: (json: string) => AssembledTransaction<null>;
         cover_default: (json: string) => AssembledTransaction<null>;
-        sign_guarantee: (json: string) => AssembledTransaction<number>;
+        sign_guarantee: (json: string) => AssembledTransaction<Result<number, import("@stellar/stellar-sdk/contract").ErrorMessage>>;
         monthly_premium: (json: string) => AssembledTransaction<bigint>;
         settle_guarantee: (json: string) => AssembledTransaction<null>;
         coverage_required: (json: string) => AssembledTransaction<bigint>;
