@@ -47,6 +47,21 @@ export interface Reserve {
   contracts?: { vault: string; policy: string; registry: string };
 }
 
+/**
+ * A live reserve: deployed on-chain, so `address` and `contracts` are guaranteed
+ * present. Narrowed from `Reserve` via `isLiveReserve` so consumers (NavShell,
+ * homepage CTAs, /protocol redirect) can read `.address`/`.contracts` unguarded.
+ */
+export interface LiveReserve extends Reserve {
+  address: string;
+  contracts: { vault: string; policy: string; registry: string };
+}
+
+/** Type guard: true when a reserve carries its deployed address + contract set. */
+function isLiveReserve(r: Reserve): r is LiveReserve {
+  return r.status === "live" && r.address !== undefined && r.contracts !== undefined;
+}
+
 export const RESERVES: Reserve[] = [
   {
     id: "usdc",
@@ -92,6 +107,15 @@ export const RESERVES: Reserve[] = [
   },
 ];
 
-export const LIVE_RESERVES = RESERVES.filter((r) => r.status === "live");
-// Invariant: PRIMARY_RESERVE must be a live reserve with `address` set — its `.address` is consumed unguarded by NavShell, homepage CTAs, and the /protocol redirect.
-export const PRIMARY_RESERVE = LIVE_RESERVES[0] ?? RESERVES[0];
+export const LIVE_RESERVES: LiveReserve[] = RESERVES.filter(isLiveReserve);
+
+// Invariant: at least one live reserve with `address`/`contracts` set must exist —
+// PRIMARY_RESERVE.address is consumed unguarded by NavShell, homepage CTAs, and the
+// /protocol redirect. The guard above narrows the element to LiveReserve; this
+// module-load assertion makes the non-null guarantee explicit (and removes the need
+// for a `!` at every call site).
+const _primary = LIVE_RESERVES[0];
+if (!_primary) {
+  throw new Error("reserves: no live reserve configured — PRIMARY_RESERVE is required");
+}
+export const PRIMARY_RESERVE: LiveReserve = _primary;
