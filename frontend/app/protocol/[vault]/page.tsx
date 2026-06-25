@@ -50,7 +50,7 @@ import {
   addStrategy,
   removeStrategy,
 } from "@/lib/admin-tx";
-import { fmtUsd, truncAddr, errMsg, STROOP_SCALE_NUM } from "@/lib/format";
+import { fmtUsd, truncAddr, errMsg, parseToStroops } from "@/lib/format";
 import type { StrategyAlloc } from "vault";
 import type { Guarantee } from "policy";
 
@@ -534,14 +534,17 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  const monthly = BigInt(
-                    Math.round(parseFloat(sgMonthly) * STROOP_SCALE_NUM),
-                  );
+                  const monthly = parseToStroops(sgMonthly);
+                  if (monthly === null)
+                    throw new Error("monthly amount must be a positive number");
                   const months = parseInt(sgMonths, 10);
+                  if (isNaN(months)) throw new Error("months must be a number");
                   const feeBps = parseInt(sgFeeBps, 10);
-                  const periodSecs = BigInt(
-                    parseInt(sgPeriodDays, 10) * 86400,
-                  );
+                  if (isNaN(feeBps)) throw new Error("fee bps must be a number");
+                  const periodDays = parseInt(sgPeriodDays, 10);
+                  if (isNaN(periodDays))
+                    throw new Error("period days must be a number");
+                  const periodSecs = BigInt(periodDays * 86400);
                   return signGuarantee(
                     address,
                     sgLandlord,
@@ -916,10 +919,10 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return processRedemptions(
-                    address,
-                    parseInt(prMaxBatch, 10),
-                  );
+                  const maxBatch = parseInt(prMaxBatch, 10);
+                  if (isNaN(maxBatch))
+                    throw new Error("max batch size must be a number");
+                  return processRedemptions(address, maxBatch);
                 }}
                 onSuccess={handleSuccess}
               >

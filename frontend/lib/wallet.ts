@@ -84,6 +84,24 @@ export async function connect(): Promise<string> {
 }
 
 /**
+ * Restore a previously-connected address WITHOUT opening the auth modal.
+ *
+ * The kit persists the active address + selected module in localStorage, so on
+ * a reload `getAddress()` resolves the saved address from memory. Returns null
+ * when nothing is persisted (the kit throws "No wallet has been connected") or
+ * on any error — a missing session must be a silent no-op, never a thrown error.
+ */
+export async function tryRestore(): Promise<string | null> {
+  try {
+    initKit();
+    const { address } = await StellarWalletsKit.getAddress();
+    return address || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Disconnect the active wallet module.
  */
 export async function disconnect(): Promise<void> {
@@ -194,6 +212,17 @@ export async function signAndSubmit(
       `sendTransaction failed: ${JSON.stringify(sendResp.errorResult)}`,
     );
   }
+
+  // The network rejected the submission for congestion/rate-limit reasons —
+  // it was NOT queued, so there is nothing to poll. Surface a retry hint.
+  if (sendResp.status === "TRY_AGAIN_LATER") {
+    throw new Error(
+      "Network busy (TRY_AGAIN_LATER) — the transaction was not accepted. Please try again in a moment.",
+    );
+  }
+
+  // DUPLICATE means an identical tx is already in flight; the hash is the same,
+  // so fall through and poll for its on-ledger result rather than failing.
 
   const hash = sendResp.hash;
   const MAX_POLLS = 30;

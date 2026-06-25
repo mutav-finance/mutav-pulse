@@ -41,6 +41,7 @@ import {
   connect as kitConnect,
   disconnect as kitDisconnect,
   signAndSubmit as kitSignAndSubmit,
+  tryRestore as kitTryRestore,
 } from "@/lib/wallet";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -77,9 +78,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize kit once on mount (client-side only)
+  // Initialize kit once on mount (client-side only) and restore a previously
+  // connected session if the kit has one persisted — without opening the modal.
   useEffect(() => {
+    let cancelled = false;
     initKit();
+    kitTryRestore()
+      .then((addr) => {
+        if (!cancelled && addr) setAddress(addr);
+      })
+      .catch(() => {
+        // No persisted session / restore failed — stay disconnected.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const connect = useCallback(async () => {
