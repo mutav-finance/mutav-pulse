@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { AssembledTransaction, Client as ContractClient, ClientOptions as ContractClientOptions, MethodOptions } from "@stellar/stellar-sdk/contract";
+import { AssembledTransaction, Client as ContractClient, ClientOptions as ContractClientOptions, MethodOptions, Result } from "@stellar/stellar-sdk/contract";
 import type { u32, u64, i128 } from "@stellar/stellar-sdk/contract";
 export * from "@stellar/stellar-sdk";
 export * as contract from "@stellar/stellar-sdk/contract";
@@ -7,7 +7,7 @@ export * as rpc from "@stellar/stellar-sdk/rpc";
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CC4OTABORWK7OBQY5JY5NOSJQ4YSP3IRLR7P2VTNIZBKQCTJEJ5Z5TRS";
+        readonly contractId: "CA7WWXTNBG2QCDBQMYL3SV7DRXBW7KALM5JGWPJJEAP34DWWUMLYGSKN";
     };
 };
 /**
@@ -25,13 +25,29 @@ export interface Guarantee {
     paid_until: u64;
     period_secs: u64;
 }
+/**
+ * Errors surfaced across the registry boundary. Defined here (not in the
+ * `registry` crate) because the `Registry` trait's return type references it,
+ * so every consumer of the generated `RegistryClient` sees the same stable
+ * `#[contracterror]` codes. Numbered in the `2xx` band to stay clear of the
+ * `4xx` strategy codes in `defindex-hodl`.
+ */
+export declare const RegistryError: {
+    /**
+     * No guarantee is stored under the requested id (previously a host trap
+     * from `Option::unwrap` on missing storage).
+     */
+    200: {
+        message: string;
+    };
+};
 export interface Client {
     /**
      * Construct and simulate a get transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     get: ({ id }: {
         id: u32;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<Guarantee>>;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<Result<Guarantee>>>;
     /**
      * Construct and simulate a put transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -69,8 +85,8 @@ export interface Client {
     /**
      * Construct and simulate a set_writer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    set_writer: ({ policy }: {
-        policy: string;
+    set_writer: ({ writer }: {
+        writer: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
 }
 export declare class Client extends ContractClient {
@@ -91,7 +107,7 @@ export declare class Client extends ContractClient {
     }): Promise<AssembledTransaction<T>>;
     constructor(options: ContractClientOptions);
     readonly fromJSON: {
-        get: (json: string) => AssembledTransaction<Guarantee>;
+        get: (json: string) => AssembledTransaction<Result<Guarantee, import("@stellar/stellar-sdk/contract").ErrorMessage>>;
         put: (json: string) => AssembledTransaction<null>;
         admin: (json: string) => AssembledTransaction<string>;
         writer: (json: string) => AssembledTransaction<string>;
