@@ -304,7 +304,7 @@ export default function Home() {
         {/* Verification footer */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", paddingTop: "24px", borderTop: "1px solid var(--color-border)" }}>
           {[
-            { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address!), ext: true },
+            { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address), ext: true },
             { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
             { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
           ].map((l) =>
