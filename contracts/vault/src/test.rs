@@ -145,6 +145,124 @@ fn cancel_redeem_returns_escrowed_shares() {
 
 // ───────────────────────────── SEP-0056 conformance ─────────────────────────────
 
+// ───────────────────────────── invariant tests ─────────────────────────────
+
+/// Vault overdraft guard in `disburse`: paying out more stable than the vault
+/// holds must revert with "disburse breaches solvency"; paying out exactly the
+/// stable balance is the inclusive boundary and must succeed.
+#[test]
+fn disburse_overdraft_guard_and_boundary() {
+    // Over-limit: deposit 1_000, attempt to disburse 1_001 (> stable_assets).
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    assert_eq!(c.vault.stable_assets(), 1_000);
+    // Proxy through the policy; the guard rejects the overdraw.
+    assert!(c.policy.try_call_disburse(&landlord, &1_001).is_err());
+    // Nothing moved.
+    assert_eq!(c.token.balance(&landlord), 0);
+    assert_eq!(c.vault.stable_assets(), 1_000);
+
+    // Boundary: disbursing exactly stable_assets succeeds.
+    let c2 = setup();
+    let alice2 = Address::generate(&c2.e);
+    let landlord2 = Address::generate(&c2.e);
+    c2.token_admin.mint(&alice2, &1_000);
+    c2.vault.deposit(&1_000, &alice2, &alice2, &alice2);
+    c2.policy.call_disburse(&landlord2, &1_000);
+    assert_eq!(c2.token.balance(&landlord2), 1_000);
+    assert_eq!(c2.vault.stable_assets(), 0);
+}
+
+/// `process_redemptions(max_batch)` fulfils at most `max_batch` requests per call
+/// and preserves FIFO order: with ample free capital, batch size 1 fulfils the
+/// oldest request and leaves the rest queued; a second call fulfils the next.
+#[test]
+fn process_redemptions_bounds_batch_and_keeps_order() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &3_000);
+    c.vault.deposit(&3_000, &alice, &alice, &alice);
+    c.policy.set_coverage(&0); // ample free capital for all three
+
+    let r0 = c.vault.request_redeem(&alice, &500);
+    let r1 = c.vault.request_redeem(&alice, &500);
+    let r2 = c.vault.request_redeem(&alice, &500);
+    assert_eq!(c.vault.pending_requests().len(), 3);
+
+    // Batch of 1: exactly the oldest (r0) is fulfilled; two remain queued.
+    c.vault.process_redemptions(&1);
+    assert!(c.vault.request(&r0).fulfilled);
+    assert!(!c.vault.request(&r1).fulfilled);
+    assert!(!c.vault.request(&r2).fulfilled);
+    assert_eq!(c.vault.pending_requests().len(), 2);
+
+    // Second batch of 1: the next in order (r1) is fulfilled.
+    c.vault.process_redemptions(&1);
+    assert!(c.vault.request(&r1).fulfilled);
+    assert!(!c.vault.request(&r2).fulfilled);
+    assert_eq!(c.vault.pending_requests().len(), 1);
+}
+
+/// Free-capital gate end-to-end: a redeem larger than `free_capital` stays
+/// unfulfilled while coverage is high; once coverage drops, the same request is
+/// fulfilled and claimable. (Coverage is driven via the mock policy here; the
+/// real sign/pay/settle_guarantee variant belongs with the system tests that
+/// wire the real `policy` contract — see note in the charter reply.)
+#[test]
+fn redeem_gate_releases_when_coverage_drops() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Coverage high enough that free_capital (=1_000-900=100) < requested redeem.
+    c.policy.set_coverage(&900);
+    assert_eq!(c.vault.free_capital(), 100);
+    let rid = c.vault.request_redeem(&alice, &1_000); // claimable ~1_000 > 100
+    c.vault.process_redemptions(&10);
+    assert!(!c.vault.request(&rid).fulfilled); // gated out
+
+    // Coverage drops -> free capital releases; same request now fulfils + pays.
+    c.policy.set_coverage(&0);
+    c.vault.process_redemptions(&10);
+    assert!(c.vault.request(&rid).fulfilled);
+    c.vault.claim(&rid);
+    assert_eq!(c.token.balance(&alice), 1_000);
+}
+
+/// `remove_strategy` divests the strategy's full balance (principal + accrued
+/// yield) back into vault cash, drops it from `strategies()`, and leaves
+/// `total_assets`/NAV unchanged across the removal (funds only move location).
+#[test]
+fn remove_strategy_divests_including_yield() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let s1 = add_mock(&c, 10_000);
+    c.vault.rebalance();
+    assert_eq!(s1.balance(), 1_000);
+
+    // Accrue yield into the strategy: total_assets and NAV rise to reflect it.
+    s1.accrue(&100);
+    assert_eq!(s1.balance(), 1_100);
+    let assets_before = c.vault.total_assets();
+    let nav_before = c.vault.nav_per_share();
+    assert_eq!(assets_before, 1_100);
+
+    // Remove the strategy: its full balance (1_100, incl. yield) divests to cash.
+    c.vault.remove_strategy(&s1.address);
+    assert_eq!(c.vault.strategies().len(), 0);
+    assert_eq!(s1.balance(), 0);
+    assert_eq!(c.vault.available_held(), 1_100); // recovered into vault cash
+    assert_eq!(c.vault.total_assets(), assets_before); // unchanged across removal
+    assert_eq!(c.vault.nav_per_share(), nav_before);   // NAV invariant holds
+}
+
 #[test]
 fn sep_query_asset_is_underlying() {
     let c = setup();

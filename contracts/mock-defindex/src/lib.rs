@@ -43,7 +43,7 @@ impl DefindexVaultTrait for MockDefindex {
         let held_before = Self::held(&e);
         let shares = if supply == 0 || held_before == 0 { amount } else { amount * supply / held_before };
         token::TokenClient::new(&e, &Self::underlying_addr(&e))
-            .transfer(&from, &e.current_contract_address(), &amount);
+            .transfer(&from, e.current_contract_address(), &amount);
         Base::mint(&e, &from, shares);
         shares.into_val(&e)
     }

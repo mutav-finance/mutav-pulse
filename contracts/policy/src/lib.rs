@@ -15,6 +15,8 @@ enum DataKey {
 #[contract]
 pub struct Policy;
 
+fn premium_of(g: &Guarantee) -> i128 { g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM }
+
 #[contractimpl]
 impl Policy {
     pub fn __constructor(e: &Env, admin: Address) {
@@ -42,7 +44,7 @@ impl Policy {
     pub fn is_current(e: &Env, id: u32) -> bool { Self::registry(e).get(&id).paid_until > e.ledger().timestamp() }
     pub fn monthly_premium(e: &Env, id: u32) -> i128 {
         let g = Self::registry(e).get(&id);
-        g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM
+        premium_of(&g)
     }
 
     pub fn sign_guarantee(e: &Env, landlord: Address, monthly_amount: i128, months_covered: u32, fee_bps: u32, period_secs: u64) -> u32 {
@@ -63,7 +65,7 @@ impl Policy {
         let reg = Self::registry(e);
         let mut g = reg.get(&id);
         assert!(g.active, "guarantee inactive");
-        let premium = g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM;
+        let premium = premium_of(&g);
         assert!(premium > 0, "zero premium");
         Self::vault(e).collect_premium(&payer, &premium);
         let now = e.ledger().timestamp();
@@ -105,7 +107,7 @@ impl PolicyTrait for Policy {
         for id in reg.active_ids().iter() {
             let g = reg.get(&id);
             if g.paid_until > now {
-                raw += g.monthly_amount * ((g.months_covered - g.months_used) as i128);
+                raw += g.monthly_amount * (g.months_covered.saturating_sub(g.months_used) as i128);
             }
         }
         raw * ratio / BPS_DENOM

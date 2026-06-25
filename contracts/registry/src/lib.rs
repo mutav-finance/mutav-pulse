@@ -26,10 +26,9 @@ impl Registry {
         e.storage().instance().get(&DataKey::Admin).unwrap()
     }
 
-    pub fn set_writer(e: Env, policy: Address) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
-        e.storage().instance().set(&DataKey::Writer, &policy);
+    pub fn set_writer(e: Env, writer: Address) {
+        Self::admin(&e).require_auth();
+        e.storage().instance().set(&DataKey::Writer, &writer);
     }
 
     pub fn writer(e: Env) -> Address {
@@ -37,14 +36,12 @@ impl Registry {
     }
 
     pub fn set_admin(e: Env, new_admin: Address) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
+        Self::admin(&e).require_auth();
         e.storage().instance().set(&DataKey::Admin, &new_admin);
     }
 
     pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
-        let admin: Address = e.storage().instance().get(&DataKey::Admin).unwrap();
-        admin.require_auth();
+        Self::admin(&e).require_auth();
         e.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 

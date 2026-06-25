@@ -63,7 +63,7 @@ impl HodlStrategy {
         }
         from.require_auth();
         let asset: Address = e.storage().instance().get(&DataKey::Asset).unwrap();
-        token::TokenClient::new(&e, &asset).transfer(&from, &e.current_contract_address(), &amount);
+        token::TokenClient::new(&e, &asset).transfer(&from, e.current_contract_address(), &amount);
         let key = DataKey::Balance(from);
         let bal: i128 = e.storage().persistent().get(&key).unwrap_or(0) + amount;
         e.storage().persistent().set(&key, &bal);
