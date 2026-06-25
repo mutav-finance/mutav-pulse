@@ -9,6 +9,11 @@ use interfaces::DefindexVault as DefindexVaultTrait;
 #[contracttype]
 enum DataKey {
     Underlying,
+    /// Test-only: withdraw haircut in bps. The vault pays out
+    /// `pro_rata * (10_000 - haircut_bps) / 10_000`, letting a test simulate a
+    /// withdraw that settles below `get_asset_amounts_per_shares`' preview so the
+    /// adapter's slippage floor can reject it. Defaults to 0 (faithful vault).
+    WithdrawHaircutBps,
 }
 
 #[contract]
@@ -33,6 +38,20 @@ impl MockDefindex {
         token::StellarAssetClient::new(e, &Self::underlying_addr(e))
             .mint(&e.current_contract_address(), &amount);
     }
+
+    /// Test-only: set the withdraw haircut (bps). Lets a test make `withdraw`
+    /// settle below the `get_asset_amounts_per_shares` preview so the adapter's
+    /// slippage floor trips.
+    pub fn set_withdraw_haircut_bps(e: &Env, bps: u32) {
+        e.storage().instance().set(&DataKey::WithdrawHaircutBps, &bps);
+    }
+
+    fn haircut_bps(e: &Env) -> i128 {
+        e.storage()
+            .instance()
+            .get(&DataKey::WithdrawHaircutBps)
+            .unwrap_or(0u32) as i128
+    }
 }
 
 #[contractimpl]
@@ -48,12 +67,21 @@ impl DefindexVaultTrait for MockDefindex {
         shares.into_val(&e)
     }
 
-    fn withdraw(e: Env, df_amount: i128, _min_amounts_out: Vec<i128>, from: Address) -> Vec<i128> {
+    fn withdraw(e: Env, df_amount: i128, min_amounts_out: Vec<i128>, from: Address) -> Vec<i128> {
         let supply = Base::total_supply(&e);
         // Defensive guard: supply==0 is unreachable after a deposit, but avoids div-by-zero.
         if supply == 0 { return vec![&e, 0]; }
         // Integer truncation: withdrawer may receive 1 raw unit less than the exact pro-rata value.
-        let usdc_out = df_amount * Self::held(&e) / supply;
+        let pro_rata = df_amount * Self::held(&e) / supply;
+        // Optional haircut (default 0) lets a test settle below the preview.
+        let usdc_out = pro_rata * (10_000 - Self::haircut_bps(&e)) / 10_000;
+        // Honor the caller's slippage floor: real DeFindex reverts when the realised
+        // amount is below `min_amounts_out`. Trap (panic) to mirror that revert so the
+        // adapter's floor is actually enforced under test.
+        let min_out = min_amounts_out.get(0).unwrap_or(0);
+        if usdc_out < min_out {
+            panic!("withdraw below min_amounts_out");
+        }
         Base::update(&e, Some(&from), None, df_amount); // burn shares
         token::TokenClient::new(&e, &Self::underlying_addr(&e))
             .transfer(&e.current_contract_address(), &from, &usdc_out);

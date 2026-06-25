@@ -59,6 +59,76 @@ fn invest_balance_accrue_divest() {
 }
 
 #[test]
+fn default_max_slippage_is_conservative() {
+    let c = setup();
+    // Constructor seeds the conservative 0.5% default.
+    assert_eq!(c.adapter.max_slippage_bps(), 50);
+}
+
+#[test]
+fn admin_can_tune_slippage_and_invalid_is_rejected() {
+    use crate::AdapterError;
+    let c = setup();
+    c.adapter.set_max_slippage_bps(&100);
+    assert_eq!(c.adapter.max_slippage_bps(), 100);
+    // > 100% is nonsensical and rejected with the typed code.
+    match c.adapter.try_set_max_slippage_bps(&10_001) {
+        Err(Ok(err)) => assert_eq!(err, AdapterError::InvalidSlippageBps.into()),
+        _ => panic!("expected InvalidSlippageBps"),
+    }
+    // The rejected write left the prior value intact.
+    assert_eq!(c.adapter.max_slippage_bps(), 100);
+}
+
+/// A withdraw whose realised proceeds stay within the slippage tolerance clears
+/// the floor and succeeds. The mock's preview and settled amount are consistent
+/// (no haircut), so the floor (expected * 0.995) is comfortably met.
+#[test]
+fn divest_within_tolerance_succeeds() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    c.dfx.accrue(&100); // value now 1_100
+    let to = Address::generate(&c.e);
+    let returned = c.adapter.divest(&550, &to);
+    assert!(returned >= 550);
+    assert_eq!(c.token.balance(&to), returned);
+}
+
+/// With a withdraw haircut larger than the adapter's tolerance, the realised
+/// amount falls below `min_amounts_out` and the vault reverts — the adapter no
+/// longer silently accepts an unbounded shortfall (the old `min_amounts_out=[0]`
+/// behavior). The mock honours the floor by trapping, mirroring a real vault's
+/// revert.
+#[test]
+#[should_panic]
+fn divest_out_of_tolerance_is_rejected() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    // 0.5% adapter tolerance vs a 1% withdraw haircut -> realised < floor -> revert.
+    c.dfx.set_withdraw_haircut_bps(&100);
+    let to = Address::generate(&c.e);
+    c.adapter.divest(&500, &to);
+}
+
+/// A haircut within the configured tolerance still clears the floor. Raise the
+/// adapter tolerance to 2% and apply a 1% haircut: realised (~0.99 * expected) is
+/// above the floor (~0.98 * expected), so the withdraw settles.
+#[test]
+fn divest_haircut_within_raised_tolerance_succeeds() {
+    let c = setup();
+    c.adapter.set_max_slippage_bps(&200); // 2% tolerance
+    c.token_admin.mint(&c.adapter_id, &10_000);
+    c.adapter.invest(&10_000);
+    c.dfx.set_withdraw_haircut_bps(&100); // 1% haircut, inside tolerance
+    let to = Address::generate(&c.e);
+    let returned = c.adapter.divest(&5_000, &to);
+    assert!(returned > 0);
+    assert_eq!(c.token.balance(&to), returned);
+}
+
+#[test]
 fn divest_full_value_exits_cleanly() {
     let c = setup();
     c.token_admin.mint(&c.adapter_id, &1_000);
