@@ -59,10 +59,54 @@ fn full_demo_flow_holds_solvency_invariant() {
     assert!(s.vault.stable_assets() >= s.policy.coverage_required());
 
     let rid = s.vault.request_redeem(&alice, &5_000);
+    let alice_before = token::TokenClient::new(&s.e, &s.underlying).balance(&alice);
     s.vault.process_redemptions(&10);
-    if s.vault.request(&rid).fulfilled { s.vault.claim(&rid); }
+    // Happy path must not silently no-op: the redemption was fulfilled and the claim paid out.
+    assert!(s.vault.request(&rid).fulfilled, "redemption should be fulfilled after processing");
+    s.vault.claim(&rid);
+    assert!(
+        token::TokenClient::new(&s.e, &s.underlying).balance(&alice) > alice_before,
+        "claim should pay redeemed underlying back to alice"
+    );
     assert!(s.vault.stable_assets() >= s.policy.coverage_required());
     let _ = (s.vault_id, s.registry_id, s.policy_id, s.admin);
+}
+
+#[test]
+fn coverage_required_scales_below_one_x() {
+    let s = wire();
+    let agency = Address::generate(&s.e);
+    let landlord = Address::generate(&s.e);
+    s.token_admin.mint(&agency, &10_000);
+    // Capital must cover the largest coverage requirement exercised below (1.5x case = 9_000).
+    let alice = Address::generate(&s.e);
+    s.token_admin.mint(&alice, &20_000);
+    s.vault.deposit(&20_000, &alice, &alice, &alice);
+
+    // Raw exposure = monthly_amount * months_covered = 1_000 * 6 = 6_000.
+    let gid = s.policy.sign_guarantee(&landlord, &1_000, &6, &1_000, &2_592_000);
+    s.policy.pay_premium(&agency, &gid);
+
+    s.policy.set_coverage_ratio_bps(&5_000);
+    assert_eq!(s.policy.coverage_required(), 6_000 * 5_000 / 10_000);
+}
+
+#[test]
+fn coverage_required_scales_above_one_x() {
+    let s = wire();
+    let agency = Address::generate(&s.e);
+    let landlord = Address::generate(&s.e);
+    s.token_admin.mint(&agency, &10_000);
+    let alice = Address::generate(&s.e);
+    s.token_admin.mint(&alice, &20_000);
+    s.vault.deposit(&20_000, &alice, &alice, &alice);
+
+    // Raw exposure = monthly_amount * months_covered = 1_000 * 6 = 6_000.
+    let gid = s.policy.sign_guarantee(&landlord, &1_000, &6, &1_000, &2_592_000);
+    s.policy.pay_premium(&agency, &gid);
+
+    s.policy.set_coverage_ratio_bps(&15_000);
+    assert_eq!(s.policy.coverage_required(), 6_000 * 15_000 / 10_000);
 }
 
 #[test]

@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { Mono } from "@/components/Mono";
 
 interface MetricCardProps {
   label: string;
@@ -24,30 +25,6 @@ interface MetricCardProps {
   loading?: boolean;
   /** error message */
   error?: string;
-}
-
-/** Mono span with mandatory tabular-nums */
-function Mono({
-  children,
-  style,
-  className = "",
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 export function MetricCard({

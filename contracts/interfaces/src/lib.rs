@@ -1,5 +1,19 @@
 #![no_std]
-use soroban_sdk::{contractclient, contracttype, Address, Env, Val, Vec};
+use soroban_sdk::{contractclient, contracterror, contracttype, Address, Env, Val, Vec};
+
+/// Errors surfaced across the registry boundary. Defined here (not in the
+/// `registry` crate) because the `Registry` trait's return type references it,
+/// so every consumer of the generated `RegistryClient` sees the same stable
+/// `#[contracterror]` codes. Numbered in the `2xx` band to stay clear of the
+/// `4xx` strategy codes in `defindex-hodl`.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum RegistryError {
+    /// No guarantee is stored under the requested id (previously a host trap
+    /// from `Option::unwrap` on missing storage).
+    GuaranteeNotFound = 200,
+}
 
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
 /// storage, keyed by id — never here.
@@ -33,7 +47,7 @@ pub trait Policy {
 pub trait Registry {
     fn next_id(env: Env) -> u32;
     fn put(env: Env, g: Guarantee);
-    fn get(env: Env, id: u32) -> Guarantee;
+    fn get(env: Env, id: u32) -> Result<Guarantee, RegistryError>;
     fn active_ids(env: Env) -> Vec<u32>;
 }
 

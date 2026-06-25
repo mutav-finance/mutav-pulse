@@ -10,6 +10,7 @@
  */
 
 import { fmtUsd } from "@/lib/format";
+import { Mono } from "@/components/Mono";
 import type { StrategyAlloc } from "vault";
 
 interface ReserveHealthHeaderProps {
@@ -20,37 +21,6 @@ interface ReserveHealthHeaderProps {
   strategies: StrategyAlloc[];
   loading?: boolean;
   error?: string | null;
-}
-
-/** Mono span — tabular numerals, copper or text depending on role */
-function Mono({
-  children,
-  copper = false,
-  dim = false,
-  style,
-}: {
-  children: React.ReactNode;
-  copper?: boolean;
-  dim?: boolean;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <span
-      className="font-mono"
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        color: copper
-          ? "var(--color-copper)"
-          : dim
-            ? "var(--color-text-3)"
-            : "var(--color-text)",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 /** Single metric cell */

@@ -19,7 +19,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { Client as FaucetClient } from "faucet";
 import { config } from "./config";
-import { signAndSubmit, makeSignTransaction } from "./wallet";
+import { signAndSubmit, makeWriterOpts } from "./wallet";
 
 export interface UsdcInfo {
   /** True when the account holds a trustline to the demo USDC. */
@@ -35,7 +35,16 @@ export interface UsdcInfo {
  */
 export async function getUsdcInfo(address: string): Promise<UsdcInfo> {
   const res = await fetch(`${config.horizonUrl}/accounts/${address}`);
-  if (!res.ok) return { hasTrustline: false, balance: "0" };
+  // 404 = account not found on Horizon → genuinely no trustline (unfunded
+  // or never created). Any other non-OK status is a transient/server error
+  // and must NOT be silently read as "no trustline" — throw so callers can
+  // surface it and retry instead of mislabelling the on-ramp state.
+  if (res.status === 404) return { hasTrustline: false, balance: "0" };
+  if (!res.ok) {
+    throw new Error(
+      `Horizon request failed (${res.status} ${res.statusText}) while reading the USDC trustline.`,
+    );
+  }
   const data = await res.json();
   const line = (data.balances ?? []).find(
     (b: { asset_code?: string; asset_issuer?: string }) =>
@@ -69,13 +78,7 @@ export async function addTrustline(address: string): Promise<string> {
  * authorizing the call.
  */
 export async function dripFaucet(address: string): Promise<string> {
-  const client = new FaucetClient({
-    rpcUrl: config.rpcUrl,
-    contractId: config.contracts.faucet,
-    networkPassphrase: config.networkPassphrase,
-    publicKey: address,
-    signTransaction: makeSignTransaction(address),
-  });
+  const client = new FaucetClient(makeWriterOpts(address, config.contracts.faucet));
   const tx = await client.drip({ to: address });
   const sent = await tx.signAndSend();
   const hash = sent.sendTransactionResponse?.hash;

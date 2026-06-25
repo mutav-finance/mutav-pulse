@@ -1,4 +1,5 @@
 #![no_std]
+// MuxedAddress is required by the FungibleToken macro even though it is not used directly.
 use soroban_sdk::{contract, contractevent, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
 use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
@@ -179,7 +180,7 @@ impl Vault {
     fn pull(e: &Env, from: &Address, operator: &Address, assets: i128) {
         let t = Self::token_client(e);
         if operator == from {
-            t.transfer(from, &e.current_contract_address(), &assets);
+            t.transfer(from, e.current_contract_address(), &assets);
         } else {
             t.transfer_from(operator, from, &e.current_contract_address(), &assets);
         }
@@ -395,7 +396,7 @@ impl VaultTrait for Vault {
         let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
         assert!(amount > 0, "amount must be positive");
-        Vault::token_client(&e).transfer(&from, &e.current_contract_address(), &amount);
+        Vault::token_client(&e).transfer(&from, e.current_contract_address(), &amount);
         let income = Vault::premium_income(&e) + amount;
         e.storage().instance().set(&DataKey::PremiumIncome, &income);
     }

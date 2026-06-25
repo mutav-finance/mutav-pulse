@@ -15,35 +15,16 @@
 import { Client as PolicyClient } from "policy";
 import { Client as VaultClient } from "vault";
 import { config } from "./config";
-import { makeSignTransaction } from "./wallet";
+import { makeWriterOpts, extractHash } from "./wallet";
 
 // ─── Client factories (bound to caller + sign fn) ────────────────────────────
 
 function policyWriter(address: string): PolicyClient {
-  return new PolicyClient({
-    rpcUrl: config.rpcUrl,
-    contractId: config.contracts.policy,
-    networkPassphrase: config.networkPassphrase,
-    publicKey: address,
-    signTransaction: makeSignTransaction(address),
-  });
+  return new PolicyClient(makeWriterOpts(address, config.contracts.policy));
 }
 
 function vaultWriter(address: string): VaultClient {
-  return new VaultClient({
-    rpcUrl: config.rpcUrl,
-    contractId: config.contracts.vault,
-    networkPassphrase: config.networkPassphrase,
-    publicKey: address,
-    signTransaction: makeSignTransaction(address),
-  });
-}
-
-// ─── Helpers: extract hash from sent transaction ──────────────────────────────
-
-function extractHash(hash: string | undefined): string {
-  if (!hash) throw new Error("transaction did not return a hash");
-  return hash;
+  return new VaultClient(makeWriterOpts(address, config.contracts.vault));
 }
 
 // ─── Policy write helpers ────────────────────────────────────────────────────
@@ -55,8 +36,11 @@ function extractHash(hash: string | undefined): string {
  * @param landlord      - Landlord/beneficiary Stellar address
  * @param monthlyAmount - Monthly rental amount in stroops (bigint, i128)
  * @param monthsCovered - Number of months to cover (u32)
- * @param feeBps        - Annual premium fee in basis points (u32)
- * @param periodSecs    - Period length in seconds (u64, as bigint)
+ * @param feeBps        - Premium fee in basis points charged PER PERIOD (u32);
+ *                        each pay_premium pulls monthly_amount * feeBps/10000.
+ *                        e.g. 1200 = 12% of the monthly rent every period.
+ * @param periodSecs    - Period length in seconds (u64, as bigint); the premium
+ *                        cadence (e.g. 30 days). NOT annual — feeBps is per-period.
  * @returns             - Confirmed transaction hash
  */
 export async function signGuarantee(
@@ -76,7 +60,7 @@ export async function signGuarantee(
     period_secs: periodSecs,
   });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -90,7 +74,7 @@ export async function payPremium(caller: string, id: number): Promise<string> {
   const client = policyWriter(caller);
   const tx = await client.pay_premium({ payer: caller, id });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -105,7 +89,7 @@ export async function coverDefault(caller: string, id: number): Promise<string> 
   const client = policyWriter(caller);
   const tx = await client.cover_default({ id });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -122,7 +106,7 @@ export async function settleGuarantee(
   const client = policyWriter(caller);
   const tx = await client.settle_guarantee({ id });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 // ─── Vault write helpers ─────────────────────────────────────────────────────
@@ -137,7 +121,7 @@ export async function rebalance(caller: string): Promise<string> {
   const client = vaultWriter(caller);
   const tx = await client.rebalance();
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -154,7 +138,7 @@ export async function processRedemptions(
   const client = vaultWriter(caller);
   const tx = await client.process_redemptions({ max_batch: maxBatch });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -179,7 +163,7 @@ export async function addStrategy(
     volatile,
   });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }
 
 /**
@@ -196,5 +180,5 @@ export async function removeStrategy(
   const client = vaultWriter(caller);
   const tx = await client.remove_strategy({ address });
   const sent = await tx.signAndSend();
-  return extractHash(sent.sendTransactionResponse?.hash);
+  return extractHash(sent);
 }

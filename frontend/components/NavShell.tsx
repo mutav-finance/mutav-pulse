@@ -21,18 +21,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
+import { PRIMARY_RESERVE } from "@/lib/reserves";
 
 interface NavLink {
   href: string;
   label: string;
-  /** Match strategy: "exact" | "prefix" */
+  /** Match strategy: "exact" (default) | "prefix" */
   match?: "exact" | "prefix";
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: "/earn", label: "earn", match: "exact" },
-  { href: "/earn/transparency", label: "transparency", match: "exact" },
-  { href: "/protocol", label: "protocol", match: "prefix" },
+  { href: "/", label: "home", match: "exact" },
+  { href: "/reserves", label: "reserves", match: "prefix" },
+  { href: `/protocol/${PRIMARY_RESERVE.address}`, label: "protocol", match: "prefix" },
 ];
 
 /** Resolve whether this front is the terminal register */

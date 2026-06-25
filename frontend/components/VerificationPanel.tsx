@@ -10,7 +10,7 @@
  * - No rounded corners, amber only on hover link color
  */
 
-import { config } from "@/lib/config";
+import { config, contractUrl } from "@/lib/config";
 import { truncAddr } from "@/lib/format";
 
 const CONTRACTS = [
@@ -58,7 +58,7 @@ export function VerificationPanel() {
         {CONTRACTS.map(({ role, id }) => (
           <a
             key={role}
-            href={`${config.explorerBase}/contract/${id}`}
+            href={contractUrl(id)}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`View ${role} contract on Stellar Explorer`}
@@ -72,24 +72,24 @@ export function VerificationPanel() {
               color: "inherit",
             }}
             onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget;
               el.style.backgroundColor = "var(--color-surface-2)";
               const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
               if (idSpan) idSpan.style.color = "var(--color-accent)";
             }}
             onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget;
               el.style.backgroundColor = "var(--color-surface)";
               const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
               if (idSpan) idSpan.style.color = "var(--color-text-2)";
             }}
             onFocus={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget;
               const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
               if (idSpan) idSpan.style.color = "var(--color-accent)";
             }}
             onBlur={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget;
               const idSpan = el.querySelector<HTMLSpanElement>("[data-contract-id]");
               if (idSpan) idSpan.style.color = "var(--color-text-2)";
             }}
@@ -135,7 +135,7 @@ export function VerificationPanel() {
                 opacity: 0.7,
               }}
             >
-              → stellar.expert
+              → stellar.expert / testnet
             </span>
           </a>
         ))}

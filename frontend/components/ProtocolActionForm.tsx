@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { Mono } from "@/components/Mono";
 
 interface ProtocolActionFormProps {
   title: string;
@@ -31,27 +32,6 @@ interface ProtocolActionFormProps {
   /** Form is disabled (e.g. not admin, or global pending) */
   disabled?: boolean;
   children?: React.ReactNode;
-}
-
-function Mono({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <span
-      className="font-mono"
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 export function ProtocolActionForm({

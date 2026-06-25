@@ -18,7 +18,7 @@
  * - No rounded corners, no shadows, depth via bg steps.
  */
 
-import { config } from "@/lib/config";
+import { config, contractUrl } from "@/lib/config";
 
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
@@ -44,12 +44,12 @@ const adapterLink: { href: string; label: string } = (() => {
       : undefined;
   if (adapterId) {
     return {
-      href: `${config.explorerBase}/contract/${adapterId}`,
+      href: contractUrl(adapterId),
       label: "View adapter →",
     };
   }
   return {
-    href: `${config.explorerBase}/contract/${config.contracts.vault}`,
+    href: contractUrl(config.contracts.vault),
     label: "via reserve →",
   };
 })();
@@ -58,7 +58,7 @@ const VENUES: Venue[] = [
   {
     name: "DeFindex",
     role: "Yield",
-    description: "Multi-strategy vault allocator. Reserve capital earns yield via the DeFindex adapter wired to the MUTAV vault.",
+    description: "Multi-strategy vault allocator. Reserve capital is routed to the DeFindex adapter wired to the MUTAV vault to generate yield in the testnet PoC.",
     status: "live",
     href: adapterLink.href,
     actionLabel: adapterLink.label,
@@ -128,12 +128,10 @@ function ActionCell({ venue }: { venue: Venue }) {
           transition: "color 150ms ease-out",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.color =
-            "var(--color-accent)";
+          e.currentTarget.style.color = "var(--color-accent)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.color =
-            "var(--color-text-2)";
+          e.currentTarget.style.color = "var(--color-text-2)";
         }}
       >
         {venue.actionLabel ?? "View →"}
@@ -192,7 +190,7 @@ export function VenueDirectory() {
     >
       <table
         style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
-        aria-label="Yield venue directory"
+        aria-label="Protocol integration directory"
       >
         <colgroup>
           <col style={{ width: "22%" }} />

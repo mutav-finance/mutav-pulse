@@ -14,7 +14,7 @@
 
 import { Client as VaultClient } from "vault";
 import { config } from "./config";
-import { makeSignTransaction } from "./wallet";
+import { makeWriterOpts, extractHash } from "./wallet";
 
 /**
  * Build a vault client bound to the caller's address and sign function.
@@ -22,13 +22,7 @@ import { makeSignTransaction } from "./wallet";
  * the binding client's ContractClientOptions.
  */
 function vaultWriter(address: string): VaultClient {
-  return new VaultClient({
-    rpcUrl: config.rpcUrl,
-    contractId: config.contracts.vault,
-    networkPassphrase: config.networkPassphrase,
-    publicKey: address,
-    signTransaction: makeSignTransaction(address),
-  });
+  return new VaultClient(makeWriterOpts(address, config.contracts.vault));
 }
 
 /**
@@ -49,9 +43,7 @@ export async function deposit(from: string, amount: bigint): Promise<string> {
     operator: from,
   });
   const sent = await tx.signAndSend();
-  const hash = sent.sendTransactionResponse?.hash;
-  if (!hash) throw new Error("transaction did not return a hash");
-  return hash;
+  return extractHash(sent);
 }
 
 /**
@@ -68,9 +60,7 @@ export async function requestRedeem(
   const client = vaultWriter(owner);
   const tx = await client.request_redeem({ owner, shares });
   const sent = await tx.signAndSend();
-  const hash = sent.sendTransactionResponse?.hash;
-  if (!hash) throw new Error("transaction did not return a hash");
-  return hash;
+  return extractHash(sent);
 }
 
 /**
@@ -84,9 +74,7 @@ export async function claim(caller: string, id: bigint): Promise<string> {
   const client = vaultWriter(caller);
   const tx = await client.claim({ id: Number(id) });
   const sent = await tx.signAndSend();
-  const hash = sent.sendTransactionResponse?.hash;
-  if (!hash) throw new Error("transaction did not return a hash");
-  return hash;
+  return extractHash(sent);
 }
 
 /**
@@ -100,7 +88,5 @@ export async function cancelRedeem(caller: string, id: bigint): Promise<string> 
   const client = vaultWriter(caller);
   const tx = await client.cancel_redeem({ id: Number(id) });
   const sent = await tx.signAndSend();
-  const hash = sent.sendTransactionResponse?.hash;
-  if (!hash) throw new Error("transaction did not return a hash");
-  return hash;
+  return extractHash(sent);
 }

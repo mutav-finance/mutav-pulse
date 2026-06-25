@@ -17,8 +17,9 @@
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops, stroopsToInput } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput, parseToStroops, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
+import { Mono } from "@/components/Mono";
 import type { RedeemRequest } from "vault";
 
 interface RedeemPanelProps {
@@ -30,31 +31,10 @@ interface RedeemPanelProps {
   requestIds: number[];
   /** Resolved request objects, keyed by id */
   requests: Map<number, RedeemRequest>;
+  /** Underlying token ticker redemptions pay out (e.g. "USDC" for the MUSD reserve) */
+  depositToken: string;
   /** Called with tx hash after a successful tx; parent refreshes reads */
   onSuccess(hash: string): void;
-}
-
-function Mono({
-  children,
-  style,
-  className = "",
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 /** 6×6px status square — no rounded corners, no fill per STYLE.md §3.5 */
@@ -97,6 +77,7 @@ export function RedeemPanel({
   balance,
   requestIds,
   requests,
+  depositToken,
   onSuccess,
 }: RedeemPanelProps) {
   const [rawInput, setRawInput] = useState("");
@@ -113,19 +94,21 @@ export function RedeemPanel({
   // Hover state for CTA button
   const [isHovered, setIsHovered] = useState(false);
 
-  // Parse share input to stroops
-  const sharesStroops: bigint | null = (() => {
-    const parsed = parseFloat(rawInput);
-    if (!rawInput || isNaN(parsed) || parsed <= 0) return null;
-    return BigInt(Math.round(parsed * 1e7));
-  })();
+  // Parse share input to stroops — exact decimal-string parse, no float.
+  const sharesStroops: bigint | null = parseToStroops(rawInput);
 
   const shareBalanceDisplay = fromStroops(balance);
-  const canSubmit = sharesStroops !== null && redeemStatus !== "pending" && balance > 0n;
+  // Requested shares exceed the user's MTVR balance — block submit + hint.
+  const exceedsBalance = sharesStroops !== null && sharesStroops > balance;
+  const canSubmit =
+    sharesStroops !== null &&
+    !exceedsBalance &&
+    redeemStatus !== "pending" &&
+    balance > 0n;
 
   async function handleRequestRedeem(e: React.FormEvent) {
     e.preventDefault();
-    if (!sharesStroops || redeemStatus === "pending") return;
+    if (!sharesStroops || exceedsBalance || redeemStatus === "pending") return;
 
     setRedeemStatus("pending");
     setRedeemError(null);
@@ -138,7 +121,7 @@ export function RedeemPanel({
       setLastLabel("Redemption requested");
       onSuccess(hash);
     } catch (err) {
-      setRedeemError(err instanceof Error ? err.message : "Transaction failed");
+      setRedeemError(errMsg(err));
       setRedeemStatus("error");
     }
   }
@@ -161,7 +144,7 @@ export function RedeemPanel({
       setLastLabel(`Claimed #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = errMsg(err, "Failed");
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
@@ -185,7 +168,7 @@ export function RedeemPanel({
       setLastLabel(`Cancelled #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = errMsg(err, "Failed");
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
@@ -229,7 +212,7 @@ export function RedeemPanel({
             margin: 0,
           }}
         >
-          Redeem MTVR — Queue USDC
+          Redeem MTVR — Queue {depositToken}
         </h2>
         <p
           className="font-body"
@@ -239,7 +222,7 @@ export function RedeemPanel({
             marginTop: "4px",
           }}
         >
-          Submit a redemption request. Once fulfilled by the vault operator, claim your USDC.
+          Submit a redemption request. Once fulfilled by the vault operator, claim your {depositToken}.
         </p>
       </div>
 
@@ -312,6 +295,28 @@ export function RedeemPanel({
               MTVR
             </span>
           </div>
+
+          {/* Exceeds-balance hint — inline, mirrors the error styling */}
+          {exceedsBalance && (
+            <p
+              className="font-mono"
+              role="alert"
+              style={{
+                fontSize: "11px",
+                color: "var(--color-error)",
+                marginTop: "6px",
+                letterSpacing: "0.01em",
+                lineHeight: 1.4,
+              }}
+            >
+              Exceeds balance — you hold{" "}
+              {shareBalanceDisplay.toLocaleString("en-US", {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 4,
+              })}{" "}
+              MTVR
+            </p>
+          )}
         </div>
 
         {/* Max button — fill input with full balance */}
@@ -459,11 +464,11 @@ export function RedeemPanel({
                         </Mono>
                         {status === "claimable" && req.claimable > 0n && (
                           <Mono style={{ fontSize: "11px", color: "var(--color-success)" }}>
-                            {(Number(req.claimable) / 1e7).toLocaleString("en-US", {
+                            {(Number(req.claimable) / STROOP_SCALE_NUM).toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}{" "}
-                            USDC claimable
+                            {depositToken} claimable
                           </Mono>
                         )}
                       </div>
