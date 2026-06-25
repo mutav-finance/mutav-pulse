@@ -32,7 +32,7 @@ import { RedeemPanel } from "@/components/RedeemPanel";
 import { TestnetOnramp } from "@/components/TestnetOnramp";
 import { Mono } from "@/components/Mono";
 import { faucetEnabled } from "@/lib/config";
-import { fmtNav, fmtUsd, fromStroops } from "@/lib/format";
+import { fmtNav, fmtUsd, fromStroops, errMsg, STROOP_SCALE } from "@/lib/format";
 import type { RedeemRequest } from "vault";
 
 interface EarnData {
@@ -116,7 +116,7 @@ export function InvestPanel({
         setData((prev) => ({
           ...prev,
           loading: false,
-          error: err instanceof Error ? err.message : "Failed to load data",
+          error: errMsg(err, "Failed to load data"),
         }));
       }
     }
@@ -366,7 +366,7 @@ export function InvestPanel({
                   >
                     <Mono>
                       {data.navPerShare > 0n
-                        ? fmtUsd((data.balance * data.navPerShare) / 10_000_000n)
+                        ? fmtUsd((data.balance * data.navPerShare) / STROOP_SCALE)
                         : "—"}
                     </Mono>
                   </p>

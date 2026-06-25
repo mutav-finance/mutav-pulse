@@ -18,7 +18,7 @@
  * - No rounded corners, no shadows, depth via bg steps.
  */
 
-import { config } from "@/lib/config";
+import { config, contractUrl } from "@/lib/config";
 
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
@@ -44,12 +44,12 @@ const adapterLink: { href: string; label: string } = (() => {
       : undefined;
   if (adapterId) {
     return {
-      href: `${config.explorerBase}/contract/${adapterId}`,
+      href: contractUrl(adapterId),
       label: "View adapter →",
     };
   }
   return {
-    href: `${config.explorerBase}/contract/${config.contracts.vault}`,
+    href: contractUrl(config.contracts.vault),
     label: "via reserve →",
   };
 })();
@@ -128,12 +128,10 @@ function ActionCell({ venue }: { venue: Venue }) {
           transition: "color 150ms ease-out",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.color =
-            "var(--color-accent)";
+          e.currentTarget.style.color = "var(--color-accent)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.color =
-            "var(--color-text-2)";
+          e.currentTarget.style.color = "var(--color-text-2)";
         }}
       >
         {venue.actionLabel ?? "View →"}

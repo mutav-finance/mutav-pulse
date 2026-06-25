@@ -19,7 +19,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { Client as FaucetClient } from "faucet";
 import { config } from "./config";
-import { signAndSubmit, makeSignTransaction } from "./wallet";
+import { signAndSubmit, makeWriterOpts } from "./wallet";
 
 export interface UsdcInfo {
   /** True when the account holds a trustline to the demo USDC. */
@@ -69,13 +69,7 @@ export async function addTrustline(address: string): Promise<string> {
  * authorizing the call.
  */
 export async function dripFaucet(address: string): Promise<string> {
-  const client = new FaucetClient({
-    rpcUrl: config.rpcUrl,
-    contractId: config.contracts.faucet,
-    networkPassphrase: config.networkPassphrase,
-    publicKey: address,
-    signTransaction: makeSignTransaction(address),
-  });
+  const client = new FaucetClient(makeWriterOpts(address, config.contracts.faucet));
   const tx = await client.drip({ to: address });
   const sent = await tx.signAndSend();
   const hash = sent.sendTransactionResponse?.hash;

@@ -15,8 +15,9 @@
 
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
-import { fmtNav } from "@/lib/format";
+import { fmtNav, STROOP_SCALE, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
+import { Mono } from "@/components/Mono";
 
 interface DepositWidgetProps {
   /** Connected wallet public key */
@@ -27,25 +28,6 @@ interface DepositWidgetProps {
   depositToken: string;
   /** Called with tx hash after a successful deposit; parent refreshes reads */
   onSuccess(hash: string): void;
-}
-
-function Mono({
-  children,
-  className = "",
-  style,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{ fontFeatureSettings: '"tnum" 1', fontVariantNumeric: "tabular-nums", ...style }}
-    >
-      {children}
-    </span>
-  );
 }
 
 export function DepositWidget({
@@ -65,13 +47,13 @@ export function DepositWidget({
     const parsed = parseFloat(rawInput);
     if (!rawInput || isNaN(parsed) || parsed <= 0) return null;
     // Convert to stroops: multiply by 1e7 (Stellar precision)
-    return BigInt(Math.round(parsed * 1e7));
+    return BigInt(Math.round(parsed * STROOP_SCALE_NUM));
   })();
 
   // Estimated shares: amount_stroops * 1e7 / nav_per_share
   const estimatedShares: bigint | null =
     usdcStroops !== null && navPerShare > 0n
-      ? (usdcStroops * 10_000_000n) / navPerShare
+      ? (usdcStroops * STROOP_SCALE) / navPerShare
       : null;
 
   async function handleDeposit(e: React.FormEvent) {
@@ -88,7 +70,7 @@ export function DepositWidget({
       setLastHash(hash);
       onSuccess(hash);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Transaction failed");
+      setErrorMsg(errMsg(err));
       setStatus("error");
     }
   }

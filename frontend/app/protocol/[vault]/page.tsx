@@ -50,7 +50,7 @@ import {
   addStrategy,
   removeStrategy,
 } from "@/lib/admin-tx";
-import { fmtUsd, truncAddr } from "@/lib/format";
+import { fmtUsd, truncAddr, errMsg, STROOP_SCALE_NUM } from "@/lib/format";
 import type { StrategyAlloc } from "vault";
 import type { Guarantee } from "policy";
 
@@ -221,8 +221,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
       setData((prev) => ({
         ...prev,
         loading: false,
-        error:
-          err instanceof Error ? err.message : "Failed to load protocol data",
+        error: errMsg(err, "Failed to load protocol data"),
       }));
     }
   }, [reads]);
@@ -536,7 +535,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   const monthly = BigInt(
-                    Math.round(parseFloat(sgMonthly) * 1e7),
+                    Math.round(parseFloat(sgMonthly) * STROOP_SCALE_NUM),
                   );
                   const months = parseInt(sgMonths, 10);
                   const feeBps = parseInt(sgFeeBps, 10);

@@ -15,9 +15,11 @@ interface MonoProps {
   className?: string;
   /** Dim variant — uses --color-text-3 instead of inheriting */
   dim?: boolean;
+  /** Copper variant — uses --color-copper instead of inheriting */
+  copper?: boolean;
 }
 
-export function Mono({ children, style, className = "", dim = false }: MonoProps) {
+export function Mono({ children, style, className = "", dim = false, copper = false }: MonoProps) {
   return (
     <span
       className={`font-mono ${className}`}
@@ -25,6 +27,7 @@ export function Mono({ children, style, className = "", dim = false }: MonoProps
         fontFeatureSettings: '"tnum" 1',
         fontVariantNumeric: "tabular-nums",
         ...(dim ? { color: "var(--color-text-3)" } : {}),
+        ...(copper ? { color: "var(--color-copper)" } : {}),
         ...style,
       }}
     >

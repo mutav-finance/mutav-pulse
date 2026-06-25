@@ -17,8 +17,9 @@
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops, stroopsToInput } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
+import { Mono } from "@/components/Mono";
 import type { RedeemRequest } from "vault";
 
 interface RedeemPanelProps {
@@ -34,29 +35,6 @@ interface RedeemPanelProps {
   depositToken: string;
   /** Called with tx hash after a successful tx; parent refreshes reads */
   onSuccess(hash: string): void;
-}
-
-function Mono({
-  children,
-  style,
-  className = "",
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{
-        fontFeatureSettings: '"tnum" 1',
-        fontVariantNumeric: "tabular-nums",
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 /** 6×6px status square — no rounded corners, no fill per STYLE.md §3.5 */
@@ -120,7 +98,7 @@ export function RedeemPanel({
   const sharesStroops: bigint | null = (() => {
     const parsed = parseFloat(rawInput);
     if (!rawInput || isNaN(parsed) || parsed <= 0) return null;
-    return BigInt(Math.round(parsed * 1e7));
+    return BigInt(Math.round(parsed * STROOP_SCALE_NUM));
   })();
 
   const shareBalanceDisplay = fromStroops(balance);
@@ -141,7 +119,7 @@ export function RedeemPanel({
       setLastLabel("Redemption requested");
       onSuccess(hash);
     } catch (err) {
-      setRedeemError(err instanceof Error ? err.message : "Transaction failed");
+      setRedeemError(errMsg(err));
       setRedeemStatus("error");
     }
   }
@@ -164,7 +142,7 @@ export function RedeemPanel({
       setLastLabel(`Claimed #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = errMsg(err, "Failed");
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
@@ -188,7 +166,7 @@ export function RedeemPanel({
       setLastLabel(`Cancelled #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = errMsg(err, "Failed");
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
@@ -462,7 +440,7 @@ export function RedeemPanel({
                         </Mono>
                         {status === "claimable" && req.claimable > 0n && (
                           <Mono style={{ fontSize: "11px", color: "var(--color-success)" }}>
-                            {(Number(req.claimable) / 1e7).toLocaleString("en-US", {
+                            {(Number(req.claimable) / STROOP_SCALE_NUM).toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}{" "}

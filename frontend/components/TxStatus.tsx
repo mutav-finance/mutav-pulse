@@ -9,7 +9,7 @@
  * Inter label, JetBrains Mono hash linking to the explorer. Evidence layer.
  */
 
-import { config } from "@/lib/config";
+import { txUrl } from "@/lib/config";
 
 export function TxStatus({
   hash,
@@ -43,7 +43,7 @@ export function TxStatus({
         {label}
       </span>
       <a
-        href={`${config.explorerBase}/tx/${hash}`}
+        href={txUrl(hash)}
         target="_blank"
         rel="noopener noreferrer"
         className="font-mono"

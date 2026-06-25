@@ -24,6 +24,11 @@ export const config = {
   },
 } as const;
 
+/** Explorer URL for a transaction hash. */
+export const txUrl = (h: string) => `${config.explorerBase}/tx/${h}`;
+/** Explorer URL for a contract id. */
+export const contractUrl = (id: string) => `${config.explorerBase}/contract/${id}`;
+
 /** True on Stellar testnet. The faucet + trustline shortcut are testnet-only. */
 export const isTestnet = config.networkPassphrase === Networks.TESTNET;
 

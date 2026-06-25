@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { config } from "@/lib/config";
+import { contractUrl } from "@/lib/config";
 
 /**
  * Shown for a /earn/[vaultAddr] route whose address is a valid contract but NOT
@@ -28,7 +28,7 @@ export function UnverifiedReserve({ address }: { address: string }) {
           <Link href="/" className="font-mono" style={{ fontSize: "13px", color: "var(--color-accent)", textDecoration: "none" }}>
             ← Verified reserves
           </Link>
-          <a href={`${config.explorerBase}/contract/${address}`} target="_blank" rel="noreferrer" className="font-mono" style={{ fontSize: "13px", color: "var(--color-text-3)", textDecoration: "none" }}>
+          <a href={contractUrl(address)} target="_blank" rel="noreferrer" className="font-mono" style={{ fontSize: "13px", color: "var(--color-text-3)", textDecoration: "none" }}>
             Inspect on explorer ↗
           </a>
         </div>

@@ -92,6 +92,35 @@ export async function disconnect(): Promise<void> {
   });
 }
 
+// ─── Writer client options (binding-compatible) ──────────────────────────────
+
+/**
+ * Build the base options for a write-capable binding Client (vault/policy/etc).
+ * Lifted verbatim from the per-helper writer factories: binds the caller's
+ * public key + a signTransaction fn so the binding can assemble + sign.
+ */
+export function makeWriterOpts(address: string, contractId: string) {
+  return {
+    rpcUrl: config.rpcUrl,
+    contractId,
+    networkPassphrase: config.networkPassphrase,
+    publicKey: address,
+    signTransaction: makeSignTransaction(address),
+  };
+}
+
+/**
+ * Extract the confirmed tx hash from a binding's SentTransaction.
+ * Throws one canonical Error if the hash is absent.
+ */
+export function extractHash(sent: {
+  sendTransactionResponse?: { hash?: string } | null;
+}): string {
+  const hash = sent.sendTransactionResponse?.hash;
+  if (!hash) throw new Error("transaction did not return a hash");
+  return hash;
+}
+
 // ─── signTransaction (binding-compatible) ────────────────────────────────────
 
 /**

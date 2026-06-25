@@ -9,7 +9,8 @@
  * label badge, <5% of pixels.
  */
 
-import { fromStroops, fmtUsd } from "@/lib/format";
+import { fromStroops, fmtUsd, STROOP_SCALE } from "@/lib/format";
+import { Mono } from "@/components/Mono";
 
 interface PositionPanelProps {
   /** Connected wallet's MTVR share balance in stroops (bigint) */
@@ -18,29 +19,11 @@ interface PositionPanelProps {
   navPerShare: bigint;
 }
 
-/** Mono span with mandatory tabular-nums for numeric evidence layer */
-function Mono({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`font-mono ${className}`}
-      style={{ fontFeatureSettings: '"tnum" 1', fontVariantNumeric: "tabular-nums" }}
-    >
-      {children}
-    </span>
-  );
-}
-
 export function PositionPanel({ balance, navPerShare }: PositionPanelProps) {
   const shareDisplay = fromStroops(balance);
   // USDC value = shares × (nav / 1e7)
   const usdcValueStroops = navPerShare > 0n
-    ? (balance * navPerShare) / 10_000_000n
+    ? (balance * navPerShare) / STROOP_SCALE
     : 0n;
 
   return (

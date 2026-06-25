@@ -27,7 +27,7 @@ import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { VenueDirectory } from "@/components/VenueDirectory";
-import { fmtUsd, fmtNav } from "@/lib/format";
+import { fmtUsd, fmtNav, fmtPct2, fmtSignedPct, fmtShares, errMsg } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
 import type { Guarantee } from "policy";
 
@@ -60,24 +60,6 @@ const INITIAL: TransparencyData = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Format a share count (bigint, stroops) as a plain integer with commas.
- *  Uses exact bigint division to avoid float precision issues on large supplies. */
-function fmtShares(v: bigint): string {
-  // 1 mtvR share = 10_000_000 stroops (7 decimal places)
-  const whole = v / 10_000_000n;
-  return whole.toLocaleString("en-US");
-}
-
-/** Format a rate (0.2493) as a percentage string ("24.93%") */
-function fmtApy(v: number): string {
-  return (v * 100).toFixed(2) + "%";
-}
-
-/** Format a signed rate with an explicit + sign for the spread contribution */
-function fmtSignedPct(v: number): string {
-  return (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%";
-}
 
 /** Format a multiple ("4.9×") */
 function fmtMult(v: number): string {
@@ -143,7 +125,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
       setData((prev) => ({
         ...prev,
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to load reserve data",
+        error: errMsg(err, "Failed to load reserve data"),
       }));
     }
   }, [reads]);
@@ -369,9 +351,9 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           {/* 3. Modeled APY — amber accent */}
           <MetricCard
             label="Modeled APY"
-            value={hasBook ? fmtApy(econ.modeledApy) : "—"}
-            unit={`${fmtApy(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} underwriting`}
-            tooltip={`Underlying yield (${fmtApy(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South). See whitepaper.`}
+            value={hasBook ? fmtPct2(econ.modeledApy) : "—"}
+            unit={`${fmtPct2(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} underwriting`}
+            tooltip={`Underlying yield (${fmtPct2(econ.underlyingYield)}, assumed) + underwriting spread (premiums − expected defaults, on the live book). Default risk modeled at ${fmtPct2(econ.rho)} monthly delinquency (Índice Superlógica, South). See whitepaper.`}
             accentValue
             loading={loading}
             error={error ?? undefined}
@@ -456,7 +438,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
         >
           <MetricCard
             label="Underlying Yield"
-            value={fmtApy(econ.underlyingYield)}
+            value={fmtPct2(econ.underlyingYield)}
             unit="modeled base rate"
             tooltip="The assumed underlying yield for this reserve's currency peg (USD stablecoin DeFi ~5.5%). For reference, a BRL reserve would use Selic ~14%. A stated assumption, not an on-chain read."
             loading={loading}
@@ -472,7 +454,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           />
           <MetricCard
             label="Loss Ratio"
-            value={hasBook ? fmtApy(econ.lossRatio) : "—"}
+            value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
             unit="expected payout ÷ premiums"
             tooltip="Expected annual default payout as a share of premium income. Below 100% means premiums cover expected defaults; insurer-healthy books run well under 50%."
             loading={loading}
@@ -482,7 +464,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             label="Cushion"
             value={hasBook ? fmtMult(econ.cushion) : "—"}
             unit="vs break-even delinquency"
-            tooltip={`How far delinquency can rise before premiums stop covering defaults. Break-even is ${fmtApy(econ.breakevenRho)} monthly delinquency vs the ${fmtApy(econ.rho)} modeled.`}
+            tooltip={`How far delinquency can rise before premiums stop covering defaults. Break-even is ${fmtPct2(econ.breakevenRho)} monthly delinquency vs the ${fmtPct2(econ.rho)} modeled.`}
             loading={loading}
             error={error ?? undefined}
           />
@@ -499,8 +481,8 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             maxWidth: "720px",
           }}
         >
-          Modeled at {fmtApy(econ.rho)} monthly delinquency (Índice Superlógica, South
-          region, 60+ days overdue) and {fmtApy(econ.underlyingYield)} underlying yield
+          Modeled at {fmtPct2(econ.rho)} monthly delinquency (Índice Superlógica, South
+          region, 60+ days overdue) and {fmtPct2(econ.underlyingYield)} underlying yield
           ({reserve.currency} peg). The spread is computed from the live
           guarantee book; default and yield rates are stated assumptions. Method: see whitepaper.
         </p>

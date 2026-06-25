@@ -91,6 +91,22 @@ describe("computeEconomics", () => {
     expect(brl.underwritingSpread).toBeCloseTo(usd.underwritingSpread, 9);
   });
 
+  it("zero-asset book with a live guarantee: no spread, APY pegs to the underlying yield", () => {
+    const assumptions = { delinquency: 0.0246, underlyingYield: 0.055 };
+    const e = computeEconomics(
+      {
+        guarantees: [g()],
+        coverageRequired: 0n,
+        totalAssets: 0n,
+      },
+      assumptions,
+    );
+    expect(e.underwritingSpread).toBe(0);
+    expect(e.modeledApy).toBe(assumptions.underlyingYield);
+    expect(Number.isFinite(e.modeledApy)).toBe(true);
+    expect(e.annualPremium).toBeGreaterThan(0);
+  });
+
   it("is safe on an empty book", () => {
     const e = computeEconomics({ guarantees: [], coverageRequired: 0n, totalAssets: 0n });
     expect(e.annualPremium).toBe(0);

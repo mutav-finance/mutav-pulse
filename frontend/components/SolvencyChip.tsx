@@ -10,24 +10,13 @@
  */
 
 import { fmtUsd } from "@/lib/format";
+import { Mono } from "@/components/Mono";
 
 interface SolvencyChipProps {
   stableAssets: bigint;
   coverageRequired: bigint;
   loading?: boolean;
   error?: string;
-}
-
-/** Mono span */
-function Mono({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      className="font-mono"
-      style={{ fontFeatureSettings: '"tnum" 1', fontVariantNumeric: "tabular-nums" }}
-    >
-      {children}
-    </span>
-  );
 }
 
 export function SolvencyChip({

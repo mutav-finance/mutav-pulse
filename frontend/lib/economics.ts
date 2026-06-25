@@ -15,6 +15,8 @@
 import { fromStroops } from "./format";
 import type { Guarantee } from "policy";
 
+import { STROOP_SCALE } from "./format";
+
 const SECONDS_PER_YEAR = 365.25 * 86_400;
 
 /** Stated modeling assumptions. Single source of truth — change here to re-peg. */
@@ -100,8 +102,6 @@ export function computeEconomics(
   };
 }
 
-const STROOP = 10_000_000n;
-
 /**
  * Reference economics for the STANDARD product (one $1,000 / 6-month / 12%-per-30d
  * guarantee, fully packed) under a given currency peg. Used to show a model-backed
@@ -113,7 +113,7 @@ export function standardProductEconomics(
   const guarantee = {
     id: 1,
     landlord: "",
-    monthly_amount: 1000n * STROOP,
+    monthly_amount: 1000n * STROOP_SCALE,
     months_covered: 6,
     months_used: 0,
     fee_bps: 1200,
@@ -124,8 +124,8 @@ export function standardProductEconomics(
   return computeEconomics(
     {
       guarantees: [{ guarantee, isCurrent: true }],
-      coverageRequired: 6000n * STROOP,
-      totalAssets: 6000n * STROOP,
+      coverageRequired: 6000n * STROOP_SCALE,
+      totalAssets: 6000n * STROOP_SCALE,
     },
     assumptions,
   );

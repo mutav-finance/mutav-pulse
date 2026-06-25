@@ -46,6 +46,8 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
   }, [address]);
 
   useEffect(() => {
+    // Intentional on-mount external-system read (wallet trustline/balance), not derived state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 

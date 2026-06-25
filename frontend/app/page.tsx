@@ -23,7 +23,7 @@ import Link from "next/link";
 import { getReserves } from "@/lib/discovery";
 import { PRIMARY_RESERVE } from "@/lib/reserves";
 import { standardProductEconomics } from "@/lib/economics";
-import { config } from "@/lib/config";
+import { contractUrl } from "@/lib/config";
 import { fmtPct } from "@/lib/format";
 import { useLiveAum } from "@/lib/use-live-aum";
 import { ReserveCard } from "@/components/ReserveCard";
@@ -304,7 +304,7 @@ export default function Home() {
         {/* Verification footer */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", paddingTop: "24px", borderTop: "1px solid var(--color-border)" }}>
           {[
-            { label: "Verify vault ↗", href: `${config.explorerBase}/contract/${PRIMARY_RESERVE.address}`, ext: true },
+            { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address!), ext: true },
             { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
             { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
           ].map((l) =>

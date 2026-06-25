@@ -7,7 +7,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import { RESERVES, type Reserve } from "./reserves";
 
 export function getReserves(): Reserve[] {
-  return RESERVES;
+  return [...RESERVES];
 }
 
 /** Resolve a reserve by its vault contract address (the canonical ID). */
