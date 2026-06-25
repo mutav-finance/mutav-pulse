@@ -1,7 +1,7 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, Env};
-use interfaces::Guarantee;
+use interfaces::{Guarantee, RegistryError};
 use crate::{Registry, RegistryClient};
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
@@ -45,4 +45,23 @@ fn writer_gating_and_active_set() {
     r.put(&g(&e, id0, &landlord, false));
     assert_eq!(r.active_ids().len(), 1);
     assert_eq!(r.active_ids().get(0).unwrap(), id1);
+}
+
+/// get on an unknown id returns the typed GuaranteeNotFound error (a stable
+/// contract error code) instead of trapping on a bare unwrap.
+#[test]
+fn get_unknown_id_returns_typed_error() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+
+    // Nothing stored under id 42 -> typed error, not a host trap.
+    // (Guarantee has no PartialEq/Debug, so match the Err arm directly.)
+    match r.try_get(&42) {
+        Err(Ok(e)) => assert_eq!(e, RegistryError::GuaranteeNotFound),
+        _ => panic!("expected GuaranteeNotFound typed error"),
+    }
 }

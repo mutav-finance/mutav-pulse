@@ -296,6 +296,24 @@ fn pay_premium_renewal_stacks_paid_until() {
     assert_eq!(c.policy.guarantee(&gid).paid_until, first_paid_until + period);
 }
 
+/// sign_guarantee bounds fee_bps at 100 percent (10_000 bps): a fee above the
+/// cap is rejected with the typed FeeTooHigh error, while the 10_000 boundary
+/// still succeeds and mints a guarantee.
+#[test]
+fn sign_guarantee_rejects_fee_above_100pct_and_allows_boundary() {
+    use crate::PolicyError;
+    let c = setup();
+    let landlord = Address::generate(&c.e);
+
+    // 10_001 bps (> 100%) is rejected with the typed error.
+    let res = c.policy.try_sign_guarantee(&landlord, &100, &6, &10_001, &2_592_000);
+    assert_eq!(res, Err(Ok(PolicyError::FeeTooHigh)));
+
+    // The 10_000 (== 100%) boundary still succeeds.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &10_000, &2_592_000);
+    assert_eq!(c.policy.guarantee(&gid).fee_bps, 10_000);
+}
+
 /// 5b. pay_premium rejects an inactive guarantee ("guarantee inactive").
 #[test]
 fn pay_premium_rejects_inactive_guarantee() {
