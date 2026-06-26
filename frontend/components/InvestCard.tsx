@@ -3,9 +3,11 @@
 /**
  * InvestCard — the sticky right-column action card of the 2-column reserve hub.
  *
- * Stacks: position summary (NAV / my shares / value) → on-ramp (Buy TESOURO or the
- * testnet faucet) → a Deposit | Withdraw toggle (the column is ~380px, so the two
- * widgets can't sit side-by-side). Owns the position data fetch + refresh-on-tx.
+ * Stacks: position summary (NAV / my shares / value) → three tabs:
+ *   Invest (deposit) · Withdraw (redeem) · Fund (acquire the deposit token —
+ *   Buy TESOURO or the testnet faucet; only shown when an on-ramp exists).
+ * Invest is the default; when the wallet holds no deposit token the Invest tab
+ * shows a small link to Fund. Owns the position data fetch + refresh-on-tx.
  *
  * Design: Precision Brutalism, Investidor front (dark/amber). Surface-stacked
  * blocks, hairline borders, no shadows, amber only on the Deposit CTA + active tab.
@@ -22,12 +24,18 @@ import { TestnetOnramp } from "@/components/TestnetOnramp";
 import { BuyTesouro } from "@/components/BuyTesouro";
 import { Mono } from "@/components/Mono";
 import { faucetEnabled, config } from "@/lib/config";
+import { getUsdcInfo } from "@/lib/onramp";
+import { getTesouroInfo } from "@/lib/buy-tesouro";
 import { fmtNav, fmtFiat, fmtAmount, fmtUnitPrice, fromStroops, errMsg, STROOP_SCALE } from "@/lib/format";
 import type { RedeemRequest } from "vault";
+
+type Tab = "invest" | "withdraw" | "fund";
 
 interface EarnData {
   navPerShare: bigint;
   balance: bigint;
+  /** Wallet balance of the deposit token (USDC/TESOURO), decimal — gates the Fund hint. */
+  depositBalance: number;
   pendingIds: number[];
   requests: Map<number, RedeemRequest>;
   loading: boolean;
@@ -37,6 +45,7 @@ interface EarnData {
 const EMPTY_DATA: EarnData = {
   navPerShare: 0n,
   balance: 0n,
+  depositBalance: 0,
   pendingIds: [],
   requests: new Map(),
   loading: false,
@@ -56,9 +65,14 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   const { address } = useWallet();
   const [data, setData] = useState<EarnData>({ ...EMPTY_DATA, loading: true });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
+  const [mode, setMode] = useState<Tab>("invest");
 
   const handleSuccess = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  // Whether this reserve offers an on-ramp (Fund tab): TESOURO is always buyable
+  // on the SDEX; USDC only via the testnet faucet.
+  const isTesouro = reserve.depositToken === config.tesouro.code;
+  const hasFund = isTesouro || faucetEnabled;
 
   useEffect(() => {
     let cancelled = false;
@@ -71,9 +85,11 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
           setData({ ...EMPTY_DATA, navPerShare, loading: false });
           return;
         }
-        const [balance, pendingIds] = await Promise.all([
+        const [balance, pendingIds, depositInfo] = await Promise.all([
           reads.vaultBalance(address),
           reads.vaultPendingRequests(),
+          // Wallet balance of the deposit token, to gate the "add funds" hint.
+          (isTesouro ? getTesouroInfo(address) : getUsdcInfo(address)).catch(() => ({ balance: "0" })),
         ]);
         if (cancelled) return;
         const requestEntries = await Promise.all(
@@ -83,7 +99,15 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
           }),
         );
         if (cancelled) return;
-        setData({ navPerShare, balance, pendingIds, requests: new Map(requestEntries), loading: false, error: null });
+        setData({
+          navPerShare,
+          balance,
+          depositBalance: parseFloat(depositInfo.balance) || 0,
+          pendingIds,
+          requests: new Map(requestEntries),
+          loading: false,
+          error: null,
+        });
       } catch (err) {
         if (cancelled) return;
         setData((prev) => ({ ...prev, loading: false, error: errMsg(err, "Failed to load position") }));
@@ -93,7 +117,7 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
     return () => {
       cancelled = true;
     };
-  }, [address, refreshKey, reads]);
+  }, [address, refreshKey, reads, isTesouro]);
 
   const navStr = data.navPerShare > 0n ? fmtNav(data.navPerShare) : "—";
   const myShares = fromStroops(data.balance).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
@@ -183,17 +207,10 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
             </div>
           )}
 
-          {/* On-ramp — acquire the deposit token */}
-          {reserve.depositToken === config.tesouro.code ? (
-            <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
-          ) : faucetEnabled ? (
-            <TestnetOnramp address={address} onSuccess={handleSuccess} />
-          ) : null}
-
-          {/* Deposit | Withdraw toggle */}
+          {/* Invest | Withdraw | Fund tabs */}
           <div>
             <div role="tablist" style={{ display: "flex", gap: "20px", borderBottom: "1px solid var(--color-border)", marginBottom: "16px" }}>
-              {(["deposit", "withdraw"] as const).map((m) => (
+              {(["invest", "withdraw", ...(hasFund ? ["fund"] : [])] as Tab[]).map((m) => (
                 <button
                   key={m}
                   role="tab"
@@ -216,16 +233,37 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
                 </button>
               ))}
             </div>
-            {mode === "deposit" ? (
-              <DepositWidget
-                address={address}
-                navPerShare={data.navPerShare}
-                depositToken={reserve.depositToken}
-                shareSymbol={reserve.currency}
-                contracts={reserve.contracts!}
-                onSuccess={handleSuccess}
-              />
-            ) : (
+
+            {mode === "invest" ? (
+              <>
+                <DepositWidget
+                  address={address}
+                  navPerShare={data.navPerShare}
+                  depositToken={reserve.depositToken}
+                  shareSymbol={reserve.currency}
+                  contracts={reserve.contracts!}
+                  onSuccess={handleSuccess}
+                />
+                {/* No deposit-token balance → point to the Fund tab to acquire it */}
+                {hasFund && !data.loading && data.depositBalance <= 0 && (
+                  <button
+                    onClick={() => setMode("fund")}
+                    className="font-mono"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      color: "var(--color-accent)",
+                      padding: "12px 0 0",
+                      textAlign: "left",
+                    }}
+                  >
+                    No {reserve.depositToken} balance — add funds →
+                  </button>
+                )}
+              </>
+            ) : mode === "withdraw" ? (
               <RedeemPanel
                 address={address}
                 balance={data.balance}
@@ -236,6 +274,13 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
                 contracts={reserve.contracts!}
                 onSuccess={handleSuccess}
               />
+            ) : (
+              /* Fund — acquire the deposit token */
+              isTesouro ? (
+                <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
+              ) : faucetEnabled ? (
+                <TestnetOnramp address={address} onSuccess={handleSuccess} />
+              ) : null
             )}
           </div>
         </>
