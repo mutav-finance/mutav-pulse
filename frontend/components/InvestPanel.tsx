@@ -30,8 +30,9 @@ import { ConnectButton } from "@/components/ConnectButton";
 import { DepositWidget } from "@/components/DepositWidget";
 import { RedeemPanel } from "@/components/RedeemPanel";
 import { TestnetOnramp } from "@/components/TestnetOnramp";
+import { BuyTesouro } from "@/components/BuyTesouro";
 import { Mono } from "@/components/Mono";
-import { faucetEnabled } from "@/lib/config";
+import { faucetEnabled, config } from "@/lib/config";
 import { fmtNav, fmtUsd, fromStroops, errMsg, STROOP_SCALE } from "@/lib/format";
 import type { RedeemRequest } from "vault";
 
@@ -465,13 +466,17 @@ export function InvestPanel({
               </div>
             )}
 
-            {/* Testnet on-ramp — full-width section (trustline + faucet).
-                Never renders on mainnet (faucetEnabled is false off testnet). */}
-            {faucetEnabled && (
+            {/* On-ramp: a TESOURO reserve gets the client-side SDEX "Buy TESOURO"
+                swap; USDC reserves get the testnet faucet (testnet only). */}
+            {reserve.depositToken === config.tesouro.code ? (
+              <div style={{ marginBottom: "24px" }}>
+                <BuyTesouro address={address} onSuccess={handleSuccess} />
+              </div>
+            ) : faucetEnabled ? (
               <div style={{ marginBottom: "24px" }}>
                 <TestnetOnramp address={address} onSuccess={handleSuccess} />
               </div>
-            )}
+            ) : null}
 
             {/* Deposit | Withdraw — side by side; stacks below 720px */}
             <div
