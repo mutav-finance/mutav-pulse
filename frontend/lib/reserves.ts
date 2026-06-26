@@ -84,14 +84,20 @@ export const RESERVES: Reserve[] = [
   {
     id: "brl",
     currency: "MBRL",
-    name: "Mutav BRL Reserve",
-    underlying: "BRL · tokenized Tesouro / CDI",
-    depositToken: "BRL",
-    market: "Brazil · 2nd PoC · pilot Q3 2026",
-    status: "planned",
-    tag: "PoC · Q3 2026",
+    name: "Mutav BRL Reserve (testnet)",
+    underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
+    depositToken: "TESOURO",
+    market: "Brazil · testnet PoC",
+    status: "live",
+    tag: "Testnet",
     // Selic/CDI ~14%; Brazilian (South) rental delinquency.
     assumptions: { underlyingYield: 0.14, delinquency: 0.0246 },
+    address: "CD6DLQKZ56DATLWPYBF32CYNRADBL722ZRWLBMTQJ23FLPDFKHK2VAHA",
+    contracts: {
+      vault: "CD6DLQKZ56DATLWPYBF32CYNRADBL722ZRWLBMTQJ23FLPDFKHK2VAHA",
+      policy: "CCFG7UYGVAC4IXU2NNHKIPUUN4CUQKLLXIRAGMXCVFK2WP6TFXNZRXRR",
+      registry: "CBMNQIOSAM5IDXFD4Y3N6U7XS57OMNBLPRKBMJLBBLMFNEWN7L3UQ4AA",
+    },
   },
   {
     id: "ars",
