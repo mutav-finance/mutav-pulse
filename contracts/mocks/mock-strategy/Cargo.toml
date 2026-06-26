@@ -1,5 +1,5 @@
 [package]
-name = "mock-defindex"
+name = "mock-strategy"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
@@ -9,8 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
-stellar-tokens = { workspace = true }
-interfaces = { path = "../interfaces" }
+strategy = { path = "../../strategy" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }

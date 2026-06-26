@@ -15,4 +15,4 @@ interfaces = { path = "../interfaces" }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 vault = { path = "../vault" }
 registry = { path = "../registry" }
-mock-strategy = { path = "../mock-strategy" }
+mock-strategy = { path = "../mocks/mock-strategy" }

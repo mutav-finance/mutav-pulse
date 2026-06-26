@@ -9,4 +9,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
-interfaces = { path = "../interfaces" }
+interfaces = { path = "../../interfaces" }
