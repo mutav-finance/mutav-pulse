@@ -5,7 +5,7 @@
  *
  * Stacks: position summary (NAV / my shares / value) → three tabs:
  *   Invest (deposit) · Withdraw (redeem) · Fund (acquire the deposit token —
- *   Buy TESOURO or the testnet faucet; only shown when an on-ramp exists).
+ *   Buy TESOURO via SDEX swap, or the testnet faucet; only shown when one exists).
  * Invest is the default; when the wallet holds no deposit token the Invest tab
  * shows a small link to Fund. Owns the position data fetch + refresh-on-tx.
  *
@@ -69,8 +69,8 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
 
   const handleSuccess = useCallback(() => setRefreshKey((k) => k + 1), []);
 
-  // Whether this reserve offers an on-ramp (Fund tab): TESOURO is always buyable
-  // on the SDEX; USDC only via the testnet faucet.
+  // Whether this reserve offers a way to acquire the deposit token (Fund tab):
+  // TESOURO is always swappable on the SDEX; USDC only via the testnet faucet.
   const isTesouro = reserve.depositToken === config.tesouro.code;
   const hasFund = isTesouro || faucetEnabled;
 

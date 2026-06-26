@@ -92,7 +92,7 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
             marginBottom: "4px",
           }}
         >
-          ON-RAMP
+          SWAP
         </p>
         <h2 className="font-display" style={{ fontSize: "18px", color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
           Buy {code} — swap USDC on-chain
