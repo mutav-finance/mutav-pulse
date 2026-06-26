@@ -83,6 +83,9 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .pillar { border: 1px solid var(--color-border); background: var(--color-surface); padding: 24px; }
 .pillar h4 { font-family: var(--font-display); font-weight: 700; font-size: 20px; }
 .pillar p { font-size: 13.5px; color: var(--color-text-2); line-height: 1.5; margin-top: 10px; }
+.pillar ul { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+.pillar li { position: relative; padding-left: 16px; font-size: 13.5px; color: var(--color-text-2); line-height: 1.4; }
+.pillar li::before { content: ""; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; background: var(--color-accent); }
 
 /* ── Traction (signing-on stats) ─────────────────────────────────────────── */
 .traction-h { font-family: var(--font-display); font-weight: 700; font-size: 42px; color: var(--color-accent); text-transform: uppercase; letter-spacing: .015em; text-align: center; }
@@ -139,7 +142,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .member .role { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); margin-top: 14px; }
 .member .name { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin-top: 4px; }
 .member .bio { font-size: 13px; color: var(--color-text-2); line-height: 1.45; margin-top: 8px; }
-.member.advisor { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.member.advisor { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; border: 1px solid var(--color-accent); padding: 20px 26px; margin-block: 30px; }
 .member.advisor .role { margin-top: 0; }
 .member.advisor .name { margin-top: 4px; }
 .member.advisor .adv-num { font-family: var(--font-display); font-weight: 700; font-size: 132px; line-height: .85; color: var(--color-accent); margin-top: 18px; }
@@ -173,8 +176,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
         <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · 2026</span>
       </div>
       <div>
-        <h1 class="display">The onchain rental guarantee for Brazil.</h1>
-        <p class="tagline">Rental agencies finally have a rent guarantor <b>on their side</b>.</p>
+        <h1 class="display">Rental agencies finally have a rent guarantor <span class="amber">on their side</span></h1>
+        <p class="tagline">Onchain Rental Guarantee to take over Brazil.</p>
       </div>
     </div>
   </section>
@@ -184,7 +187,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     <div class="pad"><div class="body">
       <div class="kicker">The problem</div>
       <h2 class="title">Rental agencies are <span class="amber">absorbing the risk</span>.</h2>
-      <p class="lead">Every existing guarantee modality is hard to approve, expensive for tenants, and opaque, leaving agencies and landlords exposed.</p>
+      <p class="lead">Every existing guarantee modality is <b style="color:var(--color-text);font-weight:600">hard to approve, bureaucratic or opaque</b>, leaving agencies and landlords exposed.</p>
+      <p class="lead" style="font-family:var(--font-display);font-weight:600;max-width:none;margin-top:18px">The modality we'll provide: the Institutional Guarantor.</p>
     </div></div>
   </section>
 
@@ -194,9 +198,21 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="kicker">The solution</div>
       <h2 class="title">An institutional guarantor, backed onchain.</h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Institutional guarantor</h4><p>We become the rent guarantor. Tenant defaults, we cover. Agency-first, not a competitor.</p></div>
-        <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><p>A transparent technical reserve on Stellar. Auditable in real time, not an opaque promise.</p></div>
-        <div class="pillar"><h4 class="amber">Open to crypto investors</h4><p>The tokenized vault opens this market to any qualified investor: real asset, real yield from rents and Brazilian treasury, self-custodial and uncorrelated to crypto.</p></div>
+        <div class="pillar"><h4 class="amber">Institutional guarantor</h4><ul>
+          <li>We become the rent guarantor</li>
+          <li>Tenant defaults, we cover</li>
+          <li>Agency-first approach</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><ul>
+          <li>Transparent technical reserve on Stellar</li>
+          <li>Auditable in real time</li>
+          <li>Not an opaque promise</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">Open to crypto investors</h4><ul>
+          <li>Tokenized vault</li>
+          <li>Yield backed by real assets (guarantee contracts)</li>
+          <li>Self-custodial &amp; uncorrelated to crypto</li>
+        </ul></div>
       </div>
     </div></div>
   </section>
@@ -288,14 +304,14 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
   <section class="slide" data-eyebrow="06 · TRACTION">
     <div class="pad"><div class="body" style="align-items:center;justify-content:center">
-      <h2 class="traction-h">Agencies are signing on</h2>
+      <h2 class="traction-h">Agencies are signing on!</h2>
       <div class="traction-stats">
         <div class="tstat">
           <span class="tval mono">+10</span>
           <span class="tlbl">Agencies in contact</span>
         </div>
         <div class="tstat">
-          <span class="tval mono">4 LOIs</span>
+          <span class="tval mono" style="color:var(--color-accent)">4 LOIs</span>
           <span class="tlbl">Agencies LOIs Secured</span>
         </div>
         <div class="tstat">
@@ -309,7 +325,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   <!-- g · TEAM ───────────────────────────────────────────────────────────── -->
   <section class="slide" data-eyebrow="07 · TEAM">
     <div class="pad"><div class="body">
-      <h2 class="title" style="white-space:nowrap;max-width:none;margin-top:36px">Brand, infrastructure, market.</h2>
+      <h2 class="title" style="max-width:28ch;margin-top:36px">The team behind it.</h2>
       <div class="team">
         <div class="member">
           <img class="photo" src="assets/team-draau.png" alt="Matheus de Pauli" />
