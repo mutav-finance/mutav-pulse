@@ -7,7 +7,7 @@ use strategy::StrategyClient;
 use interfaces::{PolicyClient, Vault as VaultTrait};
 
 mod types;
-use types::{DataKey, RedeemRequest, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
+use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
 
@@ -57,6 +57,17 @@ impl Vault {
         e.storage().instance().set(&DataKey::Policy, &policy);
     }
 
+    /// Fraction of idle (in bps) the vault retains as a liquid claim buffer at
+    /// rebalance time. 0 = deploy everything (legacy behavior). Set per reserve.
+    pub fn min_liquid_buffer_bps(e: &Env) -> u32 {
+        e.storage().instance().get(&DataKey::MinLiquidBufferBps).unwrap_or(0)
+    }
+    pub fn set_min_liquid_buffer_bps(e: &Env, bps: u32) {
+        Self::admin(e).require_auth();
+        assert!(bps <= 10_000, "min_liquid_buffer_bps exceeds 100%");
+        e.storage().instance().set(&DataKey::MinLiquidBufferBps, &bps);
+    }
+
     fn reserved_for_claims(e: &Env) -> i128 {
         e.storage().instance().get(&DataKey::ReservedForClaims).unwrap_or(0)
     }
@@ -88,12 +99,18 @@ impl Vault {
         Self::admin(e).require_auth();
         let idle = Self::available_held(e);
         if idle <= 0 { return; }
+        // Retain a liquid claim buffer (min_liquid_buffer_bps of idle); only the
+        // surplus above it is deployed. On-demand shortfalls are still pulled back
+        // from strategies via ensure_liquidity.
+        let buffer = idle * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
+        let deployable = idle - buffer;
+        if deployable <= 0 { return; }
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
         if total_weight == 0 { return; }
         let tok = Self::token_client(e);
         for s in list.iter() {
-            let portion = idle * (s.weight_bps as i128) / total_weight;
+            let portion = deployable * (s.weight_bps as i128) / total_weight;
             if portion > 0 {
                 tok.transfer(&e.current_contract_address(), &s.address, &portion);
                 StrategyClient::new(e, &s.address).invest(&portion);

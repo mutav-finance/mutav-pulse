@@ -58,6 +58,48 @@ fn deposit_and_nav_and_free_capital() {
 }
 
 #[test]
+fn rebalance_retains_liquid_buffer() {
+    // 20% buffer: deploy 800, retain 200 idle; total_assets unchanged.
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let s1 = add_mock(&c, 10_000);
+    c.vault.set_min_liquid_buffer_bps(&2_000);
+    c.vault.rebalance();
+    assert_eq!(s1.balance(), 800);
+    assert_eq!(c.vault.available_held(), 200);
+    assert_eq!(c.vault.total_assets(), 1_000);
+
+    // Default (0) deploys everything.
+    let c2 = setup();
+    let bob = Address::generate(&c2.e);
+    c2.token_admin.mint(&bob, &1_000);
+    c2.vault.deposit(&1_000, &bob, &bob, &bob);
+    let s2 = add_mock(&c2, 10_000);
+    c2.vault.rebalance();
+    assert_eq!(s2.balance(), 1_000);
+
+    // 100% buffer retains everything idle.
+    let c3 = setup();
+    let carol = Address::generate(&c3.e);
+    c3.token_admin.mint(&carol, &1_000);
+    c3.vault.deposit(&1_000, &carol, &carol, &carol);
+    let s3 = add_mock(&c3, 10_000);
+    c3.vault.set_min_liquid_buffer_bps(&10_000);
+    c3.vault.rebalance();
+    assert_eq!(s3.balance(), 0);
+    assert_eq!(c3.vault.available_held(), 1_000);
+}
+
+#[test]
+fn set_buffer_rejects_above_100pct() {
+    let c = setup();
+    assert!(c.vault.try_set_min_liquid_buffer_bps(&10_001).is_err());
+    assert!(c.vault.try_set_min_liquid_buffer_bps(&10_000).is_ok()); // boundary ok
+}
+
+#[test]
 fn redemption_gated_by_free_capital() {
     let c = setup();
     let alice = Address::generate(&c.e);

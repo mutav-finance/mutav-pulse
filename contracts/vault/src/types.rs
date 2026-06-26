@@ -2,6 +2,7 @@ use soroban_sdk::{contracttype, Address};
 
 pub const NAV_SCALE: i128 = 10_000_000; // 1e7
 pub const VIRTUAL_OFFSET: i128 = 1;
+pub const BPS_DENOM: i128 = 10_000;
 
 #[contracttype]
 #[derive(Clone)]
@@ -34,4 +35,5 @@ pub enum DataKey {
     PendingRequests,
     Request(u32),
     Locked,
+    MinLiquidBufferBps,
 }
