@@ -1,39 +1,41 @@
 /**
  * lib/tx.ts — Write helpers for the vault contract
  *
- * Each helper builds a vault binding client with the caller's public key and
- * a signTransaction function from lib/wallet, assembles the transaction, and
- * calls signAndSend(). Returns the confirmed transaction hash.
+ * Each helper builds a vault binding client bound to the caller's public key, a
+ * signTransaction fn from lib/wallet, AND the target reserve's vault contract id,
+ * assembles the transaction, and calls signAndSend(). Returns the confirmed hash.
  *
- * Amounts are in i128 stroops (1 USDC = 10_000_000n stroops).
+ * Reserve-parameterized: pass the active reserve's `contracts` so writes hit the
+ * correct vault (mirrors `reserveReads(contracts)` on the read side). Amounts are
+ * i128 stroops (1 unit = 10_000_000n stroops).
  *
  * Usage:
- *   import { deposit, requestRedeem, claim, cancelRedeem } from "@/lib/tx";
- *   const hash = await deposit(address, 100_000_000n); // deposit 10 USDC
+ *   import { deposit } from "@/lib/tx";
+ *   const hash = await deposit(reserve.contracts, address, 100_000_000n);
  */
 
 import { Client as VaultClient } from "vault";
-import { config } from "./config";
+import type { ReserveContracts } from "./contracts";
 import { makeWriterOpts, extractHash } from "./wallet";
 
-/**
- * Build a vault client bound to the caller's address and sign function.
- * The signTransaction returned by makeSignTransaction() is compatible with
- * the binding client's ContractClientOptions.
- */
-function vaultWriter(address: string): VaultClient {
-  return new VaultClient(makeWriterOpts(address, config.contracts.vault));
+/** Build a vault client bound to the caller's address, sign fn, and vault id. */
+function vaultWriter(address: string, vaultId: string): VaultClient {
+  return new VaultClient(makeWriterOpts(address, vaultId));
 }
 
 /**
- * Deposit USDC into the vault and receive mtvR shares.
+ * Deposit the reserve's underlying token and receive mtvR shares.
  *
- * @param from    - Depositor's Stellar public key (must be connected)
- * @param amount  - Amount in stroops (bigint). e.g. 100 USDC = 1_000_000_000n
- * @returns       - Confirmed transaction hash
+ * @param contracts - The target reserve's contract triple (uses `.vault`)
+ * @param from      - Depositor's Stellar public key (must be connected)
+ * @param amount    - Amount in stroops (bigint)
  */
-export async function deposit(from: string, amount: bigint): Promise<string> {
-  const client = vaultWriter(from);
+export async function deposit(
+  contracts: ReserveContracts,
+  from: string,
+  amount: bigint,
+): Promise<string> {
+  const client = vaultWriter(from, contracts.vault);
   // SEP-0056 deposit: a self-deposit — the connected wallet is the asset source
   // (`from`), the share recipient (`receiver`), and the authorizing `operator`.
   const tx = await client.deposit({
@@ -46,46 +48,37 @@ export async function deposit(from: string, amount: bigint): Promise<string> {
   return extractHash(sent);
 }
 
-/**
- * Request a redemption — escrows `shares` and queues a redemption request.
- *
- * @param owner   - Share owner's Stellar public key
- * @param shares  - Shares to redeem in stroops (bigint)
- * @returns       - Confirmed transaction hash
- */
+/** Request a redemption — escrows `shares` and queues a redemption request. */
 export async function requestRedeem(
+  contracts: ReserveContracts,
   owner: string,
   shares: bigint,
 ): Promise<string> {
-  const client = vaultWriter(owner);
+  const client = vaultWriter(owner, contracts.vault);
   const tx = await client.request_redeem({ owner, shares });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Claim a fulfilled redemption request — releases USDC to the owner.
- *
- * @param caller  - Caller's Stellar public key (must be owner or admin)
- * @param id      - Redemption request ID (u32, as bigint for convenience)
- * @returns       - Confirmed transaction hash
- */
-export async function claim(caller: string, id: bigint): Promise<string> {
-  const client = vaultWriter(caller);
+/** Claim a fulfilled redemption request — releases the underlying to the owner. */
+export async function claim(
+  contracts: ReserveContracts,
+  caller: string,
+  id: bigint,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.claim({ id: Number(id) });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Cancel an unfulfilled redemption request — returns escrowed shares.
- *
- * @param caller  - Caller's Stellar public key (must be owner)
- * @param id      - Redemption request ID (u32, as bigint for convenience)
- * @returns       - Confirmed transaction hash
- */
-export async function cancelRedeem(caller: string, id: bigint): Promise<string> {
-  const client = vaultWriter(caller);
+/** Cancel an unfulfilled redemption request — returns escrowed shares. */
+export async function cancelRedeem(
+  contracts: ReserveContracts,
+  caller: string,
+  id: bigint,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.cancel_redeem({ id: Number(id) });
   const sent = await tx.signAndSend();
   return extractHash(sent);

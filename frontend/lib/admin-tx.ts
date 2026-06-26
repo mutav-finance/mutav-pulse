@@ -1,49 +1,35 @@
 /**
  * lib/admin-tx.ts — Write helpers for admin-gated protocol actions
  *
- * Same assemble→sign→submit pattern as lib/tx.ts.
+ * Same assemble→sign→submit pattern as lib/tx.ts, reserve-parameterized: each
+ * helper takes the target reserve's `contracts` (uses `.policy` / `.vault`).
  * Policy actions: sign_guarantee, pay_premium, cover_default, settle_guarantee
  * Vault actions:  rebalance, process_redemptions, add_strategy, remove_strategy
  *
- * Amount args are bigint stroops (display × 1e7).
- * id / months / weight_bps are number; volatile is boolean.
- *
- * All helpers require the connected wallet to BE the admin on-chain; the
- * contract will reject if not — the UI gate mirrors this.
+ * Amount args are bigint stroops (display × 1e7). All helpers require the
+ * connected wallet to BE the admin on-chain; the contract rejects otherwise.
  */
 
 import { Client as PolicyClient } from "policy";
 import { Client as VaultClient } from "vault";
-import { config } from "./config";
+import type { ReserveContracts } from "./contracts";
 import { makeWriterOpts, extractHash } from "./wallet";
 
-// ─── Client factories (bound to caller + sign fn) ────────────────────────────
+// ─── Client factories (bound to caller + sign fn + reserve contract id) ───────
 
-function policyWriter(address: string): PolicyClient {
-  return new PolicyClient(makeWriterOpts(address, config.contracts.policy));
+function policyWriter(address: string, policyId: string): PolicyClient {
+  return new PolicyClient(makeWriterOpts(address, policyId));
 }
 
-function vaultWriter(address: string): VaultClient {
-  return new VaultClient(makeWriterOpts(address, config.contracts.vault));
+function vaultWriter(address: string, vaultId: string): VaultClient {
+  return new VaultClient(makeWriterOpts(address, vaultId));
 }
 
 // ─── Policy write helpers ────────────────────────────────────────────────────
 
-/**
- * Underwrite a new rental guarantee.
- *
- * @param caller        - Admin's Stellar public key
- * @param landlord      - Landlord/beneficiary Stellar address
- * @param monthlyAmount - Monthly rental amount in stroops (bigint, i128)
- * @param monthsCovered - Number of months to cover (u32)
- * @param feeBps        - Premium fee in basis points charged PER PERIOD (u32);
- *                        each pay_premium pulls monthly_amount * feeBps/10000.
- *                        e.g. 1200 = 12% of the monthly rent every period.
- * @param periodSecs    - Period length in seconds (u64, as bigint); the premium
- *                        cadence (e.g. 30 days). NOT annual — feeBps is per-period.
- * @returns             - Confirmed transaction hash
- */
+/** Underwrite a new rental guarantee (feeBps is per-period, not annual). */
 export async function signGuarantee(
+  contracts: ReserveContracts,
   caller: string,
   landlord: string,
   monthlyAmount: bigint,
@@ -51,7 +37,7 @@ export async function signGuarantee(
   feeBps: number,
   periodSecs: bigint,
 ): Promise<string> {
-  const client = policyWriter(caller);
+  const client = policyWriter(caller, contracts.policy);
   const tx = await client.sign_guarantee({
     landlord,
     monthly_amount: monthlyAmount,
@@ -63,47 +49,37 @@ export async function signGuarantee(
   return extractHash(sent);
 }
 
-/**
- * Pay the next premium period for a guarantee.
- *
- * @param caller - Payer's Stellar public key
- * @param id     - Guarantee ID (u32)
- * @returns      - Confirmed transaction hash
- */
-export async function payPremium(caller: string, id: number): Promise<string> {
-  const client = policyWriter(caller);
+/** Pay the next premium period for a guarantee. */
+export async function payPremium(
+  contracts: ReserveContracts,
+  caller: string,
+  id: number,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
   const tx = await client.pay_premium({ payer: caller, id });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Cover a default: disburse the outstanding monthly amount to the landlord
- * and reduce coverage_required accordingly. Admin only.
- *
- * @param caller - Admin's Stellar public key
- * @param id     - Guarantee ID (u32)
- * @returns      - Confirmed transaction hash
- */
-export async function coverDefault(caller: string, id: number): Promise<string> {
-  const client = policyWriter(caller);
+/** Cover a default: disburse the monthly amount to the landlord. Admin only. */
+export async function coverDefault(
+  contracts: ReserveContracts,
+  caller: string,
+  id: number,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
   const tx = await client.cover_default({ id });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Settle / close a guarantee (all months used or early termination). Admin only.
- *
- * @param caller - Admin's Stellar public key
- * @param id     - Guarantee ID (u32)
- * @returns      - Confirmed transaction hash
- */
+/** Settle / close a guarantee. Admin only. */
 export async function settleGuarantee(
+  contracts: ReserveContracts,
   caller: string,
   id: number,
 ): Promise<string> {
-  const client = policyWriter(caller);
+  const client = policyWriter(caller, contracts.policy);
   const tx = await client.settle_guarantee({ id });
   const sent = await tx.signAndSend();
   return extractHash(sent);
@@ -111,52 +87,38 @@ export async function settleGuarantee(
 
 // ─── Vault write helpers ─────────────────────────────────────────────────────
 
-/**
- * Rebalance vault allocation across strategies. Admin only.
- *
- * @param caller - Admin's Stellar public key
- * @returns      - Confirmed transaction hash
- */
-export async function rebalance(caller: string): Promise<string> {
-  const client = vaultWriter(caller);
+/** Rebalance vault allocation across strategies. Admin only. */
+export async function rebalance(
+  contracts: ReserveContracts,
+  caller: string,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.rebalance();
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Process the redemption queue (up to max_batch entries). Admin only.
- *
- * @param caller    - Admin's Stellar public key
- * @param maxBatch  - Maximum number of redemptions to process (u32)
- * @returns         - Confirmed transaction hash
- */
+/** Process the redemption queue (up to max_batch entries). Admin only. */
 export async function processRedemptions(
+  contracts: ReserveContracts,
   caller: string,
   maxBatch: number,
 ): Promise<string> {
-  const client = vaultWriter(caller);
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.process_redemptions({ max_batch: maxBatch });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/**
- * Add a yield strategy to the vault's allocator. Admin only.
- *
- * @param caller     - Admin's Stellar public key
- * @param address    - Strategy contract address
- * @param weightBps  - Allocation weight in basis points (u32, sum must equal 10000)
- * @param volatile   - Whether this strategy holds volatile assets
- * @returns          - Confirmed transaction hash
- */
+/** Add a yield strategy to the vault's allocator. Admin only. */
 export async function addStrategy(
+  contracts: ReserveContracts,
   caller: string,
   address: string,
   weightBps: number,
   volatile: boolean,
 ): Promise<string> {
-  const client = vaultWriter(caller);
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.add_strategy({
     address,
     weight_bps: weightBps,
@@ -166,18 +128,13 @@ export async function addStrategy(
   return extractHash(sent);
 }
 
-/**
- * Remove a yield strategy from the vault's allocator. Admin only.
- *
- * @param caller  - Admin's Stellar public key
- * @param address - Strategy contract address to remove
- * @returns       - Confirmed transaction hash
- */
+/** Remove a yield strategy from the vault's allocator. Admin only. */
 export async function removeStrategy(
+  contracts: ReserveContracts,
   caller: string,
   address: string,
 ): Promise<string> {
-  const client = vaultWriter(caller);
+  const client = vaultWriter(caller, contracts.vault);
   const tx = await client.remove_strategy({ address });
   const sent = await tx.signAndSend();
   return extractHash(sent);

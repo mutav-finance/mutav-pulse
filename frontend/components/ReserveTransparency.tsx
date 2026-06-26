@@ -333,7 +333,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtUsd(data.totalAssets)}
-            unit="total assets · MUSD vault (USDC)"
+            unit={`total assets · ${reserve.currency} vault (${reserve.depositToken})`}
             accentValue
             loading={loading}
             error={error ?? undefined}
@@ -343,7 +343,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="NAV / MTVR"
             value={loading ? "—" : fmtNav(data.navPerShare)}
-            unit="USDC per MTVR share"
+            unit={`${reserve.depositToken} per MTVR share`}
             loading={loading}
             error={error ?? undefined}
           />
@@ -363,7 +363,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Committed to Guarantees"
             value={loading ? "—" : fmtUsd(data.coverageRequired)}
-            unit="coverage required · MUSD vault (USDC)"
+            unit={`coverage required · ${reserve.currency} vault (${reserve.depositToken})`}
             loading={loading}
             error={error ?? undefined}
           />
@@ -382,7 +382,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Liquidity Buffer"
             value={loading ? "—" : fmtUsd(data.freeCapital)}
-            unit="free capital · USDC"
+            unit={`free capital · ${reserve.depositToken}`}
             tooltip="Surplus above guarantee coverage — backs redemptions and new guarantees."
             loading={loading}
             error={error ?? undefined}
@@ -392,7 +392,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           <MetricCard
             label="Premiums Collected"
             value={loading ? "—" : fmtUsd(data.premiumIncome)}
-            unit="cumulative premium income · USDC"
+            unit={`cumulative premium income · ${reserve.depositToken}`}
             loading={loading}
             error={error ?? undefined}
           />

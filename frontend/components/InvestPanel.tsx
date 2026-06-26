@@ -486,6 +486,7 @@ export function InvestPanel({
                 address={address}
                 navPerShare={data.navPerShare}
                 depositToken={reserve.depositToken}
+                contracts={reserve.contracts!}
                 onSuccess={handleSuccess}
               />
               <RedeemPanel
@@ -494,6 +495,7 @@ export function InvestPanel({
                 requestIds={data.pendingIds}
                 requests={data.requests}
                 depositToken={reserve.depositToken}
+                contracts={reserve.contracts!}
                 onSuccess={handleSuccess}
               />
             </div>

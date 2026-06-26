@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
+import type { ReserveContracts } from "@/lib/contracts";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
 import { fmtNav, fromStroops, stroopsToInput, parseToStroops, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
@@ -33,6 +34,8 @@ interface RedeemPanelProps {
   requests: Map<number, RedeemRequest>;
   /** Underlying token ticker redemptions pay out (e.g. "USDC" for the MUSD reserve) */
   depositToken: string;
+  /** The active reserve's contract triple — redemptions write to this vault */
+  contracts: ReserveContracts;
   /** Called with tx hash after a successful tx; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -78,6 +81,7 @@ export function RedeemPanel({
   requestIds,
   requests,
   depositToken,
+  contracts,
   onSuccess,
 }: RedeemPanelProps) {
   const [rawInput, setRawInput] = useState("");
@@ -114,7 +118,7 @@ export function RedeemPanel({
     setRedeemError(null);
     setLastHash(null);
     try {
-      const hash = await txRequestRedeem(address, sharesStroops);
+      const hash = await txRequestRedeem(contracts, address, sharesStroops);
       setRawInput("");
       setRedeemStatus("idle");
       setLastHash(hash);
@@ -134,7 +138,7 @@ export function RedeemPanel({
       return next;
     });
     try {
-      const hash = await txClaim(address, BigInt(id));
+      const hash = await txClaim(contracts, address, BigInt(id));
       setActionState((prev) => {
         const next = new Map(prev);
         next.delete(id);
@@ -158,7 +162,7 @@ export function RedeemPanel({
       return next;
     });
     try {
-      const hash = await txCancelRedeem(address, BigInt(id));
+      const hash = await txCancelRedeem(contracts, address, BigInt(id));
       setActionState((prev) => {
         const next = new Map(prev);
         next.delete(id);

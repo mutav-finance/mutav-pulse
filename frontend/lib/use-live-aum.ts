@@ -1,52 +1,54 @@
 "use client";
 
 /**
- * useLiveAum — fetch the live reserve's on-chain AUM once on mount.
+ * useLiveAum — fetch each LIVE reserve's on-chain AUM (total_assets) once on
+ * mount, keyed by vault address. `aumFor(reserve)` returns that reserve's own
+ * formatted AUM ("…" until its read lands, "—" for reserves with no address).
  *
- * Only the PRIMARY (live) reserve's total_assets is read. `aumFor(reserve)`
- * returns the formatted AUM for the primary reserve and "—" for any other
- * reserve. That guard matters before a 2nd reserve goes live: the home strip and
- * /reserves iterate every reserve, and without it they'd render the primary's
- * AUM against each `live` row. Each additional live reserve needs its own read.
- *
- * Shared by the homepage strip and /reserves (previously duplicated verbatim).
+ * Shared by the homepage strip and /reserves.
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { PRIMARY_RESERVE, type Reserve } from "./reserves";
+import { LIVE_RESERVES, PRIMARY_RESERVE, type Reserve } from "./reserves";
 import { reserveReads } from "./contracts";
 import { fmtUsd } from "./format";
 
 export function useLiveAum() {
-  const [liveAum, setLiveAum] = useState<bigint | null>(null);
+  // vault address -> total_assets (bigint); absent until that reserve's read lands.
+  const [aum, setAum] = useState<Record<string, bigint>>({});
 
   useEffect(() => {
     let cancelled = false;
-    if (!PRIMARY_RESERVE.contracts) return;
-    reserveReads(PRIMARY_RESERVE.contracts)
-      .vaultTotalAssets()
-      .then((v) => {
-        if (!cancelled) setLiveAum(v);
-      })
-      .catch(() => {
-        /* leave as null → renders "…" */
-      });
+    for (const r of LIVE_RESERVES) {
+      reserveReads(r.contracts)
+        .vaultTotalAssets()
+        .then((v) => {
+          if (!cancelled) setAum((m) => ({ ...m, [r.address]: v }));
+        })
+        .catch(() => {
+          /* leave absent → renders "…" */
+        });
+    }
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // The primary reserve's AUM label ("…" until the read lands).
-  const primaryLabel = liveAum === null ? "…" : fmtUsd(liveAum);
-
-  /** Formatted AUM for a reserve: the live value for the primary, "—" otherwise. */
+  /** Formatted AUM for a reserve: its own live value, "…" while loading, "—" if no address. */
   const aumFor = useCallback(
-    (reserve: Reserve): string =>
-      reserve.address && reserve.address === PRIMARY_RESERVE.address
-        ? primaryLabel
-        : "—",
-    [primaryLabel],
+    (reserve: Reserve): string => {
+      if (!reserve.address) return "—";
+      const v = aum[reserve.address];
+      return v === undefined ? "…" : fmtUsd(v);
+    },
+    [aum],
   );
 
-  return { liveAum, primaryLabel, aumFor };
+  // Aggregate label for the primary reserve (the strip header uses this).
+  const primaryLabel =
+    aum[PRIMARY_RESERVE.address] === undefined
+      ? "…"
+      : fmtUsd(aum[PRIMARY_RESERVE.address]);
+
+  return { primaryLabel, aumFor };
 }

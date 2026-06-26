@@ -15,6 +15,7 @@
 
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
+import type { ReserveContracts } from "@/lib/contracts";
 import { fmtNav, STROOP_SCALE, parseToStroops, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
@@ -26,6 +27,8 @@ interface DepositWidgetProps {
   navPerShare: bigint;
   /** Underlying token ticker the user deposits (e.g. "USDC" for the MUSD reserve) */
   depositToken: string;
+  /** The active reserve's contract triple — deposits write to this vault */
+  contracts: ReserveContracts;
   /** Called with tx hash after a successful deposit; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -34,6 +37,7 @@ export function DepositWidget({
   address,
   navPerShare,
   depositToken,
+  contracts,
   onSuccess,
 }: DepositWidgetProps) {
   const [rawInput, setRawInput] = useState("");
@@ -59,7 +63,7 @@ export function DepositWidget({
     setErrorMsg(null);
     setLastHash(null);
     try {
-      const hash = await txDeposit(address, usdcStroops);
+      const hash = await txDeposit(contracts, address, usdcStroops);
       setRawInput("");
       setStatus("idle");
       setLastHash(hash);

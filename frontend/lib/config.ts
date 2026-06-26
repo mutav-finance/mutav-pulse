@@ -54,6 +54,12 @@ export const config = {
     code: process.env.NEXT_PUBLIC_USDC_CODE ?? "USDC",
     issuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? "",
   },
+  // Classic asset behind the TESOURO SAC — the MBRL reserve's deposit token.
+  // Used to build the trustline + the USDC→TESOURO SDEX path payment ("Buy TESOURO").
+  tesouro: {
+    code: process.env.NEXT_PUBLIC_TESOURO_CODE ?? "TESOURO",
+    issuer: process.env.NEXT_PUBLIC_TESOURO_ISSUER ?? "",
+  },
 } as const;
 
 /** Explorer URL for a transaction hash. */
