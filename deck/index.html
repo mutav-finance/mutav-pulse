@@ -75,8 +75,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .point { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--color-border); padding: 16px 0; }
 .point:last-child { border-bottom: 1px solid var(--color-border); }
 .point .pk { font-family: var(--font-mono); font-size: 13px; color: var(--color-accent); width: 26px; flex: 0 0 auto; }
-.point .pt { font-family: var(--font-display); font-weight: 600; font-size: 19px; }
-.point .pd { font-size: 14px; color: var(--color-text-2); margin-left: auto; text-align: right; max-width: 42ch; }
+.point .pt { font-family: var(--font-display); font-weight: 600; font-size: 19px; text-transform: uppercase; }
+.point .pd { font-size: 14px; color: var(--color-text-2); margin-left: auto; text-align: right; max-width: 34ch; }
 
 /* ── Two minimal pillars ─────────────────────────────────────────────────── */
 .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
@@ -103,11 +103,12 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 
 /* ── Stellar slide: embedded vault-flow diagram ──────────────────────────── */
 .slide.stellar .pad { padding: 50px 60px; }
-.stellar-head { margin-top: 18px; }
+.stellar-head { margin-top: 38px; }
 .stellar-head .title { margin-top: 6px; }
-.stellar-sub { font-size: 14px; color: var(--color-text-2); margin-top: 10px; max-width: 70ch; }
+.stellar-sub { font-size: 20px; line-height: 1.5; color: var(--color-text-2); margin-top: 10px; max-width: 70ch; }
 .vault-flow { position: relative; width: 1160px; height: 380px; margin: -8px auto 0; }
-.vwires { position: absolute; inset: 0; width: 1160px; height: 380px; overflow: visible; }
+.slide.stellar .vault-flow { margin: 34px auto 0; }
+.vwires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .vnode { position: absolute; border: 1px solid var(--color-border); background: var(--color-surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
 .vnode .nt { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
 .vnode .ns { font-size: 12px; color: var(--color-text-2); line-height: 1.4; }
@@ -119,7 +120,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .vnode.vault { border-color: var(--color-accent); background: var(--color-surface-2); padding: 20px 22px; }
 .vnode.vault .nt { color: var(--color-accent); font-size: 28px; }
 .vnode.vault .ns { font-size: 13px; }
-.vchip { position: absolute; transform: translate(-50%,-50%); background: var(--color-canvas); border: 1px solid var(--color-border); padding: 2px 8px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .03em; color: var(--color-text-2); white-space: nowrap; }
+.vchip { position: absolute; transform: translate(-50%,-50%); background: var(--color-canvas); border: 1px solid var(--color-border); padding: 2px 8px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .03em; color: var(--color-text-2); white-space: nowrap; }
 .vchip .gm { color: var(--color-accent); font-weight: 600; margin-left: 4px; }
 .vchip.green { color: var(--color-success); }
 .vchip.grey { color: var(--color-text-3); }
@@ -150,24 +151,24 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .alloc-seg { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--color-border); }
 .alloc-seg:last-child { border-right: 0; }
 .alloc-seg.live { flex: 6; color: var(--color-accent); background: rgba(232,160,32,.12); }
-.alloc-seg.planned { flex: 1; color: var(--color-text-3); background: var(--color-surface); }
+.alloc-seg.planned { flex: 2; color: var(--color-text-3); background: var(--color-surface); font-size: 13px; line-height: 1.2; text-align: center; padding: 0 6px; }
 
 /* ── Architecture slide: protocol money-cycle + gates ────────────────────── */
 .vnode.leaf { align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 0 12px; }
 .vnode.leaf .nt { font-size: 15px; letter-spacing: .02em; }
-.vnode.leaf .ns { font-size: 10px; color: var(--color-text-3); }
-.rsv { position: absolute; border: 1px solid var(--color-border); background: var(--color-surface); display: flex; flex-direction: column; }
-.rsv-head { padding: 11px 14px 9px; border-bottom: 1px solid var(--color-border); }
+.vnode.leaf .ns { font-size: 12px; color: var(--color-text-3); }
+.rsv { position: absolute; border: 1px solid var(--color-accent); background: var(--color-surface); display: flex; flex-direction: column; }
+.rsv-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--color-border); }
 .rsv-htop { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.rsv-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: .02em; color: var(--color-text); }
-.rsv-badge { font-family: var(--font-mono); font-size: 9px; color: var(--color-accent); letter-spacing: .04em; }
-.rsv-sub { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-text-3); margin-top: 3px; display: block; }
-.rsv-body { padding: 11px 14px; display: flex; flex-direction: column; gap: 7px; flex: 1; justify-content: center; }
-.rsv-lbl { font-family: var(--font-body); font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--color-text-3); }
+.rsv-title { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .02em; color: var(--color-text); }
+.rsv-badge { font-family: var(--font-mono); font-size: 13px; color: var(--color-accent); letter-spacing: .04em; }
+.rsv-sub { font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-3); margin-top: 4px; display: block; line-height: 1.35; }
+.rsv-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: center; }
+.rsv-lbl { font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--color-text-3); }
 .rsv-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.spill { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-2); border: 1px solid var(--color-border); padding: 2px 7px; }
+.spill { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-2); border: 1px solid var(--color-border); padding: 3px 8px; }
 .spill.live { color: var(--color-accent); border-color: var(--color-accent); }
-.rsv-yield { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-text-3); }
+.rsv-yield { font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-3); }
 .rsv-yield b { color: var(--color-accent); font-weight: 600; }
 .glegend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--color-border); border: 1px solid var(--color-border); margin-top: 14px; }
 .gcard { background: var(--color-surface); padding: 13px 16px; display: flex; gap: 11px; align-items: flex-start; }
@@ -268,7 +269,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   <section class="slide" data-eyebrow="03 · SOLVENCY">
     <div class="pad"><div class="body">
       <div class="kicker">Transparent where they are opaque</div>
-      <h2 class="title">Solvent, and anyone can verify it, live.</h2>
+      <h2 class="title" style="max-width:28ch">Full solvency<br>reserve access<br>for our&nbsp;partners</h2>
 
       <div class="solvbar">
         <span class="solv-chip">SOLVENT</span>
@@ -295,34 +296,32 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   <section class="slide stellar" data-eyebrow="04 · ARCHITECTURE">
     <div class="pad">
       <div class="stellar-head">
-        <div class="kicker">Built on Stellar · Soroban</div>
-        <h2 class="title">Modular by design. Solvency by default.</h2>
+        <div class="kicker">Built on Stellar</div>
+        <h2 class="title">Modular Architecture</h2>
         <p class="stellar-sub">One immutable vault. Swappable policy, pluggable yield adapters. Money moves only through the vault.</p>
       </div>
 
-      <div class="vault-flow" style="height:300px">
-        <svg class="vwires" viewBox="0 0 1160 300" preserveAspectRatio="none">
+      <div class="vault-flow" style="height:352px">
+        <svg class="vwires" viewBox="0 0 1160 352" preserveAspectRatio="none">
           <defs>
             <marker id="aArr" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#6b6b6b"/></marker>
           </defs>
           <!-- deposit: investor -> reserve -->
-          <path d="M180,54 H305 V50 H430" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <path d="M180,90 H380" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
           <!-- redeem: reserve -> investor (gate 1) -->
-          <path d="M430,114 H305 V78 H180" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- backs: reserve -> guarantees -->
-          <path d="M730,50 H855 V54 H980" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <path d="M380,110 H180" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
           <!-- premium: guarantees -> reserve (gate 2) -->
-          <path d="M980,78 H855 V114 H730" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- cover: reserve -> landlord (gate 2) -->
-          <path d="M580,182 V232" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <path d="M980,104 H780" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <!-- cover: reserve -> partner agencies (gate 2) -->
+          <path d="M580,224 V292" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
         </svg>
 
-        <div class="vnode leaf" style="left:0;top:30px;width:180px;height:70px;">
+        <div class="vnode leaf" style="left:0;top:56px;width:180px;height:84px;">
           <span class="nt">INVESTOR</span>
-          <span class="ns mono">mtvR · SEP-0041</span>
+          <span class="ns mono">MTVR · SEP-0041</span>
         </div>
 
-        <div class="rsv" style="left:430px;top:4px;width:300px;height:178px;">
+        <div class="rsv" style="left:380px;top:30px;width:400px;height:194px;">
           <div class="rsv-head">
             <div class="rsv-htop">
               <span class="rsv-title">RESERVE</span>
@@ -337,52 +336,44 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
               <span class="spill">Soroswap</span>
               <span class="spill">Blend</span>
             </div>
-            <span class="rsv-yield">idle float → yield <b>◇3</b></span>
+            <span class="rsv-yield">idle float → yield</span>
           </div>
         </div>
 
-        <div class="vnode leaf" style="left:980px;top:30px;width:180px;height:70px;">
+        <div class="vnode leaf" style="left:980px;top:56px;width:180px;height:84px;">
           <span class="nt">GUARANTEES</span>
-          <span class="ns mono">fianças · policy</span>
+          <span class="ns mono">tenant fee · policy</span>
         </div>
 
-        <div class="vnode leaf" style="left:495px;top:232px;width:170px;height:60px;">
-          <span class="nt">LANDLORD</span>
+        <div class="vnode leaf" style="left:480px;top:292px;width:200px;height:60px;">
+          <span class="nt">Partner agencies</span>
           <span class="ns mono">default payout</span>
         </div>
 
-        <div class="vchip" style="left:300px;top:42px;">deposit USDC</div>
-        <div class="vchip" style="left:300px;top:96px;">async redeem <span class="gm">◇1</span></div>
-        <div class="vchip" style="left:855px;top:42px;">backs</div>
-        <div class="vchip" style="left:855px;top:96px;">premium → NAV <span class="gm">◇2</span></div>
-        <div class="vchip" style="left:580px;top:207px;">cover_default <span class="gm">◇2</span></div>
-      </div>
-
-      <div class="glegend">
-        <div class="gcard"><span class="gdia"><span>1</span></span><div><h5>Solvency gate</h5><p>Exits &amp; new guarantees draw only from free capital = stable − coverage. stable ≥ coverage, always.</p></div></div>
-        <div class="gcard"><span class="gdia"><span>2</span></span><div><h5>Premium gate</h5><p>Coverage is live only while premiums are current. Stop paying → coverage lapses, cover halts.</p></div></div>
-        <div class="gcard"><span class="gdia"><span>3</span></span><div><h5>Stable-backed floor</h5><p>Only stable balances back coverage. Volatile yield lifts NAV, never the floor.</p></div></div>
+        <div class="vchip" style="left:280px;top:70px;">deposit USDC</div>
+        <div class="vchip" style="left:280px;top:130px;">async redeem</div>
+        <div class="vchip" style="left:880px;top:84px;">premium → NAV</div>
+        <div class="vchip" style="left:580px;top:258px;">cover_default</div>
       </div>
     </div>
   </section>
 
   <!-- e · YIELD via DEFINDEX ──────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="05 · DEFINDEX">
+  <section class="slide" data-eyebrow="05 · INTEGRATIONS">
     <div class="pad"><div class="body">
-      <div class="kicker">The yield engine</div>
-      <h2 class="title">The reserve earns diversified yield via DeFindex.</h2>
-      <p class="lead">Multi-strategy vault allocator. Reserve capital earns yield through the DeFindex adapter wired to the MUTAV vault.</p>
+      <div class="kicker">DeFindex integration · yield engine</div>
+      <h2 class="title" style="max-width:28ch">The reserve is a modular<br>yield&nbsp;generator</h2>
 
       <div class="alloc-bar">
         <div class="alloc-seg live">DeFindex · 100%</div>
-        <div class="alloc-seg planned">Planned</div>
-        <div class="alloc-seg planned">Planned</div>
+        <div class="alloc-seg planned">Future integrations</div>
+        <div class="alloc-seg planned">Future integrations</div>
       </div>
 
       <div class="pillars" style="margin-top:22px">
-        <div class="pillar"><h4 class="amber">Live adapter</h4><p>DeFindex multi-strategy allocator, wired to the vault and earning on testnet today.</p></div>
-        <div class="pillar"><h4 class="amber">Diversified by design</h4><p>Capital weighted across strategies (bps summing 10,000), rebalanced on drift.</p></div>
-        <div class="pillar"><h4 class="amber">1 live · 2 planned</h4><p>New venues are added as they reach production readiness, with no funds moved to swap.</p></div>
+        <div class="pillar"><h4 class="amber">DeFindex Adapter</h4><p>Reserve capital earns yield through the DeFindex adapter wired to the MUTAV vault.</p></div>
+        <div class="pillar"><h4 class="amber">Diversified by design</h4><p>Capital is spread across strategies by target weights and auto-rebalanced. Never concentrated in one venue.</p></div>
+        <div class="pillar"><h4 class="amber">Multi-strategy vault allocator</h4><p>Room to plug in more yield adapters as new venues go live.</p></div>
       </div>
 
       <div class="live-tag" style="margin-top:24px">Live on Stellar testnet</div>
@@ -390,14 +381,14 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="06 · RWA">
+  <section class="slide" data-eyebrow="06 · Ecosystem">
     <div class="pad"><div class="body">
       <div class="kicker">Real Asset · Real Yield</div>
-      <h2 class="title">Real-world cashflows, onchain.</h2>
+      <h2 class="title">Real-world cashflows <span class="amber">on Stellar</span></h2>
       <div class="points">
-        <div class="point"><span class="pk mono">→</span><span class="pt">RWA, not emissions</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, premiums accruing to NAV.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Non-crypto users on-ramped</span><span class="pd">Real-estate agencies &amp; tenants, through a product they actually need.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated TVL</span><span class="pd">Value tracks rents and bonds, not token cycles.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Real world yield</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, premiums accruing to NAV.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Energizing Stellar's ecosystem</span><span class="pd">Real RWA value and liquidity into Stellar, deployed across native yield protocols.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated to crypto</span><span class="pd">Reserve value tracks rents and real cashflows.</span></div>
       </div>
     </div></div>
   </section>
