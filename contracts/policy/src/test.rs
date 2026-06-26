@@ -1,7 +1,7 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::testutils::Ledger as _;
-use soroban_sdk::{token, Address, Env};
+use soroban_sdk::{token, Address, Env, String};
 use vault::{Vault, VaultClient};
 use registry::{Registry, RegistryClient};
 use crate::{Policy, PolicyClient};
@@ -23,7 +23,15 @@ fn setup() -> Ctx {
     let underlying = sac.address();
 
     let registry_id = e.register(Registry, (admin.clone(),));
-    let vault_id = e.register(Vault, (admin.clone(), underlying.clone()));
+    let vault_id = e.register(
+        Vault,
+        (
+            admin.clone(),
+            underlying.clone(),
+            String::from_str(&e, "Mutav Reserve"),
+            String::from_str(&e, "mtvR"),
+        ),
+    );
     let policy_id = e.register(Policy, (admin.clone(),));
 
     let registry = RegistryClient::new(&e, &registry_id);

@@ -1,6 +1,6 @@
 #![cfg(test)]
 use soroban_sdk::testutils::{Address as _, Events as _};
-use soroban_sdk::{token, Address, Env};
+use soroban_sdk::{token, Address, Env, String};
 use mock_strategy::{MockStrategy, MockStrategyClient};
 use mock_policy::{MockPolicy, MockPolicyClient};
 use crate::{Vault, VaultClient};
@@ -25,7 +25,15 @@ pub fn setup() -> Ctx {
     let underlying = sac.address();
     let token = token::TokenClient::new(&e, &underlying);
     let token_admin = token::StellarAssetClient::new(&e, &underlying);
-    let vault_id = e.register(Vault, (admin.clone(), underlying.clone()));
+    let vault_id = e.register(
+        Vault,
+        (
+            admin.clone(),
+            underlying.clone(),
+            String::from_str(&e, "Mutav Reserve"),
+            String::from_str(&e, "mtvR"),
+        ),
+    );
     let vault = VaultClient::new(&e, &vault_id);
     let policy_id = e.register(MockPolicy, (vault_id.clone(),));
     vault.set_policy(&policy_id);

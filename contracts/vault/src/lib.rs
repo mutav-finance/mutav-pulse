@@ -31,12 +31,11 @@ pub struct Vault;
 
 #[contractimpl]
 impl Vault {
-    pub fn __constructor(e: &Env, admin: Address, underlying: Address) {
-        Base::set_metadata(
-            e, 7,
-            String::from_str(e, "Mutav Pulse Reserve Share"),
-            String::from_str(e, "mtvR"),
-        );
+    pub fn __constructor(e: &Env, admin: Address, underlying: Address, name: String, symbol: String) {
+        // Share-token metadata is per-reserve: each fiat-pegged vault mints a share
+        // symboled for its currency (MUSD / MBRL / MARS), not a generic "mtvR".
+        // Set once at construction — changing it requires redeploy.
+        Base::set_metadata(e, 7, name, symbol);
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::Underlying, &underlying);
         e.storage().instance().set(&DataKey::ReservedForClaims, &0i128);
@@ -55,6 +54,15 @@ impl Vault {
     pub fn set_policy(e: &Env, policy: Address) {
         Self::admin(e).require_auth();
         e.storage().instance().set(&DataKey::Policy, &policy);
+    }
+
+    /// Admin-gated re-label of the share token (name + symbol). Decimals are
+    /// fixed at 7. Lets a deployed reserve adopt its per-currency symbol
+    /// (MUSD / MBRL / MARS) via `upgrade()` instead of a destructive redeploy —
+    /// balances, NAV, and seeded state are preserved.
+    pub fn set_token_metadata(e: &Env, name: String, symbol: String) {
+        Self::admin(e).require_auth();
+        Base::set_metadata(e, 7, name, symbol);
     }
 
     /// Fraction of idle (in bps) the vault retains as a liquid claim buffer at
