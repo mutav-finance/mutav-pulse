@@ -13,18 +13,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTesouroInfo, addTesouroTrustline, buyTesouro, type AssetInfo } from "@/lib/buy-tesouro";
 import { config } from "@/lib/config";
-import { errMsg } from "@/lib/format";
+import { errMsg, fmtUnitPrice, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
 
 interface BuyTesouroProps {
   /** Connected wallet public key */
   address: string;
+  /** Reserve money context — for the indicative TESOURO unit price (≠ 1:1 fiat). */
+  money: Money;
   /** Called after a successful trustline/swap so the parent refreshes balances */
   onSuccess(hash: string): void;
 }
 
-export function BuyTesouro({ address, onSuccess }: BuyTesouroProps) {
+export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
   const [info, setInfo] = useState<AssetInfo | null>(null);
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
@@ -97,6 +99,9 @@ export function BuyTesouro({ address, onSuccess }: BuyTesouroProps) {
         </h2>
         <p className="font-body" style={{ fontSize: "13px", color: "var(--color-text-2)", marginTop: "4px", lineHeight: 1.5 }}>
           {code} is tokenized Brazilian treasury. Acquire it with a client-signed SDEX swap (no KYC), then deposit it into the reserve.
+        </p>
+        <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "8px" }}>
+          1 {code} ≈ {fmtUnitPrice(money)} · indicative — {code} is yield-bearing, not 1:1 with BRL
         </p>
       </div>
 

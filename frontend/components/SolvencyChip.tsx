@@ -9,12 +9,14 @@
  * - Shows both values alongside the status
  */
 
-import { fmtUsd } from "@/lib/format";
+import { fmtFiat, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 
 interface SolvencyChipProps {
   stableAssets: bigint;
   coverageRequired: bigint;
+  /** Reserve money context — denominates STABLE / REQUIRED in the reserve's fiat. */
+  money: Money;
   loading?: boolean;
   error?: string;
 }
@@ -22,6 +24,7 @@ interface SolvencyChipProps {
 export function SolvencyChip({
   stableAssets,
   coverageRequired,
+  money,
   loading = false,
   error,
 }: SolvencyChipProps) {
@@ -144,7 +147,7 @@ export function SolvencyChip({
           </span>
           <Mono>
             <span style={{ fontSize: "13px", color: "var(--color-text-2)" }}>
-              {fmtUsd(stableAssets)}
+              {fmtFiat(stableAssets, money)}
             </span>
           </Mono>
         </div>
@@ -157,7 +160,7 @@ export function SolvencyChip({
           </span>
           <Mono>
             <span style={{ fontSize: "13px", color: "var(--color-text-2)" }}>
-              {fmtUsd(coverageRequired)}
+              {fmtFiat(coverageRequired, money)}
             </span>
           </Mono>
         </div>

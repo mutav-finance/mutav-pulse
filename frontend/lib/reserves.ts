@@ -34,6 +34,15 @@ export interface Reserve {
    * the fiat (MUSD) while it custodies USDC. Drives the deposit/redeem UI labels.
    */
   depositToken: string;
+  /** Fiat symbol the reserve presents values in ("$" for MUSD, "R$" for MBRL). */
+  fiatSymbol: string;
+  /**
+   * Indicative fiat price of ONE deposit-token unit, for display-only conversion.
+   * 1 for fiat-pegged tokens (USDC≈$1); for a yield-bearing underlying like TESOURO
+   * (1 TESOURO ≈ R$1.22) it carries the real price so values aren't shown 1:1.
+   * Never feeds contract math — see lib/format.ts `Money`.
+   */
+  unitPriceFiat: number;
   /** The market whose rental defaults this reserve covers. */
   market: string;
   status: ReserveStatus;
@@ -69,6 +78,8 @@ export const RESERVES: Reserve[] = [
     name: "Mutav USD Reserve (testnet)",
     underlying: "USDC · stablecoin DeFi (DeFindex)",
     depositToken: "USDC",
+    fiatSymbol: "$",
+    unitPriceFiat: 1, // USDC ≈ $1
     market: "Brazil · testnet PoC",
     status: "live",
     tag: "Testnet",
@@ -87,6 +98,9 @@ export const RESERVES: Reserve[] = [
     name: "Mutav BRL Reserve (testnet)",
     underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
     depositToken: "TESOURO",
+    fiatSymbol: "R$",
+    // TESOURO is yield-bearing → not 1:1 with BRL; indicative price (env-overridable).
+    unitPriceFiat: config.tesouro.priceBrl,
     market: "Brazil · testnet PoC",
     status: "live",
     tag: "Testnet",
@@ -105,6 +119,8 @@ export const RESERVES: Reserve[] = [
     name: "Mutav ARS Reserve",
     underlying: "ARS · peso instrument",
     depositToken: "ARS",
+    fiatSymbol: "AR$",
+    unitPriceFiat: 1, // peso-pegged placeholder
     market: "Argentina · illustrative",
     status: "planned",
     tag: "Future",

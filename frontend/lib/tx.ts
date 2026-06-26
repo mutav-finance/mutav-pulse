@@ -24,7 +24,7 @@ function vaultWriter(address: string, vaultId: string): VaultClient {
 }
 
 /**
- * Deposit the reserve's underlying token and receive mtvR shares.
+ * Deposit the reserve's underlying token and receive its currency shares.
  *
  * @param contracts - The target reserve's contract triple (uses `.vault`)
  * @param from      - Depositor's Stellar public key (must be connected)

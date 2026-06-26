@@ -11,7 +11,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { LIVE_RESERVES, PRIMARY_RESERVE, type Reserve } from "./reserves";
 import { reserveReads } from "./contracts";
-import { fmtUsd } from "./format";
+import { fmtFiat } from "./format";
 
 export function useLiveAum() {
   // vault address -> total_assets (bigint); absent until that reserve's read lands.
@@ -39,7 +39,7 @@ export function useLiveAum() {
     (reserve: Reserve): string => {
       if (!reserve.address) return "—";
       const v = aum[reserve.address];
-      return v === undefined ? "…" : fmtUsd(v);
+      return v === undefined ? "…" : fmtFiat(v, reserve);
     },
     [aum],
   );
@@ -48,7 +48,7 @@ export function useLiveAum() {
   const primaryLabel =
     aum[PRIMARY_RESERVE.address] === undefined
       ? "…"
-      : fmtUsd(aum[PRIMARY_RESERVE.address]);
+      : fmtFiat(aum[PRIMARY_RESERVE.address], PRIMARY_RESERVE);
 
   return { primaryLabel, aumFor };
 }

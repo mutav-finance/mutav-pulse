@@ -44,6 +44,38 @@ export function stroopsToInput(v: bigint): string {
 export function fmtUsd(v: bigint): string {
   return "$" + fromStroops(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+/**
+ * Reserve money presentation. Every on-chain amount is denominated in the
+ * reserve's DEPOSIT TOKEN (USDC for MUSD, TESOURO for MBRL) — not dollars. A
+ * yield-bearing underlying like TESOURO is not 1:1 with its fiat (1 TESOURO ≈
+ * R$1.22), so we render an INDICATIVE fiat value via `unitPriceFiat`. This is a
+ * pure display concern; the contract accounts in token units and needs no price.
+ *
+ * `Reserve` structurally satisfies this, so call sites pass the reserve directly.
+ */
+export interface Money {
+  depositToken: string;
+  fiatSymbol: string;
+  /** Indicative fiat price of one deposit-token unit (1 for fiat-pegged tokens). */
+  unitPriceFiat: number;
+}
+
+/** Indicative fiat value of an on-chain amount: "R$1,234.93" / "$1,012.00". */
+export function fmtFiat(v: bigint, m: Money): string {
+  const fiat = fromStroops(v) * m.unitPriceFiat;
+  return m.fiatSymbol + fiat.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Exact on-chain amount + token ticker: "1,012.00 TESOURO". No price applied. */
+export function fmtAmount(v: bigint, token: string): string {
+  return fromStroops(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + token;
+}
+
+/** Indicative unit price line: "R$1.22107" (1 deposit-token = …). */
+export function fmtUnitPrice(m: Money): string {
+  return m.fiatSymbol + m.unitPriceFiat.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 5 });
+}
 export function fmtNav(v: bigint): string {
   return (Number(v) / 1e7).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }

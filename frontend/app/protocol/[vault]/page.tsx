@@ -50,7 +50,7 @@ import {
   addStrategy,
   removeStrategy,
 } from "@/lib/admin-tx";
-import { fmtUsd, truncAddr, errMsg, parseToStroops } from "@/lib/format";
+import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
 import type { StrategyAlloc } from "vault";
 import type { Guarantee } from "policy";
 
@@ -149,7 +149,7 @@ export default function ProtocolVaultPage() {
   }
 
   // Verified path — reserve and reads are narrowed to non-null
-  return <ReserveCockpit reads={reads} contracts={reserve.contracts!} depositToken={reserve.depositToken} />;
+  return <ReserveCockpit reads={reads} contracts={reserve.contracts!} depositToken={reserve.depositToken} money={reserve} />;
 }
 
 // ─── Cockpit (inner) ──────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ export default function ProtocolVaultPage() {
  * The actual cockpit UI, receiving per-reserve reads + contracts.
  * Writes (admin-tx helpers) are parameterized by the reserve's contracts.
  */
-function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<typeof reserveReads>; contracts: ReserveContracts; depositToken: string }) {
+function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: ReturnType<typeof reserveReads>; contracts: ReserveContracts; depositToken: string; money: Money }) {
   const { address } = useWallet();
   const [data, setData] = useState<ProtocolData>(INITIAL);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -271,7 +271,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
   // ── Guarantee options for pickers ────────────────────────────────────────────
   const guaranteeOptions = data.activeGuarantees.map((g) => ({
     value: String(g.id),
-    label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtUsd(g.guarantee.monthly_amount)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
+    label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
   }));
 
   const strategyOptions = data.strategies.map((s) => ({
@@ -425,6 +425,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
             totalAssets={data.totalAssets}
             freeCapital={data.freeCapital}
             coverageRequired={data.coverageRequired}
+            money={money}
             pendingCount={data.pendingIds.length}
             strategies={data.strategies}
             loading={data.loading}
@@ -669,6 +670,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === settleId,
                     )}
+                    money={money}
                   />
                 )}
               </ProtocolActionForm>
@@ -708,6 +710,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === ppId,
                     )}
+                    money={money}
                   />
                 )}
               </ProtocolActionForm>
@@ -767,7 +770,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
                     .filter((g) => !g.isCurrent)
                     .map((g) => ({
                       value: String(g.id),
-                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtUsd(g.guarantee.monthly_amount)}/mo · overdue`,
+                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
                     }))}
                   disabled={!isPolicyAdmin}
                   placeholder="Select overdue guarantee…"
@@ -777,6 +780,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === cdId,
                     )}
+                    money={money}
                   />
                 )}
                 <p
@@ -873,7 +877,7 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
                               color: "var(--color-error)",
                             }}
                           >
-                            {fmtUsd(g.guarantee.monthly_amount)}/mo
+                            {fmtFiat(g.guarantee.monthly_amount, money)}/mo
                           </Mono>
                         </div>
                       ))}
@@ -1228,8 +1232,10 @@ function ReserveCockpit({ reads, contracts, depositToken }: { reads: ReturnType<
  */
 function GuaranteeDetail({
   guarantee,
+  money,
 }: {
   guarantee?: { id: number; guarantee: Guarantee; isCurrent: boolean };
+  money: Money;
 }) {
   if (!guarantee) return null;
   const g = guarantee.guarantee;
@@ -1250,7 +1256,7 @@ function GuaranteeDetail({
         { label: "Landlord", value: truncAddr(g.landlord) },
         {
           label: "Monthly",
-          value: fmtUsd(g.monthly_amount),
+          value: fmtFiat(g.monthly_amount, money),
         },
         {
           label: "Months",

@@ -3,7 +3,7 @@
 /**
  * ProtocolDiagram — the MUTAV money-cycle as a blueprint, with the gates marked.
  *
- * The RESERVE is the vault contract: it holds custody, mints mtvR shares at NAV,
+ * The RESERVE is the vault contract: it holds custody, mints reserve shares at NAV,
  * runs the surplus-gated redemption escrow queue, and its allocator deploys idle
  * float across pluggable STRATEGY ADAPTERS (DeFindex · Soroswap · Blend) for
  * yield — all inside the reserve, not an external counterparty. External parties
@@ -195,7 +195,7 @@ const NODES: Node[] = [
     position: { x: 0, y: 137 },
     data: {
       title: "INVESTOR",
-      sub: "mtvR · SEP-0041",
+      sub: "reserve shares · SEP-0041",
       w: 152,
       h: 66,
       handles: [

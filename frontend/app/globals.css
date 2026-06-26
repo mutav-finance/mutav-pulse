@@ -323,3 +323,35 @@ input:disabled {
   outline: none;
   border-color: var(--color-accent) !important;
 }
+
+/* ── Reserve hub: fund-info (left) + sticky invest rail (right) ──────────────
+   Goldfinch-style 2-column. Below 1024px it collapses to one column with the
+   invest column FIRST (so the action is reachable without scrolling past the
+   long transparency panel on mobile). */
+.reserve-hub-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 40px;
+  /* default align-items:stretch — the invest column stretches to the (tall) info
+     column's height, giving its sticky rail room to stick while scrolling. */
+}
+.reserve-hub-grid > .reserve-hub-info {
+  grid-column: 1;
+  min-width: 0;
+}
+.reserve-hub-grid > .reserve-hub-invest {
+  grid-column: 2;
+}
+@media (max-width: 1024px) {
+  .reserve-hub-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+  .reserve-hub-grid > .reserve-hub-info,
+  .reserve-hub-grid > .reserve-hub-invest {
+    grid-column: 1;
+  }
+  .reserve-hub-grid > .reserve-hub-invest {
+    order: -1; /* action first on mobile */
+  }
+}
