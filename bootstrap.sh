@@ -73,8 +73,28 @@ if [ -n "$BRL_NATIVE" ]; then
   # TESOURO yield strategy (cBRL-settled). volatile=false -> counts toward the
   # solvency floor; weight 10000 -> the whole surplus flows here.
   MOCK_TESOURO=$(dep mock_tesouro.wasm --admin "$ADMIN" --underlying "$BRL_SAC")
+  # Controller must be set BEFORE add_strategy: rebalance/ensure_liquidity call
+  # invest/divest, which now require the controlling vault's auth. (audit H1/H4 gate)
+  inv "$MOCK_TESOURO" set_controller --addr "$VAULT"
   inv "$VAULT" add_strategy --address "$MOCK_TESOURO" --weight_bps 10000 --volatile false
   inv "$VAULT" set_min_liquid_buffer_bps --bps "$MIN_LIQUID_BUFFER_BPS"
+
+  # Seed a working demo so the deployed reserve demonstrably accrues (NAV > 1.0)
+  # without a live keeper. MUST deposit BEFORE accrue: accruing into a 0-supply
+  # vault donates value with no shares outstanding and dilutes the first real
+  # depositor (the donation-to-empty-vault problem). Sequence: admin deposits ->
+  # rebalance deploys the surplus to the adapter -> mint+accrue raises NAV for the
+  # now-outstanding shares. Skip with SEED_DEMO=0; a live keeper replaces accrue.
+  SEED_DEMO="${SEED_DEMO:-1}"
+  if [ "$SEED_DEMO" != "0" ]; then
+    SEED_DEPOSIT="${SEED_DEPOSIT:-1000000000}"   # 100 cBRL @ 7 decimals
+    SEED_YIELD="${SEED_YIELD:-100000000}"        # 10 cBRL yield (~10% NAV bump)
+    inv "$VAULT" deposit --assets "$SEED_DEPOSIT" --receiver "$ADMIN" --from "$ADMIN" --operator "$ADMIN"
+    inv "$VAULT" rebalance
+    inv "$BRL_SAC" mint --to "$MOCK_TESOURO" --amount "$SEED_YIELD"
+    inv "$MOCK_TESOURO" accrue --amount "$SEED_YIELD"
+    echo "SEED_DEMO: deposited $SEED_DEPOSIT, accrued $SEED_YIELD -> NAV > 1.0"
+  fi
 
   echo "BRL_SAC=$BRL_SAC"; echo "FAUCET=$FAUCET"
   echo "REGISTRY=$REGISTRY"; echo "VAULT=$VAULT"; echo "POLICY=$POLICY"
