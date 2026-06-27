@@ -131,20 +131,20 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .vlegend .yld { color: var(--color-success); }
 .vlegend .live-tag { margin-left: auto; margin-top: 0; }
 
-/* ── Solvency slide: status bar + metric cards ───────────────────────────── */
-.solvbar { display: flex; align-items: center; gap: 28px; margin-top: 30px; border: 1px solid var(--color-border); border-left: 2px solid var(--color-success); background: var(--color-surface); padding: 18px 22px; }
-.solv-chip { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-weight: 600; font-size: 16px; letter-spacing: .1em; color: var(--color-success); flex: 0 0 auto; }
-.solv-chip::before { content: ""; width: 9px; height: 9px; background: var(--color-success); animation: pulse 2s linear infinite; }
-.solv-cmp { display: flex; align-items: center; gap: 22px; flex: 1; font-family: var(--font-mono); font-size: 15px; color: var(--color-text); }
-.solv-cmp b { color: var(--color-text-2); font-weight: 500; font-size: 11px; letter-spacing: .08em; margin-right: 8px; }
-.solv-cmp .sep { color: var(--color-success); font-size: 18px; }
-.solv-cmp .ratio { color: var(--color-accent); margin-left: auto; }
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 14px; }
-.metric { border: 1px solid var(--color-border); background: var(--color-surface); padding: 18px; display: flex; flex-direction: column; gap: 8px; }
-.metric .mlbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-2); }
-.metric .mval { font-family: var(--font-mono); font-size: 30px; line-height: 1; color: var(--color-text); }
-.metric .msub { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-3); }
-.solv-foot { margin-top: 18px; font-size: 12px; letter-spacing: .06em; color: var(--color-text-3); text-transform: uppercase; }
+/* ── Demo slide: text (1/3) + 16:9 video drop-zone (2/3, 1920×1080) ───────── */
+.demo-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; align-items: center; width: 100%; }
+.demo-text { text-align: right; }
+.demo-text .kicker { margin-top: 18px; margin-bottom: 0; }
+.slide.demo .title { font-size: 34px; line-height: 1.08; }
+.demo-frame {
+  position: relative; aspect-ratio: 16 / 9; width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2); overflow: hidden;
+}
+.demo-frame video, .demo-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.demo-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.demo-play { width: 64px; height: 64px; border: 1px solid var(--color-text-3); border-radius: 50%; display: grid; place-items: center; color: var(--color-text-2); font-size: 20px; padding-left: 4px; }
+.demo-cap { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-text-3); }
 
 /* ── DeFindex slide: allocation bar ──────────────────────────────────────── */
 .alloc-bar { display: flex; height: 46px; margin-top: 28px; border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; }
@@ -266,29 +266,24 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- c · SOLVENCY & TRANSPARENCY ─────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="03 · SOLVENCY">
+  <section class="slide demo" data-eyebrow="03 · SOLVENCY">
     <div class="pad"><div class="body">
-      <div class="kicker">Transparent where they are opaque</div>
-      <h2 class="title" style="max-width:28ch">Full solvency<br>reserve access<br>for our&nbsp;partners</h2>
+      <div class="demo-grid">
+        <div class="demo-text">
+          <h2 class="title">Full solvency<br>reserve access<br>for our&nbsp;partners</h2>
+          <div class="kicker">Transparent where they are opaque</div>
+        </div>
 
-      <div class="solvbar">
-        <span class="solv-chip">SOLVENT</span>
-        <div class="solv-cmp">
-          <span><b>STABLE</b>$125,000</span>
-          <span class="sep">≥</span>
-          <span><b>REQUIRED</b>$90,000</span>
-          <span class="ratio">RATIO 139%</span>
+        <!-- Demo video drop-zone · 16:9 (1920×1080). To embed, replace the
+             .demo-ph block with:
+             <video src="assets/demo.mp4" autoplay muted loop playsinline></video> -->
+        <div class="demo-frame">
+          <div class="demo-ph">
+            <span class="demo-play mono">▶</span>
+            <span class="demo-cap">App demo · 1920 × 1080</span>
+          </div>
         </div>
       </div>
-
-      <div class="metrics">
-        <div class="metric"><span class="mlbl">Reserve Value</span><span class="mval">$125,000</span><span class="msub">total assets · USDC</span></div>
-        <div class="metric"><span class="mlbl">NAV / MTVR</span><span class="mval">1.0000</span><span class="msub">USDC per share</span></div>
-        <div class="metric"><span class="mlbl">Committed</span><span class="mval">$90,000</span><span class="msub">coverage required · USDC</span></div>
-        <div class="metric"><span class="mlbl">Liquidity Buffer</span><span class="mval">$35,000</span><span class="msub">free capital · USDC</span></div>
-      </div>
-
-      <p class="solv-foot">All values read live from Soroban testnet.</p>
     </div></div>
   </section>
 
@@ -346,7 +341,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
         </div>
 
         <div class="vnode leaf" style="left:480px;top:292px;width:200px;height:60px;">
-          <span class="nt">Partner agencies</span>
+          <span class="nt">PARTNER AGENCIES</span>
           <span class="ns mono">default payout</span>
         </div>
 
@@ -382,7 +377,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 
   <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
   <section class="slide" data-eyebrow="06 · Ecosystem">
-    <div class="pad"><div class="body">
+    <div class="pad"><div class="body" style="align-items:center;text-align:center">
       <div class="kicker">Real Asset · Real Yield</div>
       <h2 class="title">Real-world cashflows <span class="amber">on Stellar</span></h2>
       <div class="points">
