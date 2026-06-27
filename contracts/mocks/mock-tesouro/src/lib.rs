@@ -30,12 +30,23 @@ impl MockTesouro {
     pub fn __constructor(e: &Env, admin: Address, underlying: Address) {
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::Underlying, &underlying);
-        e.storage().instance().set(&DataKey::Value, &0i128);
-        e.storage().instance().set(&DataKey::ExitBps, &0u32);
+        // Value and ExitBps default to 0 via `unwrap_or(0)` — no need to seed them.
     }
 
     fn admin(e: &Env) -> Address {
         e.storage().instance().get(&DataKey::Admin).unwrap()
+    }
+    fn value(e: &Env) -> i128 {
+        e.storage().instance().get(&DataKey::Value).unwrap_or(0)
+    }
+    fn exit_bps(e: &Env) -> u32 {
+        e.storage().instance().get(&DataKey::ExitBps).unwrap_or(0)
+    }
+    /// Mark the position up by `amount` BRL value. Caller has already transferred
+    /// the matching `cBRL` into the adapter. Shared by `invest` (vault deposit)
+    /// and `accrue` (keeper-pushed yield).
+    fn mark_up(e: &Env, amount: i128) {
+        e.storage().instance().set(&DataKey::Value, &(Self::value(e) + amount));
     }
 
     /// Testnet keeper path: `amount` of `cBRL` has already been transferred into
@@ -43,8 +54,7 @@ impl MockTesouro {
     /// position up by that BRL value. Stand-in for "TESOURO NAV rose".
     pub fn accrue(e: &Env, amount: i128) {
         Self::admin(e).require_auth();
-        let v: i128 = e.storage().instance().get(&DataKey::Value).unwrap_or(0);
-        e.storage().instance().set(&DataKey::Value, &(v + amount));
+        Self::mark_up(e, amount);
     }
 
     /// Admin-gated forced-exit spread, in basis points (<= 10_000).
@@ -59,15 +69,13 @@ impl MockTesouro {
 impl Strategy for MockTesouro {
     fn invest(e: Env, amount: i128) {
         // Funds already transferred in by the caller; mark the position up.
-        let v: i128 = e.storage().instance().get(&DataKey::Value).unwrap_or(0);
-        e.storage().instance().set(&DataKey::Value, &(v + amount));
+        Self::mark_up(&e, amount);
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {
-        let value: i128 = e.storage().instance().get(&DataKey::Value).unwrap_or(0);
+        let value = Self::value(&e);
         let amt = if amount < value { amount } else { value };
-        let exit_bps: u32 = e.storage().instance().get(&DataKey::ExitBps).unwrap_or(0);
-        let out = amt - amt * (exit_bps as i128) / 10_000;
+        let out = amt - amt * (Self::exit_bps(&e) as i128) / 10_000;
         let underlying: Address = e.storage().instance().get(&DataKey::Underlying).unwrap();
         token::TokenClient::new(&e, &underlying).transfer(&e.current_contract_address(), &to, &out);
         e.storage().instance().set(&DataKey::Value, &(value - amt));
@@ -76,7 +84,7 @@ impl Strategy for MockTesouro {
     }
 
     fn balance(e: Env) -> i128 {
-        e.storage().instance().get(&DataKey::Value).unwrap_or(0)
+        Self::value(&e)
     }
 
     fn underlying(e: Env) -> Address {
