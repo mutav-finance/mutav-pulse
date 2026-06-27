@@ -882,3 +882,101 @@ fn process_redemptions_reverts_when_strategy_lies() {
     });
     assert_eq!(reserved_after, reserved_before);
 }
+
+// ───────────────── efficiency-hoist guards (behavior-preserving cleanups) ─────────────────
+
+/// Guards the rebalance `targets` Vec precompute: the cap + weight interaction
+/// must produce identical allocations whether targets are computed once (new) or
+/// twice (old). Two unequal-weight strategies with a max-debt cap on one; each
+/// on-chain balance must equal the analytically-expected clamped target.
+#[test]
+fn rebalance_target_cache_matches_unhoisted() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // Weights 7_000 / 3_000 → uncapped targets 700 / 300 (0% buffer).
+    let s_a = add_mock(&c, 7_000);
+    let s_b = add_mock(&c, 3_000);
+    // Cap A at 40% of total (400). A's weighted target 700 > 400 → clamped to 400.
+    c.vault.set_strategy_max_debt_bps(&s_a.address, &4_000);
+    c.vault.rebalance();
+    assert_eq!(s_a.balance(), 400); // weighted 700 clamped to 40% cap
+    assert_eq!(s_b.balance(), 300); // weighted target, uncapped
+    assert_eq!(c.vault.available_held(), 300); // capped overflow stays idle
+    assert_eq!(c.vault.total_assets(), 1_000);
+    // Idempotent off the precomputed targets: a second call holds, no drain.
+    c.vault.rebalance();
+    assert_eq!(s_a.balance(), 400);
+    assert_eq!(s_b.balance(), 300);
+    assert_eq!(c.vault.available_held(), 300);
+}
+
+/// Guards the ensure_liquidity `held` re-read-after-divest hoist: with funds
+/// spread across MULTIPLE strategies, a payout needing liquidity from >1
+/// strategy must succeed (the per-divest re-read drives the loop to pull from the
+/// 2nd strategy). A request exceeding total stable still panics with exactly
+/// "insufficient liquidity" (typed code 600).
+#[test]
+fn ensure_liquidity_re_reads_held_after_each_divest() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Spread across two equal-weight strategies: 500 each, 0% idle.
+    let s_a = add_mock(&c, 5_000);
+    let s_b = add_mock(&c, 5_000);
+    c.vault.rebalance();
+    assert_eq!(s_a.balance(), 500);
+    assert_eq!(s_b.balance(), 500);
+    assert_eq!(c.vault.available_held(), 0);
+
+    // Disburse 800: needs liquidity from BOTH strategies (500 from A, 300 from B).
+    // The loop must re-read `held` after divesting A to know B is still needed.
+    c.policy.call_disburse(&landlord, &800);
+    assert_eq!(c.token.balance(&landlord), 800);
+    assert_eq!(c.vault.total_assets(), 200);
+
+    // A request exceeding total stable still reverts (the disburse overdraft
+    // guard `stable_pre >= amount` trips first here; either way nothing pays out).
+    assert!(c.policy.try_call_disburse(&landlord, &10_000).is_err());
+    assert_eq!(c.token.balance(&landlord), 800); // unchanged from the prior payout
+}
+
+/// Guards the process_redemptions per-iteration `ta` hoist: two requests
+/// processed in one batch must each be priced at the NAV in effect at the moment
+/// that request is settled (later requests see post-fulfillment total_assets, not
+/// a stale batch snapshot). With premium-inflated NAV, both redeemers get strictly
+/// more than their nominal share count and pricing stays monotone per the
+/// shrinking pool.
+#[test]
+fn process_redemptions_per_iteration_pricing_unchanged() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // Inflate NAV via premium (no new shares): total_assets 1_500, supply 1_000.
+    c.policy.call_collect(&agency, &500);
+    assert_eq!(c.vault.total_assets(), 1_500);
+    c.policy.set_coverage(&0); // ample free capital
+
+    let r0 = c.vault.request_redeem(&alice, &400);
+    let r1 = c.vault.request_redeem(&alice, &400);
+
+    c.vault.process_redemptions(&10);
+
+    // r0 priced first at NAV 1_500/1_000: floor(400 * 1501 / 1001) = 599.
+    let claim0 = c.vault.request(&r0).claimable;
+    assert_eq!(claim0, 599);
+    // r1 priced AFTER r0 fulfilled: shares burned (supply 600), reserved bumped
+    // (total_assets 1_500-599=901). floor(400 * 902 / 601) = 600.
+    let claim1 = c.vault.request(&r1).claimable;
+    assert_eq!(claim1, 600);
+    // Both fulfilled and claimable; per-iteration pricing did not stale-snapshot.
+    assert!(c.vault.request(&r0).fulfilled);
+    assert!(c.vault.request(&r1).fulfilled);
+}

@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec, Address, BytesN, Env};
 use strategy::Strategy;
-use interfaces::DefindexVaultClient;
+use interfaces::{BPS_DENOM, DefindexVaultClient};
 
 /// Adapter-side errors surfaced as stable `#[contracterror]` codes. Numbered in
 /// the `5xx` band to stay clear of the registry `2xx`, policy `3xx`, and
@@ -32,7 +32,6 @@ pub enum AdapterError {
 /// SAFETY DEFAULT, not a mainnet-certified value — see `divest` for the
 /// assumption it guards (real-vault fee/rounding behavior is unverified).
 const DEFAULT_MAX_SLIPPAGE_BPS: u32 = 50;
-const BPS_DENOM: i128 = 10_000;
 
 #[contracttype]
 enum DataKey {

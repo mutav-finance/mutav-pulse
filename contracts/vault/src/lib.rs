@@ -243,9 +243,21 @@ impl Vault {
         let tok = Self::token_client(e);
         let here = e.current_contract_address();
 
-        // Divest pass: pull every over-target strategy back down (raises idle).
+        // Precompute each strategy's target ONCE off the single snapshot above.
+        // `target_debt_for` re-reads StrategyMaxDebtBps per call, so computing it
+        // once per strategy (instead of once per pass) halves those instance
+        // reads. The Strategies Vec has stable insertion order, so index `i` is the
+        // same strategy in both the divest and invest passes — and the result is
+        // mathematically identical to the prior double-compute (deterministic from
+        // the frozen total / deployable_total / total_weight snapshot).
+        let mut targets = Vec::<i128>::new(e);
         for s in list.iter() {
-            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+            targets.push_back(Self::target_debt_for(e, &s, total, deployable_total, total_weight));
+        }
+
+        // Divest pass: pull every over-target strategy back down (raises idle).
+        for (i, s) in list.iter().enumerate() {
+            let target = targets.get(i as u32).unwrap();
             let client = StrategyClient::new(e, &s.address);
             let cur = client.balance();
             if cur > target {
@@ -264,8 +276,8 @@ impl Vault {
         // claim escrow. Re-read live each iteration: strategy ORDER (the existing
         // Strategies Vec order) deterministically tie-breaks who is funded first
         // under a shortfall.
-        for s in list.iter() {
-            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+        for (i, s) in list.iter().enumerate() {
+            let target = targets.get(i as u32).unwrap();
             let client = StrategyClient::new(e, &s.address);
             let cur = client.balance();
             if target > cur {
@@ -299,24 +311,34 @@ impl Vault {
     /// simply illiquid so as not to realize incorrect losses"), so the signature
     /// stays `(&Env, i128)` and a shortfall is a typed revert.
     pub(crate) fn ensure_liquidity(e: &Env, needed: i128) {
-        if Self::available_held(e) >= needed { return; }
+        // Hoist `available_held` into a local `held` to collapse the ~4 redundant
+        // token-balance reads per logical step (entry guard, loop guard, `short`
+        // calc, terminal assert) the prior code performed. `held` MUTATES as each
+        // divest transfers underlying back, so it is NOT a frozen snapshot: it is
+        // RE-READ once after every divest (not `held += pull`) to stay exact under
+        // a real-adapter haircut where received < requested.
+        let mut held = Self::available_held(e);
+        if held >= needed { return; }
         // Single pass over strategies (each visited at most once → terminating).
-        // `available_held` is re-read from the LIVE token balance at the loop top,
-        // so the realized (post-loss) amount of each divest is what counts toward
+        // The post-divest re-read of `held` is the LIVE token balance, so the
+        // realized (post-loss) amount of each divest is what counts toward
         // progress — a lossy adapter that returns < requested simply leaves the
         // shortfall, the next strategy (if any) is tried, and the terminal guard
         // catches any residual shortfall. `client.divest` returns the realized
         // amount but we deliberately rely on the live re-read rather than the
         // return value, which is the source of truth for what actually landed.
         for s in Self::strategies(e).iter() {
-            if Self::available_held(e) >= needed { break; }
-            let short = needed - Self::available_held(e);
+            if held >= needed { break; }
+            let short = needed - held;
             let client = StrategyClient::new(e, &s.address);
             let avail = client.balance();
             let pull = if short < avail { short } else { avail };
-            if pull > 0 { client.divest(&pull, &e.current_contract_address()); }
+            if pull > 0 {
+                client.divest(&pull, &e.current_contract_address());
+                held = Self::available_held(e);
+            }
         }
-        if Self::available_held(e) < needed {
+        if held < needed {
             // Typed revert (code 600) instead of an opaque host trap. Both roll
             // back the whole tx; this gives a stable diagnosable code.
             panic_with_error!(e, VaultError::InsufficientLiquidity);
@@ -548,8 +570,26 @@ impl Vault {
             // denominator `total_supply + VIRTUAL_OFFSET` (>= 2) can never be zero
             // and it already short-circuits shares == 0.
             debug_assert!(Base::total_supply(e) > 0);
-            let claimable = Self::to_assets(e, req.shares, Rounding::Floor);
-            // Gate on stable surplus only (H2).
+            // Hoist total_assets WITHIN this iteration only (NOT across the loop):
+            // total_assets legitimately changes between fulfilled requests
+            // (ensure_liquidity divests, ReservedForClaims bumped, shares burned),
+            // so a per-batch snapshot would misprice later requests. Compute `ta`
+            // once here and reuse it for the claimable pricing, replacing the
+            // second internal total_assets evaluation `to_assets` performed.
+            // Value-identical to `to_assets(req.shares, Floor)`: req.shares > 0 is
+            // guaranteed (escrowed at request_redeem) so the to_assets shares==0
+            // short-circuit never applied.
+            let ta = Self::total_assets(e);
+            let claimable = mul_div_with_rounding(
+                e,
+                req.shares,
+                ta + VIRTUAL_OFFSET,
+                Base::total_supply(e) + VIRTUAL_OFFSET,
+                Rounding::Floor,
+            );
+            // Gate on stable surplus only (H2). `free_capital` is a SEPARATE fresh
+            // read: it derives stable_assets + cross-contract coverage_required and
+            // must reflect current state at the gate — do NOT fold it into `ta`.
             if claimable > 0 && Self::free_capital(e) >= claimable {
                 Self::ensure_liquidity(e, claimable);
                 // Effects before further interactions: burn escrowed shares now.

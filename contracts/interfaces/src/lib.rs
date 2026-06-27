@@ -32,6 +32,12 @@ pub enum RegistryError {
     VersionMismatch = 203,
 }
 
+/// Basis-points denominator (100% = 10_000). Single-sourced here (the
+/// cross-contract boundary crate) so vault/policy/adapter-defindex import it
+/// instead of each redeclaring it. Compile-time const, not a DataKey — zero
+/// storage / upgrade-layout impact.
+pub const BPS_DENOM: i128 = 10_000;
+
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
 /// storage, keyed by id — never here.
 #[contracttype]
@@ -82,4 +88,14 @@ pub trait DefindexVault {
     ) -> Val;
     fn withdraw(env: Env, df_amount: i128, min_amounts_out: Vec<i128>, from: Address) -> Vec<i128>;
     fn get_asset_amounts_per_shares(env: Env, vault_shares: i128) -> Vec<i128>;
+}
+
+#[cfg(test)]
+mod test {
+    /// Pin the single-sourced BPS denominator against accidental drift — it must
+    /// stay value-identical to the three redeclarations it replaced (all 10_000).
+    #[test]
+    fn bps_denom_is_10000() {
+        assert_eq!(super::BPS_DENOM, 10_000);
+    }
 }

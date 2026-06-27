@@ -1,9 +1,7 @@
 #![no_std]
 use soroban_sdk::{contract, contracterror, contractevent, contractimpl, contracttype, Address, BytesN, Env};
 use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
-use interfaces::{Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
-
-const BPS_DENOM: i128 = 10_000;
+use interfaces::{BPS_DENOM, Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
 
 /// Underwriting errors surfaced as stable `#[contracterror]` codes. Numbered in
 /// the `3xx` band to stay clear of the registry `2xx` and strategy `4xx` codes.
