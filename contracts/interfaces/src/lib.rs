@@ -69,6 +69,44 @@ pub struct Guarantee {
 
 #[contractclient(name = "VaultClient")]
 pub trait Vault {
+    /// Money-OUT path the solvency model turns on. This doc is a DRIFT-GUARD that
+    /// pins an invariant the runtime ALREADY enforces (the `require_auth` and the
+    /// policy-first ordering live in `Vault::disburse` / `Policy::cover_default`);
+    /// the comment exists so the trait boundary cannot silently diverge from those
+    /// impls. Keep it consistent with the impl comment in `Vault::disburse`
+    /// (vault crate) — if that comment changes, this one must move with it.
+    ///
+    /// Authorization (policy-only): implementations MUST `require_auth()` the
+    /// registered policy address read from instance storage (the impl loads
+    /// `DataKey::Policy` then calls `policy.require_auth()`). It MUST NOT be
+    /// authorized by admin or by any arbitrary caller — disburse is purely the
+    /// policy's money-path, never a direct admin lever.
+    ///
+    /// Ordering (caller obligation): the calling `Policy::cover_default` MUST
+    /// reduce `coverage_required` BEFORE invoking disburse. It mutates the
+    /// guarantee (`months_used += 1`; when `months_used == months_covered` it sets
+    /// `active = false`) and persists it via `registry.put(g)` FIRST, and only
+    /// THEN calls `vault.disburse`. That Ceil-rounded reduction of the
+    /// `coverage_required` sum is what keeps `stable_assets >= coverage_required`
+    /// (Nexus-style coverage-anchored solvency) true post-payout. The vault's
+    /// pre-transfer guard `assert!(stable_pre >= amount)` (where
+    /// `stable_pre = stable_assets_inner`) is ONLY a vault-overdraft guard — it
+    /// proves the vault will not overdraw its own stable balance, NOT that the
+    /// system stays solvent after the payout. Post-payout solvency is preserved
+    /// solely by this caller-side ordering. See the `TODO(solvency-oracle)` note
+    /// at the same assert in the vault impl.
+    ///
+    /// Re-entrancy (why the two rules above exist): the vault MUST NOT read
+    /// `policy.coverage_required()` during disburse. Soroban forbids re-entering
+    /// the in-progress policy contract frame, so the vault structurally cannot
+    /// call back into the mid-disburse policy; coverage is therefore reconciled by
+    /// the caller-first ordering above, NOT by an in-method callback. This is the
+    /// load-bearing reason the contract is a documented caller-ordering invariant
+    /// rather than an in-method check. Note disburse realizes liquidity via
+    /// `ensure_liquidity` (which can typed-revert `VaultError::InsufficientLiquidity`
+    /// = 600 under a lossy adapter) and does NOT route through the
+    /// `mul_div_with_rounding` / `VIRTUAL_OFFSET` share math — that lives only in
+    /// `to_shares` / `to_assets`.
     fn disburse(env: Env, to: Address, amount: i128);
     fn collect_premium(env: Env, from: Address, amount: i128);
     fn stable_assets(env: Env) -> i128;
