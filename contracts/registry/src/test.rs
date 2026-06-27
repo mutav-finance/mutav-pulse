@@ -3,7 +3,7 @@ use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::{Address, Env};
 use interfaces::{Guarantee, RegistryError};
-use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ENTRY_TTL};
+use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ACTIVE_GUARANTEES, MAX_ENTRY_TTL};
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
     Guarantee {
@@ -72,9 +72,8 @@ fn get_unknown_id_returns_typed_error() {
         _ => panic!("expected GuaranteeNotFound typed error"),
     }
 
-    // TTL-hygiene guard: extending on the read path must NOT materialize a write
-    // for a missing id (extend only on the Some branch). After a failed get(999)
-    // no Guarantee(999) entry exists.
+    // Purity guard: a pure get never materializes a missing id. After a failed
+    // get(999) no Guarantee(999) entry exists.
     match r.try_get(&999) {
         Err(Ok(e)) => assert_eq!(e, RegistryError::GuaranteeNotFound),
         _ => panic!("expected GuaranteeNotFound typed error"),
@@ -82,7 +81,7 @@ fn get_unknown_id_returns_typed_error() {
     let exists = e.as_contract(&id, || {
         e.storage().persistent().has(&DataKey::Guarantee(999))
     });
-    assert!(!exists, "missing id must not be materialized by read-path extend");
+    assert!(!exists, "pure get must not materialize a missing id");
 }
 
 // ───────────────────────────── H6: storage TTL hygiene ─────────────────────────────
@@ -118,12 +117,14 @@ fn put_extends_guarantee_ttl() {
     assert!(ttl <= MAX_ENTRY_TTL, "ttl {} above network max", ttl);
 }
 
-/// The lifecycle read path (`get`, behind policy.coverage_required / cover_default
-/// / pay_premium) re-extends the Guarantee TTL. After advancing the ledger so the
-/// remaining TTL decays below target, a single `get` bumps it back up. RED before
-/// the fix: the read path never extends, so the TTL stays decayed.
+/// PURITY: `get` is a pure read — it must NOT extend the Guarantee TTL (re-audit
+/// H2). The prior TTL fix bumped on every read, so policy.coverage_required (loops
+/// get over active_ids) did O(active) storage WRITES per solvency view, and any SDK
+/// /frontend treating get as side-effect-free mutated storage on simulate. After
+/// advancing the ledger so the TTL decays, a `get` must leave it EXACTLY unchanged.
+/// Archival protection comes from the write paths (put / lifecycle re-puts), not get.
 #[test]
-fn get_reextends_guarantee_ttl_after_advance() {
+fn get_does_not_extend_guarantee_ttl() {
     let e = Env::default();
     e.mock_all_auths_allowing_non_root_auth();
     let admin = Address::generate(&e);
@@ -137,7 +138,48 @@ fn get_reextends_guarantee_ttl_after_advance() {
     let g0 = g(&e, 0, &landlord, true);
     r.put(&g0);
 
-    // Advance the ledger so the remaining TTL drops well below target.
+    let ttl_before = e.as_contract(&id, || {
+        e.storage().persistent().get_ttl(&DataKey::Guarantee(0))
+    });
+
+    // Advance the ledger so the remaining TTL decays.
+    e.ledger().with_mut(|l| l.sequence_number += 1_000_000);
+    let decayed = e.as_contract(&id, || {
+        e.storage().persistent().get_ttl(&DataKey::Guarantee(0))
+    });
+    assert!(decayed < ttl_before, "ttl should have decayed after advance");
+
+    // Pure read: still returns the struct...
+    assert_eq!(r.get(&0).monthly_amount, 100);
+
+    // ...and leaves the TTL EXACTLY unchanged (load-bearing purity assertion).
+    let after = e.as_contract(&id, || {
+        e.storage().persistent().get_ttl(&DataKey::Guarantee(0))
+    });
+    assert_eq!(after, decayed, "get must NOT change TTL (pure read)");
+}
+
+/// The WRITE path (`put`, exercised by every policy lifecycle mutation —
+/// sign_guarantee / pay_premium / cover_default / settle_guarantee re-put the full
+/// struct) re-extends the Guarantee TTL. After advancing the ledger so the TTL
+/// decays below target, an in-range re-put bumps it back up. This is the archival
+/// defense after get() became pure.
+#[test]
+fn put_reextends_guarantee_ttl_after_advance() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+    let _ = r.next_id(); // issue id 0 before put (put rejects fabricated ids)
+    let g0 = g(&e, 0, &landlord, true);
+    r.put(&g0);
+
+    // Advance the ledger so the remaining TTL drops below target.
     e.ledger().with_mut(|l| l.sequence_number += 1_000_000);
     let target = guarantee_ttl_ledgers(g0.period_secs, g0.months_covered);
     let decayed = e.as_contract(&id, || {
@@ -145,12 +187,12 @@ fn get_reextends_guarantee_ttl_after_advance() {
     });
     assert!(decayed < target, "ttl should have decayed below target");
 
-    // Lifecycle read re-extends.
-    let _ = r.get(&0);
+    // In-range re-put of id 0 re-extends (write path).
+    r.put(&g0);
     let bumped = e.as_contract(&id, || {
         e.storage().persistent().get_ttl(&DataKey::Guarantee(0))
     });
-    assert!(bumped >= target - 10, "get did not re-extend: {} < {}", bumped, target);
+    assert!(bumped >= target - 10, "put did not re-extend: {} < {}", bumped, target);
 }
 
 /// A guarantee whose span/5 exceeds MAX_ENTRY_TTL must clamp to the network max,
@@ -321,6 +363,106 @@ fn writer_unset_returns_typed_error() {
         Err(Ok(err)) => assert_eq!(err, RegistryError::WriterNotSet.into()),
         _ => panic!("expected WriterNotSet typed error"),
     }
+}
+
+// ──────────────────── H3: bounded active set (coverage_required cost cap) ────────────────────
+
+/// `put` enforces MAX_ACTIVE_GUARANTEES on the branch that PUSHES a newly-active id.
+/// Filling the active set to the cap succeeds; the (cap+1)-th first-activation of a
+/// brand-new id is rejected with the typed `ActiveSetFull` error. This bounds the
+/// unbounded `Vec<u32>` that policy.coverage_required iterates (re-audit H3).
+/// RED before the fix: the cap const + the put() guard do not exist.
+#[test]
+fn put_rejects_active_set_overflow() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    // Drive next_id for each id (put rejects fabricated ids >= NextId), then
+    // activate exactly MAX_ACTIVE_GUARANTEES distinct guarantees.
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // One more brand-new id, first activation — must hit the cap.
+    let overflow_id = r.next_id();
+    assert_eq!(overflow_id, MAX_ACTIVE_GUARANTEES);
+    match r.try_put(&g(&e, overflow_id, &landlord, true)) {
+        Err(Ok(err)) => assert_eq!(err, RegistryError::ActiveSetFull.into()),
+        _ => panic!("expected ActiveSetFull at the cap boundary"),
+    }
+    // The rejected put did not grow the set.
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+}
+
+/// The cap must NOT block a re-put of an ALREADY-active id. pay_premium /
+/// cover_default re-put existing guarantees (same id, active:true); only a brand-new
+/// id's first activation can hit the cap. Behavior-preservation guard.
+#[test]
+fn put_cap_does_not_block_reput_of_existing_active_id() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // Re-put id 0 (already active, still active) at the cap — must SUCCEED.
+    let mut g0 = g(&e, 0, &landlord, true);
+    g0.months_used = 1; // a real update, e.g. cover_default
+    r.put(&g0);
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+    assert_eq!(r.get(&0).months_used, 1);
+}
+
+/// The cap counts only currently-active entries. Deactivating one (settle /
+/// final cover_default) frees a slot, after which a new activating put succeeds again.
+#[test]
+fn put_cap_frees_slot_on_deactivation() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // Deactivate id 0 → frees one slot.
+    r.put(&g(&e, 0, &landlord, false));
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES - 1);
+
+    // A new activating put now succeeds again (slot freed).
+    let new_id = r.next_id();
+    r.put(&g(&e, new_id, &landlord, true));
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
 }
 
 /// The constructor records the current schema version.

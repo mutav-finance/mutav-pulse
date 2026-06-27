@@ -660,6 +660,22 @@ impl VaultTrait for Vault {
         // Only callable by the registered policy contract.
         let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
+        // Reentrancy guard (re-audit H1): disburse is the money-OUT path
+        // (ensure_liquidity -> strategy.divest -> token.transfer). A
+        // malicious/buggy adapter reached via ensure_liquidity gets control
+        // mid-payout; without this it would see Locked == false (unlike
+        // rebalance / process_redemptions, which already set it) and could
+        // re-enter another vault callout path. Acquire AFTER require_auth and
+        // BEFORE the overdraft check so both the assert and ensure_liquidity run
+        // inside the lock — uniform mutual exclusion across all adapter-callout
+        // paths. `disburse` takes owned `e: Env`, so use `&e` for storage()
+        // (matches Vault::stable_assets_inner(&e) below). Additive: reuses the
+        // existing DataKey::Locked bool — layout-safe in-place upgrade().
+        assert!(
+            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
+            "reentrant call"
+        );
+        e.storage().instance().set(&DataKey::Locked, &true);
         // Pre-transfer snapshot: `stable_pre >= amount` prevents the vault from
         // overdrawing its own stable balance (vault overdraft guard).  This does NOT
         // prove `stable_assets >= coverage_required` post-payout — that solvency
@@ -671,6 +687,7 @@ impl VaultTrait for Vault {
         assert!(stable_pre >= amount, "disburse breaches solvency");
         Vault::ensure_liquidity(&e, amount);
         Vault::token_client(&e).transfer(&e.current_contract_address(), &to, &amount);
+        e.storage().instance().set(&DataKey::Locked, &false);
     }
 
     fn collect_premium(e: Env, from: Address, amount: i128) {
@@ -678,9 +695,23 @@ impl VaultTrait for Vault {
         let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
         assert!(amount > 0, "amount must be positive");
+        // Reentrancy guard (re-audit H1, symmetry): collect_premium does ONE
+        // callout — token.transfer pulling premium IN from the immutable
+        // Underlying SAC — with its only effect (PremiumIncome += amount) AFTER
+        // the transfer. The callee is the fixed SAC set at construction, not an
+        // attacker-chosen adapter, so reentrancy risk is materially lower than
+        // disburse. The guard is added anyway for uniform mutual exclusion across
+        // ALL callout paths. Additive (reuses DataKey::Locked); behavior-preserving
+        // (no current caller re-enters).
+        assert!(
+            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
+            "reentrant call"
+        );
+        e.storage().instance().set(&DataKey::Locked, &true);
         Vault::token_client(&e).transfer(&from, e.current_contract_address(), &amount);
         let income = Vault::premium_income(&e) + amount;
         e.storage().instance().set(&DataKey::PremiumIncome, &income);
+        e.storage().instance().set(&DataKey::Locked, &false);
     }
 
     fn stable_assets(e: Env) -> i128 {

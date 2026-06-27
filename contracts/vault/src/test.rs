@@ -1,10 +1,11 @@
 #![cfg(test)]
 use soroban_sdk::testutils::{Address as _, Events as _, Ledger as _};
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
-use soroban_sdk::{token, Address, Env, String};
+use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, String};
 use mock_strategy::{MockStrategy, MockStrategyClient};
 use mock_tesouro::{MockTesouro, MockTesouroClient};
 use mock_policy::{MockPolicy, MockPolicyClient};
+use strategy::Strategy;
 use crate::types::{DataKey, MAX_ENTRY_TTL, REQUEST_TTL_LEDGERS};
 use crate::{Vault, VaultClient};
 
@@ -1078,4 +1079,224 @@ fn process_redemptions_per_iteration_pricing_unchanged() {
     // Both fulfilled and claimable; per-iteration pricing did not stale-snapshot.
     assert!(c.vault.request(&r0).fulfilled);
     assert!(c.vault.request(&r1).fulfilled);
+}
+
+// ───────────────── re-audit H1: disburse re-entrancy guard ─────────────────
+//
+// disburse is the money-OUT path (-> ensure_liquidity -> strategy.divest ->
+// token.transfer). A malicious/buggy adapter reached via ensure_liquidity gets
+// control mid-disburse. The fix adds the SAME Locked mutual-exclusion guard that
+// rebalance / process_redemptions already hold, so disburse no longer leaves
+// Locked == false during its adapter callout — uniform mutual exclusion across
+// every callout path.
+//
+// Note on what these tests can prove: Soroban's host ALSO refuses to re-enter a
+// contract instance already on the call stack (a direct vault -> strategy ->
+// vault re-entry traps at the host with Context/InvalidAction). So for THIS
+// vault — whose only adapter callout (divest) is a direct callee — re-entry is
+// rejected whether the trap comes from the host or from the in-contract Locked
+// guard. The guard is therefore defense-in-depth + uniformity (it would also
+// catch an indirect re-entry the host's direct-frame check misses, and keeps the
+// invariant local/auditable rather than relying on host behavior). These tests
+// assert the OBSERVABLE contract: a re-entrant disburse traps and rolls back
+// fully, and the guard is correctly RELEASED on the happy path so the contract
+// never wedges.
+//
+// The test-only ReentrantStrategy below builds an in-crate VaultClient (it
+// cannot live in the mock-strategy crate — that would be a circular dep, since
+// the vault dev-depends on mock-strategy). When a ReenterTarget is set, its
+// divest re-enters the vault BEFORE transferring.
+
+/// Storage keys for the test-only reentrant strategy double.
+#[contracttype]
+enum ReDataKey {
+    Underlying,
+    Controller,
+    /// When set (the vault address), `divest` re-enters the vault before paying.
+    ReenterTarget,
+}
+
+#[contract]
+pub struct ReentrantStrategy;
+
+#[contractimpl]
+impl ReentrantStrategy {
+    pub fn __constructor(e: &Env, underlying: Address) {
+        e.storage().instance().set(&ReDataKey::Underlying, &underlying);
+    }
+    pub fn set_controller(e: &Env, addr: Address) {
+        e.storage().instance().set(&ReDataKey::Controller, &addr);
+    }
+    /// Arm the re-entrant callback: `divest` will call back into this vault.
+    pub fn set_reenter_target(e: &Env, vault: Address) {
+        e.storage().instance().set(&ReDataKey::ReenterTarget, &vault);
+    }
+}
+
+#[contractimpl]
+impl Strategy for ReentrantStrategy {
+    fn invest(e: Env, _amount: i128) {
+        let controller: Address = e.storage().instance().get(&ReDataKey::Controller).expect("controller not set");
+        controller.require_auth();
+        // Funds already transferred in by the caller; nothing else to record.
+    }
+
+    fn divest(e: Env, amount: i128, to: Address) -> i128 {
+        let controller: Address = e.storage().instance().get(&ReDataKey::Controller).expect("controller not set");
+        controller.require_auth();
+        // RE-ENTRANCY ATTEMPT: before transferring, call back into the vault
+        // EXACTLY ONCE (the target is consumed so the inner rebalance's own
+        // divest does not recurse). This re-entry must be REJECTED — by the
+        // disburse Locked guard and/or the host's direct-frame re-entry check —
+        // so the whole disburse reverts.
+        if let Some(vault) = e.storage().instance().get::<_, Address>(&ReDataKey::ReenterTarget) {
+            e.storage().instance().remove(&ReDataKey::ReenterTarget);
+            VaultClient::new(&e, &vault).rebalance();
+        }
+        let underlying: Address = e.storage().instance().get(&ReDataKey::Underlying).unwrap();
+        let token = token::TokenClient::new(&e, &underlying);
+        let held = token.balance(&e.current_contract_address());
+        let out = if amount < held { amount } else { held };
+        token.transfer(&e.current_contract_address(), &to, &out);
+        out
+    }
+
+    fn balance(e: Env) -> i128 {
+        let underlying: Address = e.storage().instance().get(&ReDataKey::Underlying).unwrap();
+        token::TokenClient::new(&e, &underlying).balance(&e.current_contract_address())
+    }
+
+    fn underlying(e: Env) -> Address {
+        e.storage().instance().get(&ReDataKey::Underlying).unwrap()
+    }
+}
+
+/// Wire a ReentrantStrategy into the vault (controller = vault) and return its client.
+fn add_reentrant(c: &Ctx, weight_bps: u32) -> ReentrantStrategyClient<'static> {
+    let id = c.e.register(ReentrantStrategy, (c.underlying.clone(),));
+    ReentrantStrategyClient::new(&c.e, &id).set_controller(&c.vault_id);
+    c.vault.add_strategy(&id, &weight_bps, &false);
+    ReentrantStrategyClient::new(&c.e, &id)
+}
+
+/// A re-entrant disburse must be rejected and roll back fully. With ALL idle
+/// deployed into a reentrant strategy, disburse is FORCED to divest; the strategy
+/// re-enters the vault (rebalance) mid-payout. That re-entry traps (disburse holds
+/// the Locked guard, and the host also blocks the direct re-entry) so the whole
+/// disburse reverts and nothing is paid out.
+#[test]
+fn disburse_traps_on_reentrant_divest() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Deploy ALL idle into the reentrant strategy so disburse must divest.
+    let s = add_reentrant(&c, 10_000);
+    c.vault.rebalance();
+    assert_eq!(s.balance(), 1_000);
+    assert_eq!(c.vault.available_held(), 0);
+
+    // Arm the re-entrant callback.
+    s.set_reenter_target(&c.vault_id);
+
+    // disburse -> ensure_liquidity -> strategy.divest -> rebalance() (re-entry).
+    // The inner rebalance is rejected (disburse Locked guard + host re-entry
+    // check), reverting the whole disburse.
+    let res = c.policy.try_call_disburse(&landlord, &500);
+    assert!(res.is_err(), "re-entrant disburse must trap");
+    // Whole tx rolled back: nothing paid out.
+    assert_eq!(c.token.balance(&landlord), 0);
+}
+
+/// GREEN regression: same wiring but the reenter target is UNSET (plain divest).
+/// disburse via the policy must still pay out exactly `amount`, the Locked flag
+/// must be CLEARED afterward (a subsequent normal rebalance must NOT trap), and
+/// total_assets reflects the payout. Guards that the added lock is RELEASED on
+/// the happy path and does not wedge the contract.
+#[test]
+fn disburse_succeeds_without_reentry() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let s = add_reentrant(&c, 10_000);
+    c.vault.rebalance(); // deploy all idle into the strategy
+    assert_eq!(s.balance(), 1_000);
+    assert_eq!(c.vault.available_held(), 0);
+
+    // No reenter target armed → plain divest path.
+    c.policy.call_disburse(&landlord, &400);
+    assert_eq!(c.token.balance(&landlord), 400);
+    assert_eq!(c.vault.total_assets(), 600);
+
+    // Lock cleared: read DataKey::Locked from instance storage → false / unset.
+    let locked = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false)
+    });
+    assert!(!locked, "Locked must be cleared after a successful disburse");
+
+    // And the contract is not wedged: a subsequent normal rebalance must NOT trap.
+    c.vault.rebalance();
+}
+
+/// collect_premium guard (symmetry): the callout is the immutable Underlying SAC
+/// pulling funds IN with the effect applied after — not attacker-reachable, so a
+/// true re-entry is not constructible. Assert release-correctness: collect_premium
+/// still succeeds and leaves Locked == false.
+#[test]
+fn collect_premium_releases_lock() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    c.policy.call_collect(&agency, &50);
+    assert_eq!(c.vault.premium_income(), 50);
+
+    let locked = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false)
+    });
+    assert!(!locked, "Locked must be cleared after collect_premium");
+}
+
+/// Proves the new in-contract Locked assert is load-bearing INDEPENDENT of the
+/// host's direct-frame re-entry check: with Locked pre-set to true (simulating a
+/// callout path mid-execution), disburse and collect_premium must trap on their
+/// own guard. WITHOUT the added assert in disburse, the call would proceed past a
+/// stale lock — so this is the genuine RED for the fix.
+#[test]
+fn disburse_and_collect_assert_locked_flag() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Force the mutual-exclusion flag on directly in instance storage.
+    c.e.as_contract(&c.vault_id, || {
+        c.e.storage().instance().set(&DataKey::Locked, &true);
+    });
+
+    // Both money-callout paths must now trap on the Locked assert.
+    assert!(c.policy.try_call_disburse(&landlord, &100).is_err(), "disburse must trap when Locked");
+    assert!(c.policy.try_call_collect(&agency, &100).is_err(), "collect_premium must trap when Locked");
+
+    // Nothing moved.
+    assert_eq!(c.token.balance(&landlord), 0);
+    assert_eq!(c.vault.premium_income(), 0);
+
+    // Clearing the flag restores normal operation (guard, not a permanent wedge).
+    c.e.as_contract(&c.vault_id, || {
+        c.e.storage().instance().set(&DataKey::Locked, &false);
+    });
+    c.policy.call_disburse(&landlord, &100);
+    assert_eq!(c.token.balance(&landlord), 100);
 }
