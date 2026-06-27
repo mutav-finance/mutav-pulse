@@ -17,14 +17,14 @@
  * When their sub-vaults deploy, fill in `contracts` and flip `status` to "live".
  */
 
-import { config } from "./config";
+import { config, mbrlConfigured } from "./config";
 import type { ModelAssumptions } from "./economics";
 
 export type ReserveStatus = "live" | "planned";
 
 export interface Reserve {
   id: string; // stable key, e.g. "usdc"
-  currency: string; // display ticker, e.g. "MUSD" | "MBRL" | "MARS"
+  currency: string; // display ticker, e.g. "MUSD" | "MTESOURO" | "MBRL" | "MARS"
   name: string; // "Mutav USD Reserve"
   /** What the reserve's float is held in (underlying asset). */
   underlying: string;
@@ -93,9 +93,14 @@ export const RESERVES: Reserve[] = [
     },
   },
   {
-    id: "brl",
-    currency: "MBRL",
-    name: "Mutav BRL Reserve",
+    // Legacy reserve, renamed MBRL → MTESOURO (spec §2): the underlying is
+    // TESOURO (a yield-bearing treasury token ≈ R$1.22), so the name is now
+    // honest about what backs it. Metadata-only rename — the on-chain vault
+    // address, balances, and seeded state are unchanged. The BRL-native reserve
+    // below (currency "MBRL", underlying cBRL) is the economically-correct shape.
+    id: "tesouro",
+    currency: "MTESOURO",
+    name: "Mutav TESOURO Reserve",
     underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
     depositToken: "TESOURO",
     fiatSymbol: "R$",
@@ -112,6 +117,38 @@ export const RESERVES: Reserve[] = [
       policy: "CCFG7UYGVAC4IXU2NNHKIPUUN4CUQKLLXIRAGMXCVFK2WP6TFXNZRXRR",
       registry: "CBMNQIOSAM5IDXFD4Y3N6U7XS57OMNBLPRKBMJLBBLMFNEWN7L3UQ4AA",
     },
+  },
+  {
+    // BRL-native reserve (spec §6): the underlying is cBRL (a BRL stablecoin),
+    // with TESOURO held as a yield strategy marked back to BRL — so coverage,
+    // NAV, premiums and disburse are all in one BRL unit (1 cBRL ≈ R$1, hence
+    // unitPriceFiat 1). Contracts are env-driven (NEXT_PUBLIC_MBRL_*), NOT
+    // hardcoded, following the MUSD pattern. Until that reserve is deployed the
+    // env vars are blank → `mbrlConfigured` is false → this entry degrades to a
+    // non-live "planned" reserve (no address/contracts) so the build and pages
+    // never break on a not-yet-deployed reserve.
+    id: "brl",
+    currency: "MBRL",
+    name: "Mutav BRL Reserve",
+    underlying: "cBRL · BRL stablecoin (TESOURO yield strategy)",
+    depositToken: "cBRL",
+    fiatSymbol: "R$",
+    unitPriceFiat: 1, // cBRL is fiat-pegged ≈ R$1
+    market: "Brazil · testnet PoC",
+    status: mbrlConfigured ? "live" : "planned",
+    tag: mbrlConfigured ? "Testnet" : "Soon",
+    // Selic/CDI ~14% (via TESOURO strategy); Brazilian (South) rental delinquency.
+    assumptions: { underlyingYield: 0.14, delinquency: 0.0246 },
+    ...(mbrlConfigured
+      ? {
+          address: config.contracts.mbrlVault,
+          contracts: {
+            vault: config.contracts.mbrlVault,
+            policy: config.contracts.mbrlPolicy,
+            registry: config.contracts.mbrlRegistry,
+          },
+        }
+      : {}),
   },
   {
     id: "ars",
