@@ -59,6 +59,9 @@ pub fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
 /// `balance()` is BRL-denominated and counts toward the solvency floor.
 pub fn add_tesouro(c: &Ctx, weight_bps: u32) -> MockTesouroClient<'static> {
     let id = c.e.register(MockTesouro, (c.admin.clone(), c.underlying.clone()));
+    // Wire the controller to the reserve vault so vault-originated invest/divest
+    // authorize via the vault's self-auth subtree. (audit H1/H4 gate)
+    MockTesouroClient::new(&c.e, &id).set_controller(&c.vault_id);
     c.vault.add_strategy(&id, &weight_bps, &false);
     MockTesouroClient::new(&c.e, &id)
 }

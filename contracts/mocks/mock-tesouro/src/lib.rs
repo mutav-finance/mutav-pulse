@@ -20,6 +20,10 @@ enum DataKey {
     Admin,
     Value,   // BRL value of the position (underlying terms)
     ExitBps, // forced-exit spread, basis points
+    // ADDITIVE (audit H1/H4): the controlling reserve/vault authorized to call
+    // invest/divest. Appended LAST to preserve layout. Wiring-only setter so the
+    // test suite exercises the auth gate — mirrors mock-strategy / adapter-defindex.
+    Controller,
 }
 
 #[contract]
@@ -63,16 +67,29 @@ impl MockTesouro {
         assert!(bps <= 10_000);
         e.storage().instance().set(&DataKey::ExitBps, &bps);
     }
+
+    /// Wiring-only setter: the controlling vault authorized to call invest/divest.
+    /// No admin gate (test double) — mirrors mock-strategy / adapter-defindex.
+    pub fn set_controller(e: &Env, addr: Address) {
+        e.storage().instance().set(&DataKey::Controller, &addr);
+    }
+    fn controller(e: &Env) -> Address {
+        e.storage().instance().get(&DataKey::Controller).expect("controller not set")
+    }
 }
 
 #[contractimpl]
 impl Strategy for MockTesouro {
     fn invest(e: Env, amount: i128) {
+        // Authorization gate (audit H1/H4): only the controlling vault.
+        Self::controller(&e).require_auth();
         // Funds already transferred in by the caller; mark the position up.
         Self::mark_up(&e, amount);
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {
+        // Authorization gate (audit H1/H4): only the controlling vault.
+        Self::controller(&e).require_auth();
         let value = Self::value(&e);
         let amt = if amount < value { amount } else { value };
         let out = amt - amt * (Self::exit_bps(&e) as i128) / 10_000;

@@ -23,6 +23,7 @@ fn invest_then_accrue_raise_balance() {
 
     let id = e.register(MockTesouro, (admin.clone(), underlying.clone()));
     let strat = MockTesouroClient::new(&e, &id);
+    strat.set_controller(&admin); // controller gate (audit H1/H4); admin stands in for the vault
     assert_eq!(strat.underlying(), underlying);
     assert_eq!(strat.balance(), 0);
 
@@ -45,6 +46,7 @@ fn divest_applies_exit_haircut_and_returns_net() {
 
     let id = e.register(MockTesouro, (admin.clone(), underlying.clone()));
     let strat = MockTesouroClient::new(&e, &id);
+    strat.set_controller(&admin); // controller gate (audit H1/H4)
 
     // Fund the position with 1_000 of cBRL value.
     token_admin.mint(&id, &1_000);
@@ -74,4 +76,32 @@ fn set_exit_bps_rejects_above_100pct() {
 
     assert!(strat.try_set_exit_bps(&10_001).is_err());
     assert!(strat.try_set_exit_bps(&10_000).is_ok()); // boundary ok
+}
+
+#[test]
+fn invest_traps_for_non_controller_caller() {
+    // audit H1/H4: invest must require the controller's auth.
+    let e = Env::default();
+    let (admin, underlying, _token, _token_admin) = setup(&e);
+    let id = e.register(MockTesouro, (admin.clone(), underlying.clone()));
+    let strat = MockTesouroClient::new(&e, &id);
+    let controller = Address::generate(&e);
+    strat.set_controller(&controller); // wiring-only, ungated
+    e.set_auths(&[]); // no auth provided → controller.require_auth() fails
+    assert!(strat.try_invest(&100).is_err());
+}
+
+#[test]
+fn divest_traps_for_non_controller_caller() {
+    // audit H1 (CRITICAL): divest must require the controller's auth — without it
+    // any caller could drain the position to an arbitrary `to`.
+    let e = Env::default();
+    let (admin, underlying, _token, _token_admin) = setup(&e);
+    let id = e.register(MockTesouro, (admin.clone(), underlying.clone()));
+    let strat = MockTesouroClient::new(&e, &id);
+    let controller = Address::generate(&e);
+    let attacker = Address::generate(&e);
+    strat.set_controller(&controller);
+    e.set_auths(&[]);
+    assert!(strat.try_divest(&100, &attacker).is_err());
 }
