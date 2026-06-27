@@ -6,8 +6,8 @@ use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Roun
 use strategy::StrategyClient;
 use interfaces::{PolicyClient, Vault as VaultTrait};
 
-mod types;
-use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, NAV_SCALE, VIRTUAL_OFFSET};
+pub mod types;
+use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, MAX_ENTRY_TTL, NAV_SCALE, REQUEST_TTL_LEDGERS, VIRTUAL_OFFSET};
 
 mod test;
 
@@ -145,6 +145,15 @@ impl Vault {
 
     fn reserved_for_claims(e: &Env) -> i128 {
         e.storage().instance().get(&DataKey::ReservedForClaims).unwrap_or(0)
+    }
+
+    /// H6: keep the instance entry alive (Strategies / ReservedForClaims /
+    /// PremiumIncome / Policy / NextRequestId / PendingRequests live here). Bumped
+    /// on hot/lifecycle write paths so it never archives.
+    fn bump_instance(e: &Env) {
+        e.storage()
+            .instance()
+            .extend_ttl(MAX_ENTRY_TTL / 2, MAX_ENTRY_TTL);
     }
     fn token_client(e: &Env) -> token::TokenClient<'_> {
         token::TokenClient::new(e, &Self::query_asset(e))
@@ -333,6 +342,7 @@ impl Vault {
     /// shares, `operator` authorizes (allowance-delegated when `operator != from`).
     pub fn deposit(e: &Env, assets: i128, receiver: Address, from: Address, operator: Address) -> i128 {
         operator.require_auth();
+        Self::bump_instance(e);
         assert!(assets > 0, "amount must be positive");
         assert!(assets <= Self::max_deposit(e, receiver.clone()), "exceeds max deposit");
         // Shares priced off pre-transfer NAV (ERC-4626 semantics).
@@ -348,6 +358,7 @@ impl Vault {
     /// (ceil-rounded) assets from `from`. Returns assets consumed.
     pub fn mint(e: &Env, shares: i128, receiver: Address, from: Address, operator: Address) -> i128 {
         operator.require_auth();
+        Self::bump_instance(e);
         assert!(shares > 0, "shares must be positive");
         assert!(shares <= Self::max_mint(e, receiver.clone()), "exceeds max mint");
         let assets = Self::preview_mint(e, shares);
@@ -375,7 +386,17 @@ impl Vault {
     }
 
     pub fn request(e: &Env, id: u32) -> RedeemRequest {
-        e.storage().persistent().get(&DataKey::Request(id)).unwrap()
+        // H6 analog: the lifecycle read behind cancel_redeem / process_redemptions
+        // / claim and the public getter. Re-extend on the loaded entry (only on
+        // Some — a missing id keeps the prior unwrap panic semantics, never a
+        // write) so a request queued many ledgers between request_redeem and
+        // process_redemptions does not archive. (Side effect: turns this getter
+        // into a read-WRITE in simulation; flagged to the SDK/frontend team.)
+        let req: RedeemRequest = e.storage().persistent().get(&DataKey::Request(id)).unwrap();
+        e.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
+        req
     }
 
     pub fn pending_requests(e: &Env) -> Vec<u32> {
@@ -384,6 +405,7 @@ impl Vault {
 
     pub fn request_redeem(e: &Env, owner: Address, shares: i128) -> u32 {
         owner.require_auth();
+        Self::bump_instance(e);
         assert!(shares > 0, "shares must be positive");
         // Escrow the shares into the contract (internal move; owner already authed).
         Base::update(e, Some(&owner), Some(&e.current_contract_address()), shares);
@@ -402,6 +424,11 @@ impl Vault {
             claimable: 0,
         };
         e.storage().persistent().set(&DataKey::Request(id), &req);
+        // H6 analog: size the request obligation to the network max — the queue
+        // wait between request_redeem and process_redemptions/claim is unbounded.
+        e.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
         let mut pending = Self::pending_requests(e);
         pending.push_back(id);
         e.storage().instance().set(&DataKey::PendingRequests, &pending);
@@ -437,6 +464,7 @@ impl Vault {
             "reentrant call"
         );
         e.storage().instance().set(&DataKey::Locked, &true);
+        Self::bump_instance(e);
 
         let pending = Self::pending_requests(e);
         let mut still_pending = Vec::<u32>::new(e);
@@ -474,6 +502,11 @@ impl Vault {
                 req.fulfilled = true;
                 req.claimable = claimable;
                 e.storage().persistent().set(&DataKey::Request(id), &req);
+                // H6 analog: a fulfilled-but-unclaimed request must survive the
+                // gap until claim — re-extend so it does not archive while waiting.
+                e.storage()
+                    .persistent()
+                    .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
             } else {
                 still_pending.push_back(id);
             }
@@ -483,6 +516,11 @@ impl Vault {
     }
 
     pub fn claim(e: &Env, id: u32) {
+        // Terminal write on a dying request: do NOT add a second explicit Request
+        // extend (Self::request already bumps it once on read — acceptable for an
+        // entry about to be consumed). Still bump the instance entry, which this
+        // mutates via ReservedForClaims.
+        Self::bump_instance(e);
         let mut req = Self::request(e, id);
         req.owner.require_auth();
         assert!(req.fulfilled, "not yet fulfilled");

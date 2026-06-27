@@ -1,8 +1,10 @@
 #![cfg(test)]
-use soroban_sdk::testutils::{Address as _, Events as _};
+use soroban_sdk::testutils::{Address as _, Events as _, Ledger as _};
+use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::{token, Address, Env, String};
 use mock_strategy::{MockStrategy, MockStrategyClient};
 use mock_policy::{MockPolicy, MockPolicyClient};
+use crate::types::{DataKey, MAX_ENTRY_TTL, REQUEST_TTL_LEDGERS};
 use crate::{Vault, VaultClient};
 
 pub struct Ctx {
@@ -595,6 +597,92 @@ fn sep_deposit_operator_delegation_via_allowance() {
     assert!(shares > 0);
     assert_eq!(c.vault.balance(&receiver), shares); // receiver holds the shares
     assert_eq!(c.token.balance(&owner), 0);         // assets pulled from owner
+}
+
+// ───────────────────────── H6 analog: RedeemRequest TTL hygiene ─────────────────────────
+
+/// `request_redeem` extends the persistent Request entry's TTL to the network max
+/// (an async request->claim obligation living between txs with unbounded queue
+/// wait). RED before the fix: it sits at only the default persistent min.
+#[test]
+fn request_redeem_extends_request_ttl() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let rid = c.vault.request_redeem(&alice, &400);
+
+    let ttl = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().persistent().get_ttl(&DataKey::Request(rid))
+    });
+    assert!(ttl >= REQUEST_TTL_LEDGERS - 10, "request ttl not extended: {}", ttl);
+    assert!(ttl <= MAX_ENTRY_TTL);
+}
+
+/// A request queued many ledgers before processing must not archive: the
+/// lifecycle read (`request`, behind process_redemptions / claim / cancel) and
+/// process_redemptions re-extend the Request TTL. RED before the fix.
+#[test]
+fn request_read_reextends_after_long_queue_wait() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let rid = c.vault.request_redeem(&alice, &400);
+
+    // Advance ledger so the Request TTL decays below the target.
+    c.e.ledger().with_mut(|l| l.sequence_number += 1_000_000);
+    let decayed = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().persistent().get_ttl(&DataKey::Request(rid))
+    });
+    assert!(decayed < REQUEST_TTL_LEDGERS, "ttl should have decayed");
+
+    // Lifecycle read re-extends.
+    let _ = c.vault.request(&rid);
+    let bumped = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().persistent().get_ttl(&DataKey::Request(rid))
+    });
+    assert!(bumped >= REQUEST_TTL_LEDGERS - 10, "read did not re-extend: {}", bumped);
+}
+
+/// The gap between fulfill and claim is covered: a fulfilled-but-unclaimed
+/// request survives a long ledger advance and remains claimable.
+#[test]
+fn process_redemptions_keeps_fulfilled_request_alive() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    c.policy.set_coverage(&0); // ample free capital
+
+    let rid = c.vault.request_redeem(&alice, &1_000);
+    c.vault.process_redemptions(&1);
+    assert!(c.vault.request(&rid).fulfilled);
+
+    // Advance the ledger between fulfill and claim.
+    c.e.ledger().with_mut(|l| l.sequence_number += 1_000_000);
+    let ttl = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().persistent().get_ttl(&DataKey::Request(rid))
+    });
+    // Still high (re-extended on the fulfilled-branch set).
+    assert!(ttl >= REQUEST_TTL_LEDGERS - 1_000_010, "fulfilled request ttl too low: {}", ttl);
+
+    // Claim still succeeds.
+    c.vault.claim(&rid);
+    assert_eq!(c.token.balance(&alice), 1_000);
+}
+
+/// The hot deposit path bumps the instance entry (Strategies / ReservedForClaims /
+/// PremiumIncome / Policy / NextRequestId / PendingRequests) toward the max.
+#[test]
+fn deposit_bumps_instance_ttl() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let ttl = c.e.as_contract(&c.vault_id, || c.e.storage().instance().get_ttl());
+    assert!(ttl >= MAX_ENTRY_TTL / 2 - 10, "instance ttl not bumped: {}", ttl);
 }
 
 #[test]
