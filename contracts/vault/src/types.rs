@@ -51,7 +51,7 @@ pub enum DataKey {
     Underlying,
     Policy,
     ReservedForClaims,
-    PremiumIncome,
+    FeeIncome,
     Strategies,
     NextRequestId,
     PendingRequests,
