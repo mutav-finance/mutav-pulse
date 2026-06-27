@@ -51,9 +51,12 @@ function Flag({ country }: { country: string }) {
 export function CurrencyLogo({
   currency,
   width = 24,
+  muted = false,
 }: {
   currency: string;
   width?: number;
+  /** Desaturate the flag to read as "locked / not yet available" (planned reserves). */
+  muted?: boolean;
 }) {
   const country = CURRENCY_COUNTRY[currency];
   const height = Math.round((width * 16) / 24);
@@ -67,6 +70,9 @@ export function CurrencyLogo({
         border: "1px solid var(--color-border)",
         flexShrink: 0,
         overflow: "hidden",
+        // Planned reserves: grayscale flag so it reads as blocked/not-yet-live.
+        filter: muted ? "grayscale(1)" : undefined,
+        opacity: muted ? 0.65 : 1,
       }}
     >
       <svg width="100%" height="100%" viewBox="0 0 24 16" preserveAspectRatio="none">

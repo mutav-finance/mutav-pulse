@@ -20,6 +20,8 @@
 
 import {
   ReactFlow,
+  Background,
+  BackgroundVariant,
   Handle,
   Position,
   BaseEdge,
@@ -36,6 +38,11 @@ import "@xyflow/react/dist/style.css";
 const STROKE = "var(--color-text-3)";
 const ACCENT = "var(--color-accent)";
 const ARROW_COLOR = "#6b6b6b";
+// Blueprint grid behind the diagram. Neutral cool gray (same as the node hairlines)
+// so it never reads warm; the backdrop effect comes from the 30% opacity on the
+// Background below, not from the colour. Hardcoded like ARROW_COLOR: Background paints
+// an SVG attribute, where CSS vars don't resolve. Investidor (dark) front.
+const GRID_COLOR = "#2A2D33";
 
 const HANDLE_STYLE: React.CSSProperties = {
   opacity: 0,
@@ -92,7 +99,8 @@ function ReserveNode({ data }: NodeProps<Node<{ w: number; h: number }>>) {
         width: data.w,
         height: data.h,
         backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
+        // RESERVE is the protocol's core — scarce amber outline marks it as the hub.
+        border: `1px solid ${ACCENT}`,
         display: "flex",
         flexDirection: "column",
       }}
@@ -134,10 +142,10 @@ function ReserveNode({ data }: NodeProps<Node<{ w: number; h: number }>>) {
       </div>
 
       {/* Handles */}
-      <Handle id="dep" type="target" position={Position.Left} style={sideStyle(Position.Left, "26%")} />
-      <Handle id="red" type="source" position={Position.Left} style={sideStyle(Position.Left, "62%")} />
-      <Handle id="backs" type="source" position={Position.Right} style={sideStyle(Position.Right, "26%")} />
-      <Handle id="prem" type="target" position={Position.Right} style={sideStyle(Position.Right, "62%")} />
+      <Handle id="dep" type="target" position={Position.Left} style={sideStyle(Position.Left, "42%")} />
+      <Handle id="red" type="source" position={Position.Left} style={sideStyle(Position.Left, "58%")} />
+      <Handle id="backs" type="source" position={Position.Right} style={sideStyle(Position.Right, "42%")} />
+      <Handle id="prem" type="target" position={Position.Right} style={sideStyle(Position.Right, "58%")} />
       <Handle id="cover" type="source" position={Position.Bottom} style={sideStyle(Position.Bottom, "50%")} />
     </div>
   );
@@ -192,15 +200,15 @@ const NODES: Node[] = [
   {
     id: "investor",
     type: "leaf",
-    position: { x: 0, y: 137 },
+    position: { x: 70, y: 137 },
     data: {
       title: "INVESTOR",
       sub: "reserve shares · SEP-0041",
       w: 152,
       h: 66,
       handles: [
-        { id: "dep", type: "source", pos: Position.Right, off: "34%" },
-        { id: "red", type: "target", pos: Position.Right, off: "68%" },
+        { id: "dep", type: "source", pos: Position.Right, off: "29%" },
+        { id: "red", type: "target", pos: Position.Right, off: "71%" },
       ],
     },
   },
@@ -208,26 +216,26 @@ const NODES: Node[] = [
   {
     id: "guarantees",
     type: "leaf",
-    position: { x: 760, y: 137 },
+    position: { x: 806, y: 137 },
     data: {
       title: "GUARANTEES",
-      sub: "fianças · policy",
+      sub: "tenant fee · policy",
       w: 156,
       h: 66,
       handles: [
-        { id: "backs", type: "target", pos: Position.Left, off: "34%" },
-        { id: "prem", type: "source", pos: Position.Left, off: "68%" },
+        { id: "backs", type: "target", pos: Position.Left, off: "29%" },
+        { id: "prem", type: "source", pos: Position.Left, off: "71%" },
       ],
     },
   },
   {
     id: "landlord",
     type: "leaf",
-    position: { x: 436, y: 330 },
+    position: { x: 426, y: 330 },
     data: {
-      title: "LANDLORD",
+      title: "PARTNER AGENCY",
       sub: "default payout",
-      w: 160,
+      w: 180,
       h: 64,
       handles: [{ id: "cover", type: "target", pos: Position.Top, off: "50%" }],
     },
@@ -285,7 +293,10 @@ export function ProtocolDiagram() {
           zoomOnDoubleClick={false}
           preventScrolling={false}
           style={{ backgroundColor: "var(--color-canvas)" }}
-        />
+        >
+          {/* Blueprint grid — sits behind the nodes/edges, inside the bordered box. 30% opacity → backdrop. */}
+          <Background variant={BackgroundVariant.Lines} gap={28} lineWidth={1} color={GRID_COLOR} style={{ opacity: 0.3 }} />
+        </ReactFlow>
       </div>
 
       {/* ── Gate legend ── */}

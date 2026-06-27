@@ -31,7 +31,8 @@ export function ReserveCard({
     <div
       style={{
         backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
+        // Live reserve gets the scarce amber outline; planned stay neutral.
+        border: `1px solid ${live ? "var(--color-accent)" : "var(--color-border)"}`,
         padding: "18px 20px",
         display: "flex",
         flexDirection: "column",
@@ -42,13 +43,31 @@ export function ReserveCard({
       {/* Header: fiat logo + ticker + status badge */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}>
-          <CurrencyLogo currency={reserve.currency} width={26} />
+          <CurrencyLogo currency={reserve.currency} width={26} muted={!live} />
           <span
             className="font-display"
             style={{ fontSize: "18px", color: "var(--color-text)", letterSpacing: "-0.01em" }}
           >
             {reserve.currency}
           </span>
+          {/* Lock — planned reserves are not yet available */}
+          {!live && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--color-text-3)"
+              strokeWidth="2"
+              strokeLinecap="square"
+              aria-label="Not yet available"
+              role="img"
+              style={{ flexShrink: 0 }}
+            >
+              <rect x="5" y="11" width="14" height="10" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+          )}
         </span>
         <span
           className="font-mono"
