@@ -8,6 +8,7 @@ members = [
   "contracts/policy",
   "contracts/strategy",
   "contracts/adapter-defindex",
+  "contracts/solvency-attestor",
   # Test doubles / dev-only — testnet only, never mainnet
   "contracts/mocks/mock-strategy",
   "contracts/mocks/mock-policy",
@@ -24,6 +25,9 @@ version = "0.1.0"
 
 [workspace.dependencies]
 soroban-sdk = "26.1.0"
+# BN254-native Poseidon (circomlib-compatible) for the registry's guarantees_root
+# Merkle accumulator — the "list seal" read by the ZK solvency attestor.
+soroban-poseidon = { git = "https://github.com/stellar/rs-soroban-poseidon", rev = "b4bf706" }
 stellar-tokens = "0.7.2"
 # Audited fixed-point math (same release train as stellar-tokens). Used by the
 # vault's SEP-0056 convert/preview to reuse OZ's overflow-checked rounding.

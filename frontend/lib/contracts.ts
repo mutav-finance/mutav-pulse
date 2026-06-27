@@ -1,7 +1,10 @@
 import { Client as VaultClient, type RedeemRequest, type StrategyAlloc } from "vault";
 import { Client as PolicyClient, type Guarantee } from "policy";
 import { Client as RegistryClient } from "registry";
+import { Client as AttestorClient, type Attestation } from "attestor";
 import { config } from "./config";
+
+export type { Attestation } from "attestor";
 
 export interface ReserveContracts {
   vault: string;
@@ -122,3 +125,22 @@ export const reads: Reads = reserveReads({
   policy: config.contracts.policy,
   registry: config.contracts.registry,
 });
+
+function attestorClient(): AttestorClient {
+  return new AttestorClient({
+    rpcUrl: config.rpcUrl,
+    contractId: config.contracts.attestor,
+    networkPassphrase: config.networkPassphrase,
+  });
+}
+
+/** ZK solvency seal: the last attestation recorded on-chain (null if there never was
+ *  one, or the attestor is not configured in this env). Global — the attestor internally
+ *  cross-checks the primary reserve's registry + vault, so it is NOT per-reserve.
+ *  `solvent` is only true for coverage >= 100% (the MIN_RATIO_BPS floor in the attestor);
+ *  freshness comes from `ts`/`ledger`. Public read, no wallet. */
+export async function solvencyAttestation(): Promise<Attestation | null> {
+  if (!config.contracts.attestor) return null;
+  const tx = await attestorClient().last_attestation();
+  return tx.result ?? null;
+}

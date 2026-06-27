@@ -1,0 +1,10 @@
+{
+  "name": "mutav-pulse-circuits",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Circuitos ZK do selo de solvência (peça B em diante).",
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7"
+  }
+}

@@ -1,16 +1,21 @@
 [package]
-name = "registry"
+name = "solvency-attestor"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
+publish = false
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["lib", "cdylib"]
+doctest = false
 
 [dependencies]
-soroban-sdk = { workspace = true }
-soroban-poseidon = { workspace = true }
+soroban-sdk = { workspace = true, features = ["alloc"] }
 interfaces = { path = "../interfaces" }
+
+[build-dependencies]
+serde_json = "1"
+num-bigint = "0.4"
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }

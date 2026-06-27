@@ -57,6 +57,9 @@ export const config = {
     // Testnet-only cBRL faucet (the BRL-native reserve's demo faucet). Empty
     // until deployed (bootstrap.sh BRL_NATIVE path). Mirrors `faucet` for USDC.
     cbrlFaucet: process.env.NEXT_PUBLIC_CBRL_FAUCET_ID ?? "",
+    // ZK solvency attestor — read last_attestation for the ZkSolvencyBadge. OPTIONAL:
+    // empty until deployed; the badge/read degrade gracefully (no crash) when blank.
+    attestor: process.env.NEXT_PUBLIC_ATTESTOR_ID ?? "",
   },
   // Classic asset behind the USDC SAC — needed to build the change_trust op and
   // to read the trustline/balance from Horizon.

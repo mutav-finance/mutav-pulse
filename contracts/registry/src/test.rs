@@ -502,3 +502,119 @@ fn upgrade_refuses_on_version_mismatch() {
         _ => panic!("expected VersionMismatch on stale schema version"),
     }
 }
+
+/// ZK piece B — the Poseidon-Merkle "list seal" (`guarantees_root`). Self-contained:
+/// re-implements the fold independently (depth taken from `crate::TREE_DEPTH`, so it
+/// can never drift from the contract) to pin leaf + order + depth against the on-chain
+/// root. The circomlibjs cross-check tests (which embed a depth-specific constant)
+/// live with the circuit artifacts, regenerated whenever TREE_DEPTH changes.
+mod zk_merkle {
+    use super::g;
+    use crate::{Registry, RegistryClient, TREE_DEPTH};
+    use interfaces::Guarantee;
+    use soroban_poseidon::poseidon_hash;
+    use soroban_sdk::crypto::bn254::Bn254Fr;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{vec, Address, Bytes, BytesN, Env, Vec, U256};
+
+    fn hash2(e: &Env, a: U256, b: U256) -> U256 {
+        poseidon_hash::<3, Bn254Fr>(e, &vec![e, a, b])
+    }
+
+    fn leaf(e: &Env, g: &Guarantee) -> U256 {
+        let ob = g.monthly_amount * ((g.months_covered - g.months_used) as i128);
+        hash2(e, U256::from_u32(e, g.id), U256::from_u128(e, ob as u128))
+    }
+
+    /// Direct reimplementation of the fold (same structure), to pin leaf + order + depth.
+    fn fold_root(e: &Env, leaves: Vec<U256>) -> BytesN<32> {
+        let mut level = leaves;
+        let mut zero = U256::from_u32(e, 0);
+        let mut d = 0u32;
+        while d < TREE_DEPTH {
+            let mut next: Vec<U256> = Vec::new(e);
+            let len = level.len();
+            let mut j = 0u32;
+            while j < len {
+                let left = level.get(j).unwrap();
+                let right = if j + 1 < len { level.get(j + 1).unwrap() } else { zero.clone() };
+                next.push_back(hash2(e, left, right));
+                j += 2;
+            }
+            if next.len() == 0 {
+                next.push_back(hash2(e, zero.clone(), zero.clone()));
+            }
+            level = next;
+            zero = hash2(e, zero.clone(), zero.clone());
+            d += 1;
+        }
+        let v = level.get(0).unwrap();
+        let b: Bytes = v.to_be_bytes();
+        let mut arr = [0u8; 32];
+        let mut i = 0u32;
+        while i < 32 {
+            arr[i as usize] = b.get(i).unwrap();
+            i += 1;
+        }
+        BytesN::from_array(e, &arr)
+    }
+
+    #[test]
+    fn root_is_pure_function_of_active_set() {
+        let e = Env::default();
+        e.mock_all_auths_allowing_non_root_auth();
+        let admin = Address::generate(&e);
+        let policy = Address::generate(&e);
+        let landlord = Address::generate(&e);
+
+        let id = e.register(Registry, (admin.clone(),));
+        let r = RegistryClient::new(&e, &id);
+        r.set_writer(&policy);
+
+        let empty = r.guarantees_root(); // empty tree (deterministic)
+        assert_eq!(r.guarantees_root(), empty, "empty root must be deterministic");
+
+        let id0 = r.next_id();
+        let id1 = r.next_id();
+
+        r.put(&g(&e, id0, &landlord, true));
+        let r1 = r.guarantees_root();
+        assert_ne!(r1, empty, "adding a guarantee must change the root");
+
+        r.put(&g(&e, id1, &landlord, true));
+        let r2 = r.guarantees_root();
+        assert_ne!(r2, r1, "second guarantee must change the root");
+
+        // Remove id1 -> returns exactly to the root of {id0}.
+        r.put(&g(&e, id1, &landlord, false));
+        assert_eq!(r.guarantees_root(), r1, "removing must restore the previous root");
+
+        // Remove id0 -> returns to the empty root.
+        r.put(&g(&e, id0, &landlord, false));
+        assert_eq!(r.guarantees_root(), empty, "emptying must restore the empty root");
+    }
+
+    #[test]
+    fn root_matches_direct_fold() {
+        let e = Env::default();
+        e.mock_all_auths_allowing_non_root_auth();
+        let admin = Address::generate(&e);
+        let policy = Address::generate(&e);
+        let landlord = Address::generate(&e);
+
+        let id = e.register(Registry, (admin.clone(),));
+        let r = RegistryClient::new(&e, &id);
+        r.set_writer(&policy);
+
+        let id0 = r.next_id();
+        let id1 = r.next_id();
+        let g0 = g(&e, id0, &landlord, true);
+        let g1 = g(&e, id1, &landlord, true);
+        r.put(&g0);
+        r.put(&g1);
+
+        // Leaf order = order of active_ids() = [id0, id1].
+        let expected = fold_root(&e, vec![&e, leaf(&e, &g0), leaf(&e, &g1)]);
+        assert_eq!(r.guarantees_root(), expected, "on-chain root must match the direct fold");
+    }
+}

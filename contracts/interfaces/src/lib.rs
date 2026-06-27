@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractclient, contracterror, contracttype, Address, Env, Val, Vec};
+use soroban_sdk::{contractclient, contracterror, contracttype, Address, BytesN, Env, Val, Vec};
 
 /// Errors surfaced across the registry boundary. Defined here (not in the
 /// `registry` crate) because the `Registry` trait's return type references it,
@@ -123,6 +123,9 @@ pub trait Registry {
     fn put(env: Env, g: Guarantee);
     fn get(env: Env, id: u32) -> Result<Guarantee, RegistryError>;
     fn active_ids(env: Env) -> Vec<u32>;
+    /// Poseidon-Merkle root of the active guarantees — the "list seal" (piece B of
+    /// the ZK solvency proof). Read live by the `solvency-attestor` contract.
+    fn guarantees_root(env: Env) -> BytesN<32>;
 }
 
 /// Minimal client for a DeFindex vault (single-asset use). The rich `deposit`
