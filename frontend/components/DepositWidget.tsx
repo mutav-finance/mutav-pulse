@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * DepositWidget — deposit-token amount input with live MTVR preview and CTA.
- * The token ticker is reserve-driven via the `depositToken` prop (e.g. "USDC").
+ * DepositWidget — deposit-token amount input with live share preview and CTA.
+ * Both tickers are reserve-driven: `depositToken` (e.g. "USDC"/"TESOURO") in,
+ * `shareSymbol` (the reserve's currency, e.g. "MUSD"/"MBRL") out.
  *
  * UX flow:
  *   1. User enters a deposit-token amount (decimal input)
- *   2. Preview shows "you receive N MTVR at NAV" in real-time
+ *   2. Preview shows "you receive N <shareSymbol> at NAV" in real-time
  *   3. On submit: calls deposit() write helper → refreshes position on success
  *
  * Design: Precision Brutalism. Investidor front. Amber CTA — border only,
@@ -15,6 +16,7 @@
 
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
+import type { ReserveContracts } from "@/lib/contracts";
 import { fmtNav, STROOP_SCALE, parseToStroops, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
@@ -26,6 +28,10 @@ interface DepositWidgetProps {
   navPerShare: bigint;
   /** Underlying token ticker the user deposits (e.g. "USDC" for the MUSD reserve) */
   depositToken: string;
+  /** Share-token symbol the user receives — the reserve's currency (e.g. "MBRL"). */
+  shareSymbol: string;
+  /** The active reserve's contract triple — deposits write to this vault */
+  contracts: ReserveContracts;
   /** Called with tx hash after a successful deposit; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -34,6 +40,8 @@ export function DepositWidget({
   address,
   navPerShare,
   depositToken,
+  shareSymbol,
+  contracts,
   onSuccess,
 }: DepositWidgetProps) {
   const [rawInput, setRawInput] = useState("");
@@ -59,7 +67,7 @@ export function DepositWidget({
     setErrorMsg(null);
     setLastHash(null);
     try {
-      const hash = await txDeposit(address, usdcStroops);
+      const hash = await txDeposit(contracts, address, usdcStroops);
       setRawInput("");
       setStatus("idle");
       setLastHash(hash);
@@ -106,7 +114,7 @@ export function DepositWidget({
             margin: 0,
           }}
         >
-          Deposit {depositToken} — Earn MTVR
+          Deposit {depositToken} — Earn {shareSymbol}
         </h2>
         <p
           className="font-body"
@@ -116,7 +124,7 @@ export function DepositWidget({
             marginTop: "4px",
           }}
         >
-          Contribute {depositToken} to the MUTAV reserve and receive MTVR shares at current NAV.
+          Contribute {depositToken} to the MUTAV reserve and receive {shareSymbol} shares at current NAV.
         </p>
       </div>
 
@@ -184,7 +192,7 @@ export function DepositWidget({
           </div>
         </div>
 
-        {/* MTVR preview — evidence layer */}
+        {/* Share preview — evidence layer */}
         <div
           style={{
             padding: "12px",
@@ -225,7 +233,7 @@ export function DepositWidget({
                   marginLeft: "6px",
                 }}
               >
-                MTVR
+                {shareSymbol}
               </span>
             </span>
           </div>
@@ -246,7 +254,7 @@ export function DepositWidget({
               at NAV
             </span>
             <Mono style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
-              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} {depositToken}/MTVR
+              {navPerShare > 0n ? fmtNav(navPerShare) : "—"} {depositToken}/{shareSymbol}
             </Mono>
           </div>
         </div>

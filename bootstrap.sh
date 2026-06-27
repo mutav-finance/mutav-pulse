@@ -4,13 +4,17 @@ NETWORK="${NETWORK:-testnet}"
 SOURCE="${SOURCE:-deployer}"
 ADMIN=$(stellar keys address "$SOURCE")
 : "${USDC_SAC:?set USDC_SAC to the underlying token contract id}"
+# Share-token metadata — per-reserve. Each fiat-pegged vault mints a share symboled
+# for its currency: SHARE_SYMBOL=MUSD|MBRL|MARS, SHARE_NAME="Mutav <Fiat> Reserve".
+SHARE_NAME="${SHARE_NAME:-Mutav Reserve}"
+SHARE_SYMBOL="${SHARE_SYMBOL:-mtvR}"
 
 make build
 dep(){ stellar contract deploy --wasm "target/wasm32v1-none/release/$1" --source "$SOURCE" --network "$NETWORK" -- "${@:2}"; }
 inv(){ stellar contract invoke --id "$1" --source "$SOURCE" --network "$NETWORK" -- "${@:2}"; }
 
 REGISTRY=$(dep registry.wasm --admin "$ADMIN")
-VAULT=$(dep vault.wasm --admin "$ADMIN" --underlying "$USDC_SAC")
+VAULT=$(dep vault.wasm --admin "$ADMIN" --underlying "$USDC_SAC" --name "$SHARE_NAME" --symbol "$SHARE_SYMBOL")
 POLICY=$(dep policy.wasm --admin "$ADMIN")
 MOCK=$(dep mock_strategy.wasm --underlying "$USDC_SAC")
 

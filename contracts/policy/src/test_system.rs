@@ -1,6 +1,6 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{token, Address, Env};
+use soroban_sdk::{token, Address, Env, String};
 use vault::{Vault, VaultClient};
 use registry::{Registry, RegistryClient};
 use mock_strategy::MockStrategy;
@@ -21,7 +21,15 @@ fn wire() -> Sys {
     let sac = e.register_stellar_asset_contract_v2(issuer);
     let underlying = sac.address();
     let registry_id = e.register(Registry, (admin.clone(),));
-    let vault_id = e.register(Vault, (admin.clone(), underlying.clone()));
+    let vault_id = e.register(
+        Vault,
+        (
+            admin.clone(),
+            underlying.clone(),
+            String::from_str(&e, "Mutav Reserve"),
+            String::from_str(&e, "mtvR"),
+        ),
+    );
     let policy_id = e.register(Policy, (admin.clone(),));
     let registry = RegistryClient::new(&e, &registry_id);
     let vault = VaultClient::new(&e, &vault_id);

@@ -54,6 +54,19 @@ export const config = {
     code: process.env.NEXT_PUBLIC_USDC_CODE ?? "USDC",
     issuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? "",
   },
+  // Classic asset behind the TESOURO SAC — the MBRL reserve's deposit token.
+  // Used to build the trustline + the USDC→TESOURO SDEX path payment ("Buy TESOURO").
+  tesouro: {
+    code: process.env.NEXT_PUBLIC_TESOURO_CODE ?? "TESOURO",
+    issuer: process.env.NEXT_PUBLIC_TESOURO_ISSUER ?? "",
+    // Indicative BRL price of one TESOURO unit, for DISPLAY-ONLY fiat conversion.
+    // TESOURO is a yield-bearing Brazilian treasury token — 1 TESOURO ≠ R$1 — and
+    // there is no deep on-chain TESOURO/BRL pair to derive it live, so we carry an
+    // env-overridable indicative price. NEVER feeds contract logic: the vault
+    // accounts purely in TESOURO units (coverage stays TESOURO/BRL-denominated, no
+    // FX leak). Default ≈ accrued NAV per Etherfuse.
+    priceBrl: Number(process.env.NEXT_PUBLIC_TESOURO_PRICE_BRL ?? "1.22107"),
+  },
 } as const;
 
 /** Explorer URL for a transaction hash. */

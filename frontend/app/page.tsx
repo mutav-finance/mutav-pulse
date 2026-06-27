@@ -233,7 +233,7 @@ export default function Home() {
           }}
         >
           {[
-            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's currency and receive mtvR shares — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
+            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …) — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
             { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a premium on every active, premium-current policy." },
             { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus — solvency comes first, always." },
           ].map((s) => (

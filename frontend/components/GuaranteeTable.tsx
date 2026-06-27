@@ -13,12 +13,14 @@
  * Design: Precision Brutalism / Investidor.
  */
 
-import { fmtUsd, fmtBps, truncAddr } from "@/lib/format";
+import { fmtFiat, fmtBps, truncAddr, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import type { Guarantee } from "policy";
 
 interface GuaranteeTableProps {
   guarantees: Array<{ id: bigint; guarantee: Guarantee; isCurrent: boolean }>;
+  /** Reserve money context — denominates Monthly / Exposure in the reserve's fiat. */
+  money: Money;
   loading?: boolean;
   error?: string;
 }
@@ -80,7 +82,7 @@ const HEADER_STYLE: React.CSSProperties = {
   backgroundColor: "var(--color-surface-2)",
 };
 
-export function GuaranteeTable({ guarantees, loading = false, error }: GuaranteeTableProps) {
+export function GuaranteeTable({ guarantees, money, loading = false, error }: GuaranteeTableProps) {
   if (loading) {
     return (
       <div
@@ -217,7 +219,7 @@ export function GuaranteeTable({ guarantees, loading = false, error }: Guarantee
 
                 {/* Monthly amount */}
                 <td style={{ ...COL_STYLE, textAlign: "right" }}>
-                  <Mono>{fmtUsd(monthly_amount)}</Mono>
+                  <Mono>{fmtFiat(monthly_amount, money)}</Mono>
                 </td>
 
                 {/* Fee bps */}
@@ -235,7 +237,7 @@ export function GuaranteeTable({ guarantees, loading = false, error }: Guarantee
 
                 {/* Remaining exposure */}
                 <td style={{ ...COL_STYLE, textAlign: "right" }}>
-                  <Mono dim={monthsRemaining === 0}>{fmtUsd(exposureStroops)}</Mono>
+                  <Mono dim={monthsRemaining === 0}>{fmtFiat(exposureStroops, money)}</Mono>
                 </td>
 
                 {/* Status */}

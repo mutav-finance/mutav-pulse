@@ -1,6 +1,20 @@
 [workspace]
 resolver = "2"
-members = ["contracts/*"]
+members = [
+  # Official protocol — audited surface, mainnet-deployable
+  "contracts/interfaces",
+  "contracts/registry",
+  "contracts/vault",
+  "contracts/policy",
+  "contracts/strategy",
+  "contracts/adapter-defindex",
+  # Test doubles / dev-only — testnet only, never mainnet
+  "contracts/mocks/mock-strategy",
+  "contracts/mocks/mock-policy",
+  "contracts/mocks/mock-defindex",
+  "contracts/mocks/defindex-hodl",
+  "contracts/mocks/faucet",
+]
 
 [workspace.package]
 edition = "2021"

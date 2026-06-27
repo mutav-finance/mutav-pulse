@@ -28,7 +28,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, notFound } from "next/navigation";
 import { resolveAddress, getReserve } from "@/lib/discovery";
-import { reserveReads } from "@/lib/contracts";
+import { reserveReads, type ReserveContracts } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
 import { ReserveHealthHeader } from "@/components/ReserveHealthHeader";
@@ -50,7 +50,7 @@ import {
   addStrategy,
   removeStrategy,
 } from "@/lib/admin-tx";
-import { fmtUsd, truncAddr, errMsg, parseToStroops } from "@/lib/format";
+import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
 import type { StrategyAlloc } from "vault";
 import type { Guarantee } from "policy";
 
@@ -149,16 +149,16 @@ export default function ProtocolVaultPage() {
   }
 
   // Verified path — reserve and reads are narrowed to non-null
-  return <ReserveCockpit reads={reads} />;
+  return <ReserveCockpit reads={reads} contracts={reserve.contracts!} depositToken={reserve.depositToken} money={reserve} />;
 }
 
 // ─── Cockpit (inner) ──────────────────────────────────────────────────────────
 
 /**
- * The actual cockpit UI, receiving parameterized reads.
- * Writes (admin-tx helpers) remain config-bound as per Global Constraints.
+ * The actual cockpit UI, receiving per-reserve reads + contracts.
+ * Writes (admin-tx helpers) are parameterized by the reserve's contracts.
  */
-function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
+function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: ReturnType<typeof reserveReads>; contracts: ReserveContracts; depositToken: string; money: Money }) {
   const { address } = useWallet();
   const [data, setData] = useState<ProtocolData>(INITIAL);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -271,7 +271,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
   // ── Guarantee options for pickers ────────────────────────────────────────────
   const guaranteeOptions = data.activeGuarantees.map((g) => ({
     value: String(g.id),
-    label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtUsd(g.guarantee.monthly_amount)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
+    label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
   }));
 
   const strategyOptions = data.strategies.map((s) => ({
@@ -425,6 +425,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
             totalAssets={data.totalAssets}
             freeCapital={data.freeCapital}
             coverageRequired={data.coverageRequired}
+            money={money}
             pendingCount={data.pendingIds.length}
             strategies={data.strategies}
             loading={data.loading}
@@ -546,6 +547,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     throw new Error("period days must be a number");
                   const periodSecs = BigInt(periodDays * 86400);
                   return signGuarantee(
+                    contracts,
                     address,
                     sgLandlord,
                     monthly,
@@ -581,7 +583,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 >
                   <FormField
                     id="sg-monthly"
-                    label="Monthly Amount (in USDC)"
+                    label={`Monthly Amount (in ${depositToken})`}
                     type="number"
                     min="0"
                     step="0.01"
@@ -647,7 +649,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                   if (!settleId) throw new Error("select a guarantee first");
                   const id = parseInt(settleId, 10);
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
-                  return settleGuarantee(address, id);
+                  return settleGuarantee(contracts, address, id);
                 }}
                 onSuccess={(hash) => {
                   setSettleId("");
@@ -668,6 +670,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === settleId,
                     )}
+                    money={money}
                   />
                 )}
               </ProtocolActionForm>
@@ -686,7 +689,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                   if (!ppId) throw new Error("select a guarantee first");
                   const id = parseInt(ppId, 10);
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
-                  return payPremium(address, id);
+                  return payPremium(contracts, address, id);
                 }}
                 onSuccess={(hash) => {
                   setPpId("");
@@ -707,6 +710,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === ppId,
                     )}
+                    money={money}
                   />
                 )}
               </ProtocolActionForm>
@@ -750,7 +754,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                   if (!cdId) throw new Error("select a guarantee first");
                   const id = parseInt(cdId, 10);
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
-                  return coverDefault(address, id);
+                  return coverDefault(contracts, address, id);
                 }}
                 onSuccess={(hash) => {
                   setCdId("");
@@ -766,7 +770,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     .filter((g) => !g.isCurrent)
                     .map((g) => ({
                       value: String(g.id),
-                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtUsd(g.guarantee.monthly_amount)}/mo · overdue`,
+                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
                     }))}
                   disabled={!isPolicyAdmin}
                   placeholder="Select overdue guarantee…"
@@ -776,6 +780,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                     guarantee={data.activeGuarantees.find(
                       (g) => String(g.id) === cdId,
                     )}
+                    money={money}
                   />
                 )}
                 <p
@@ -872,7 +877,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                               color: "var(--color-error)",
                             }}
                           >
-                            {fmtUsd(g.guarantee.monthly_amount)}/mo
+                            {fmtFiat(g.guarantee.monthly_amount, money)}/mo
                           </Mono>
                         </div>
                       ))}
@@ -892,7 +897,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return rebalance(address);
+                  return rebalance(contracts, address);
                 }}
                 onSuccess={handleSuccess}
               >
@@ -922,7 +927,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                   const maxBatch = parseInt(prMaxBatch, 10);
                   if (isNaN(maxBatch))
                     throw new Error("max batch size must be a number");
-                  return processRedemptions(address, maxBatch);
+                  return processRedemptions(contracts, address, maxBatch);
                 }}
                 onSuccess={handleSuccess}
               >
@@ -1042,6 +1047,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                   const weightBps = parseInt(asWeightBps, 10);
                   if (isNaN(weightBps)) throw new Error("weight bps must be a number");
                   return addStrategy(
+                    contracts,
                     address,
                     asAddress,
                     weightBps,
@@ -1093,7 +1099,7 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!rsAddress) throw new Error("select a strategy first");
-                  return removeStrategy(address, rsAddress);
+                  return removeStrategy(contracts, address, rsAddress);
                 }}
                 onSuccess={(hash) => {
                   setRsAddress("");
@@ -1226,8 +1232,10 @@ function ReserveCockpit({ reads }: { reads: ReturnType<typeof reserveReads> }) {
  */
 function GuaranteeDetail({
   guarantee,
+  money,
 }: {
   guarantee?: { id: number; guarantee: Guarantee; isCurrent: boolean };
+  money: Money;
 }) {
   if (!guarantee) return null;
   const g = guarantee.guarantee;
@@ -1248,7 +1256,7 @@ function GuaranteeDetail({
         { label: "Landlord", value: truncAddr(g.landlord) },
         {
           label: "Monthly",
-          value: fmtUsd(g.monthly_amount),
+          value: fmtFiat(g.monthly_amount, money),
         },
         {
           label: "Months",

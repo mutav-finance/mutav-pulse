@@ -4,17 +4,18 @@
  * ReserveTransparency — live-detail body for a single reserve.
  *
  * Layout (top → bottom):
- *   - Live-reserve detail header (currency + tag)
+ *   - Header (standalone page title, or a compact label when `embedded`)
  *   - SolvencyChip (invariant: stable_assets >= coverage_required)
- *   - Metric card grid (7 cards)
+ *   - Metric card grid (7 cards, incl. NAV/APY)
  *   - Underwriting economics panel (4 cards + assumptions caption)
  *   - GuaranteeTable (active guarantees from registry)
  *   - VenueDirectory + caption
  *   - VerificationPanel
  *   - Footer: network indicator
  *
- * Data: all reads from the `reads` prop (no wallet required).
- * Reserve-specific: economics assumptions and currency label come from `reserve`.
+ * `embedded`: when true, render the left column of the 2-column hub — no outer
+ * <main>, no big page title (the hub header identifies the reserve), just a
+ * compact "RESERVE OVERVIEW" label + refresh control above the body.
  *
  * Design: Precision Brutalism, Investidor front (dark/amber).
  */
@@ -27,7 +28,7 @@ import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { VenueDirectory } from "@/components/VenueDirectory";
-import { fmtUsd, fmtNav, fmtPct2, fmtSignedPct, fmtShares, errMsg } from "@/lib/format";
+import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, errMsg } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
 import type { Guarantee } from "policy";
 
@@ -61,6 +62,15 @@ const INITIAL: TransparencyData = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+const LABEL: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 500,
+  letterSpacing: "0.08em",
+  color: "var(--color-text-2)",
+  textTransform: "uppercase",
+  margin: 0,
+};
+
 /** Format a multiple ("4.9×") */
 function fmtMult(v: number): string {
   return Number.isFinite(v) ? v.toFixed(1) + "×" : "∞";
@@ -68,7 +78,15 @@ function fmtMult(v: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve: Reserve }) {
+export function ReserveTransparency({
+  reads,
+  reserve,
+  embedded = false,
+}: {
+  reads: Reads;
+  reserve: Reserve;
+  embedded?: boolean;
+}) {
   const [data, setData] = useState<TransparencyData>(INITIAL);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
@@ -153,23 +171,55 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
   );
   const hasBook = !loading && data.totalAssets > 0n;
 
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--color-canvas)",
-        color: "var(--color-text)",
-      }}
-    >
-      {/* ── Page content ────────────────────────────────────────────────── */}
-      <div
+  const refreshControl = (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+      <button
+        onClick={fetchAll}
+        disabled={loading}
         style={{
-          maxWidth: "1440px",
-          margin: "0 auto",
-          padding: "40px 32px 80px",
+          border: "1px solid var(--color-border)",
+          background: "transparent",
+          color: "var(--color-text-2)",
+          padding: "8px 16px",
+          fontSize: "12px",
+          fontFamily: "var(--font-body)",
+          fontWeight: 500,
+          cursor: loading ? "not-allowed" : "pointer",
+          letterSpacing: "0.04em",
         }}
       >
-        {/* ── Page header ───────────────────────────────────────────────── */}
+        {loading ? "LOADING…" : "↻ REFRESH"}
+      </button>
+      {lastRefreshed && (
+        <span
+          className="font-mono"
+          style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+        >
+          {lastRefreshed.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </span>
+      )}
+    </div>
+  );
+
+  const body = (
+    <>
+      {/* ── Header: compact (embedded) or full page title (standalone) ─── */}
+      {embedded ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            marginBottom: "20px",
+          }}
+        >
+          <p className="font-body" style={LABEL}>
+            Reserve overview
+          </p>
+          {refreshControl}
+        </div>
+      ) : (
         <div
           style={{
             display: "flex",
@@ -181,17 +231,7 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
           }}
         >
           <div>
-            <p
-              className="font-body"
-              style={{
-                fontSize: "11px",
-                fontWeight: 500,
-                letterSpacing: "0.08em",
-                color: "var(--color-text-2)",
-                textTransform: "uppercase",
-                margin: "0 0 8px",
-              }}
-            >
+            <p className="font-body" style={{ ...LABEL, margin: "0 0 8px" }}>
               MUTAV PULSE PROTOCOL
             </p>
             <h1
@@ -219,136 +259,95 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
               Testnet on-chain reserve metrics, guarantee registry, yield venues, and contract verification — all reads from Soroban testnet. This is a proof-of-concept; values are not from a production reserve.
             </p>
           </div>
-
-          {/* Refresh + last-updated */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
-            <button
-              onClick={fetchAll}
-              disabled={loading}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "transparent",
-                color: "var(--color-text-2)",
-                padding: "8px 16px",
-                fontSize: "12px",
-                fontFamily: "var(--font-body)",
-                fontWeight: 500,
-                cursor: loading ? "not-allowed" : "pointer",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {loading ? "LOADING…" : "↻ REFRESH"}
-            </button>
-            {lastRefreshed && (
-              <span
-                className="font-mono"
-                style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-              >
-                {lastRefreshed.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-            )}
-          </div>
+          {refreshControl}
         </div>
+      )}
 
-        {/* ── Error banner ──────────────────────────────────────────────── */}
-        {error && (
-          <div
-            role="alert"
-            style={{
-              padding: "12px 16px",
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-error)",
-              marginBottom: "24px",
-            }}
-          >
-            <p className="font-mono" style={{ fontSize: "12px", color: "var(--color-error)", margin: 0 }}>
-              {error}
-            </p>
-          </div>
-        )}
-
-        {/* ── Live reserve detail header ────────────────────────────────── */}
+      {/* ── Error banner ──────────────────────────────────────────────── */}
+      {error && (
         <div
+          role="alert"
           style={{
-            marginBottom: "16px",
-            paddingTop: "4px",
-            borderTop: "1px solid var(--color-border)",
+            padding: "12px 16px",
+            backgroundColor: "var(--color-surface)",
+            border: "1px solid var(--color-error)",
+            marginBottom: "24px",
           }}
         >
-          <p
-            className="font-body"
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-2)",
-              textTransform: "uppercase",
-              margin: "16px 0 4px",
-            }}
-          >
-            {reserve.currency}
-            {reserve.tag ? ` (${reserve.tag})` : ""} RESERVE · TESTNET LIVE DETAIL
-          </p>
-          <p
-            className="font-body"
-            style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
-          >
-            On-chain metrics for the deployed {reserve.currency} reserve —{" "}
-            {reserve.underlying}. Other currencies share this contract shape,
-            pegged to their own underlying and default market.
+          <p className="font-mono" style={{ fontSize: "12px", color: "var(--color-error)", margin: 0 }}>
+            {error}
           </p>
         </div>
+      )}
 
-        {/* ── Solvency chip ─────────────────────────────────────────────── */}
-        <div style={{ marginBottom: "24px" }}>
-          <SolvencyChip
-            stableAssets={data.stableAssets}
-            coverageRequired={data.coverageRequired}
-            loading={loading}
-            error={error ?? undefined}
-          />
-        </div>
+      {/* ── Live reserve detail header ────────────────────────────────── */}
+      <div
+        style={{
+          marginBottom: "16px",
+          paddingTop: "4px",
+          borderTop: "1px solid var(--color-border)",
+        }}
+      >
+        <p className="font-body" style={{ ...LABEL, margin: "16px 0 4px" }}>
+          {reserve.currency}
+          {reserve.tag ? ` (${reserve.tag})` : ""} RESERVE · TESTNET LIVE DETAIL
+        </p>
+        <p
+          className="font-body"
+          style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
+        >
+          On-chain metrics for the deployed {reserve.currency} reserve —{" "}
+          {reserve.underlying}. Other currencies share this contract shape,
+          pegged to their own underlying and default market.
+        </p>
+      </div>
 
-        {/* ── Metric grid: 4 top / 3 bottom ─────────────────────────────── */}
+      {/* ── Solvency chip ─────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "24px" }}>
+        <SolvencyChip
+          stableAssets={data.stableAssets}
+          coverageRequired={data.coverageRequired}
+          money={reserve}
+          loading={loading}
+          error={error ?? undefined}
+        />
+      </div>
+
+      {/* ── Metric grid: 4 top / 3 bottom ─────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: "var(--color-border)",
+          border: "1px solid var(--color-border)",
+          marginBottom: "32px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1px",
+        }}
+      >
+        {/* Top row — 4 cards (2-up on narrow embedded columns) */}
         <div
           style={{
-            backgroundColor: "var(--color-border)",
-            border: "1px solid var(--color-border)",
-            marginBottom: "32px",
-            display: "flex",
-            flexDirection: "column",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             gap: "1px",
+            backgroundColor: "var(--color-border)",
           }}
         >
-          {/* Top row — 4 cards */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "1px",
-              backgroundColor: "var(--color-border)",
-            }}
-          >
-          {/* 1. Reserve Value */}
           <MetricCard
             label="Reserve Value"
-            value={loading ? "—" : fmtUsd(data.totalAssets)}
-            unit="total assets · MUSD vault (USDC)"
+            value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
+            unit={`total assets · ${reserve.currency} vault (${reserve.depositToken})`}
             accentValue
             loading={loading}
             error={error ?? undefined}
           />
-
-          {/* 2. NAV per mtvR */}
           <MetricCard
-            label="NAV / MTVR"
+            label={`NAV / ${reserve.currency}`}
             value={loading ? "—" : fmtNav(data.navPerShare)}
-            unit="USDC per MTVR share"
+            unit={`${reserve.depositToken} per ${reserve.currency} share`}
             loading={loading}
             error={error ?? undefined}
           />
-
-          {/* 3. Modeled APY — amber accent */}
           <MetricCard
             label="Modeled APY"
             value={hasBook ? fmtPct2(econ.modeledApy) : "—"}
@@ -358,228 +357,211 @@ export function ReserveTransparency({ reads, reserve }: { reads: Reads; reserve:
             loading={loading}
             error={error ?? undefined}
           />
-
-          {/* 4. Committed to Guarantees */}
           <MetricCard
             label="Committed to Guarantees"
-            value={loading ? "—" : fmtUsd(data.coverageRequired)}
-            unit="coverage required · MUSD vault (USDC)"
+            value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
+            unit={`coverage required · ${reserve.currency} vault (${reserve.depositToken})`}
             loading={loading}
             error={error ?? undefined}
           />
-          </div>
+        </div>
 
-          {/* Bottom row — 3 cards (centered/balanced) */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "1px",
-              backgroundColor: "var(--color-border)",
-            }}
-          >
-          {/* 5. Liquidity Buffer */}
+        {/* Bottom row — 3 cards */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: "1px",
+            backgroundColor: "var(--color-border)",
+          }}
+        >
           <MetricCard
             label="Liquidity Buffer"
-            value={loading ? "—" : fmtUsd(data.freeCapital)}
-            unit="free capital · USDC"
+            value={loading ? "—" : fmtFiat(data.freeCapital, reserve)}
+            unit={`free capital · ${reserve.depositToken}`}
             tooltip="Surplus above guarantee coverage — backs redemptions and new guarantees."
             loading={loading}
             error={error ?? undefined}
           />
-
-          {/* 6. Premiums Collected */}
           <MetricCard
             label="Premiums Collected"
-            value={loading ? "—" : fmtUsd(data.premiumIncome)}
-            unit="cumulative premium income · USDC"
+            value={loading ? "—" : fmtFiat(data.premiumIncome, reserve)}
+            unit={`cumulative premium income · ${reserve.depositToken}`}
             loading={loading}
             error={error ?? undefined}
           />
-
-          {/* 7. Shares Outstanding */}
           <MetricCard
             label="Shares Outstanding"
             value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit="MTVR shares issued"
-            loading={loading}
-            error={error ?? undefined}
-          />
-          </div>
-        </div>
-
-        {/* ── Section label: underwriting economics ────────────────────── */}
-        <div style={{ marginBottom: "12px" }}>
-          <p
-            className="font-body"
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-2)",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            UNDERWRITING ECONOMICS
-          </p>
-        </div>
-
-        {/* ── Underwriting decomposition: 4 cards ───────────────────────── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "1px",
-            backgroundColor: "var(--color-border)",
-            border: "1px solid var(--color-border)",
-            marginBottom: "12px",
-          }}
-        >
-          <MetricCard
-            label="Underlying Yield"
-            value={fmtPct2(econ.underlyingYield)}
-            unit="modeled base rate"
-            tooltip="The assumed underlying yield for this reserve's currency peg (USD stablecoin DeFi ~5.5%). For reference, a BRL reserve would use Selic ~14%. A stated assumption, not an on-chain read."
-            loading={loading}
-            error={error ?? undefined}
-          />
-          <MetricCard
-            label="Underwriting Spread"
-            value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
-            unit="premiums − expected defaults"
-            tooltip="The protocol's edge over the base rate: annualized premium run-rate minus expected default payout, divided by total reserve. Computed from the live book."
-            loading={loading}
-            error={error ?? undefined}
-          />
-          <MetricCard
-            label="Loss Ratio"
-            value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
-            unit="expected payout ÷ premiums"
-            tooltip="Expected annual default payout as a share of premium income. Below 100% means premiums cover expected defaults; insurer-healthy books run well under 50%."
-            loading={loading}
-            error={error ?? undefined}
-          />
-          <MetricCard
-            label="Cushion"
-            value={hasBook ? fmtMult(econ.cushion) : "—"}
-            unit="vs break-even delinquency"
-            tooltip={`How far delinquency can rise before premiums stop covering defaults. Break-even is ${fmtPct2(econ.breakevenRho)} monthly delinquency vs the ${fmtPct2(econ.rho)} modeled.`}
+            unit={`${reserve.currency} shares issued`}
             loading={loading}
             error={error ?? undefined}
           />
         </div>
+      </div>
 
-        {/* ── Assumptions caption ───────────────────────────────────────── */}
-        <p
+      {/* ── Section label: underwriting economics ────────────────────── */}
+      <div style={{ marginBottom: "12px" }}>
+        <p className="font-body" style={LABEL}>
+          UNDERWRITING ECONOMICS
+        </p>
+      </div>
+
+      {/* ── Underwriting decomposition: 4 cards ───────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "1px",
+          backgroundColor: "var(--color-border)",
+          border: "1px solid var(--color-border)",
+          marginBottom: "12px",
+        }}
+      >
+        <MetricCard
+          label="Underlying Yield"
+          value={fmtPct2(econ.underlyingYield)}
+          unit="modeled base rate"
+          tooltip="The assumed underlying yield for this reserve's currency peg (USD stablecoin DeFi ~5.5%). For reference, a BRL reserve would use Selic ~14%. A stated assumption, not an on-chain read."
+          loading={loading}
+          error={error ?? undefined}
+        />
+        <MetricCard
+          label="Underwriting Spread"
+          value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
+          unit="premiums − expected defaults"
+          tooltip="The protocol's edge over the base rate: annualized premium run-rate minus expected default payout, divided by total reserve. Computed from the live book."
+          loading={loading}
+          error={error ?? undefined}
+        />
+        <MetricCard
+          label="Loss Ratio"
+          value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
+          unit="expected payout ÷ premiums"
+          tooltip="Expected annual default payout as a share of premium income. Below 100% means premiums cover expected defaults; insurer-healthy books run well under 50%."
+          loading={loading}
+          error={error ?? undefined}
+        />
+        <MetricCard
+          label="Cushion"
+          value={hasBook ? fmtMult(econ.cushion) : "—"}
+          unit="vs break-even delinquency"
+          tooltip={`How far delinquency can rise before premiums stop covering defaults. Break-even is ${fmtPct2(econ.breakevenRho)} monthly delinquency vs the ${fmtPct2(econ.rho)} modeled.`}
+          loading={loading}
+          error={error ?? undefined}
+        />
+      </div>
+
+      {/* ── Assumptions caption ───────────────────────────────────────── */}
+      <p
+        className="font-mono"
+        style={{
+          fontSize: "11px",
+          color: "var(--color-text-3)",
+          lineHeight: 1.5,
+          margin: "0 0 32px",
+          maxWidth: "720px",
+        }}
+      >
+        Modeled at {fmtPct2(econ.rho)} monthly delinquency (Índice Superlógica, South
+        region, 60+ days overdue) and {fmtPct2(econ.underlyingYield)} underlying yield
+        ({reserve.currency} peg). The spread is computed from the live
+        guarantee book; default and yield rates are stated assumptions. Method: see whitepaper.
+      </p>
+
+      {/* ── Section label: guarantee registry ────────────────────────── */}
+      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p className="font-body" style={LABEL}>
+          GUARANTEE REGISTRY
+        </p>
+        <span
           className="font-mono"
+          style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+        >
+          {loading ? "…" : `${data.guarantees.length} active`}
+        </span>
+      </div>
+
+      {/* ── Guarantee table ───────────────────────────────────────────── */}
+      <div style={{ marginBottom: "32px" }}>
+        <GuaranteeTable
+          guarantees={data.guarantees}
+          money={reserve}
+          loading={loading}
+          error={error ?? undefined}
+        />
+      </div>
+
+      {/* ── Section label: yield venues ──────────────────────────────── */}
+      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p className="font-body" style={LABEL}>
+          PROTOCOL INTEGRATIONS
+        </p>
+        <span
+          className="font-mono"
+          style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+        >
+          1 live · 2 planned
+        </span>
+      </div>
+
+      {/* ── Venue directory ───────────────────────────────────────────── */}
+      <div style={{ marginBottom: "32px" }}>
+        <VenueDirectory />
+        <p
+          className="font-body"
           style={{
-            fontSize: "11px",
+            fontSize: "13px",
             color: "var(--color-text-3)",
             lineHeight: 1.5,
-            margin: "0 0 32px",
-            maxWidth: "720px",
+            margin: "16px 0 0",
           }}
         >
-          Modeled at {fmtPct2(econ.rho)} monthly delinquency (Índice Superlógica, South
-          region, 60+ days overdue) and {fmtPct2(econ.underlyingYield)} underlying yield
-          ({reserve.currency} peg). The spread is computed from the live
-          guarantee book; default and yield rates are stated assumptions. Method: see whitepaper.
+          On the deployed testnet reserve, capital is routed to on-chain yield venues via strategy adapters. The DeFindex adapter is live on testnet; Soroswap and Blend integrations are planned.
         </p>
+      </div>
 
-        {/* ── Section label: guarantee registry ────────────────────────── */}
-        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p
-            className="font-body"
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-2)",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            GUARANTEE REGISTRY
-          </p>
-          <span
-            className="font-mono"
-            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-          >
-            {loading ? "…" : `${data.guarantees.length} active`}
-          </span>
-        </div>
+      {/* ── Verification panel ────────────────────────────────────────── */}
+      <VerificationPanel />
 
-        {/* ── Guarantee table ───────────────────────────────────────────── */}
-        <div style={{ marginBottom: "32px" }}>
-          <GuaranteeTable
-            guarantees={data.guarantees}
-            loading={loading}
-            error={error ?? undefined}
-          />
-        </div>
-
-        {/* ── Section label: yield venues ──────────────────────────────── */}
-        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <p
-            className="font-body"
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-2)",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            PROTOCOL INTEGRATIONS
-          </p>
-          <span
-            className="font-mono"
-            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-          >
-            1 live · 2 planned
-          </span>
-        </div>
-
-        {/* ── Venue directory ───────────────────────────────────────────── */}
-        <div style={{ marginBottom: "32px" }}>
-          <VenueDirectory />
-          <p
-            className="font-body"
-            style={{
-              fontSize: "13px",
-              color: "var(--color-text-3)",
-              lineHeight: 1.5,
-              margin: "16px 0 0",
-            }}
-          >
-            On the deployed testnet reserve, capital is routed to on-chain yield venues via strategy adapters. The DeFindex adapter is live on testnet; Soroswap and Blend integrations are planned.
-          </p>
-        </div>
-
-        {/* ── Verification panel ────────────────────────────────────────── */}
-        <VerificationPanel />
-
-        {/* ── Footer: network indicator ─────────────────────────────────── */}
-        <div
-          style={{
-            marginTop: "40px",
-            paddingTop: "24px",
-            borderTop: "1px solid var(--color-border)",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
+      {/* ── Footer: network indicator ─────────────────────────────────── */}
+      <div
+        style={{
+          marginTop: "40px",
+          paddingTop: "24px",
+          borderTop: "1px solid var(--color-border)",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        <span className="live-dot" aria-hidden="true" />
+        <span
+          className="font-mono"
+          style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
         >
-          <span className="live-dot" aria-hidden="true" />
-          <span
-            className="font-mono"
-            style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-          >
-            Stellar Testnet · PoC · live reads
-          </span>
-        </div>
+          Stellar Testnet · PoC · live reads
+        </span>
+      </div>
+    </>
+  );
+
+  // Embedded (left column of the 2-col hub): no <main>, no max-width centering.
+  if (embedded) {
+    return <div style={{ color: "var(--color-text)" }}>{body}</div>;
+  }
+
+  // Standalone page.
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--color-canvas)",
+        color: "var(--color-text)",
+      }}
+    >
+      <div style={{ maxWidth: "1440px", margin: "0 auto", padding: "40px 32px 80px" }}>
+        {body}
       </div>
     </main>
   );

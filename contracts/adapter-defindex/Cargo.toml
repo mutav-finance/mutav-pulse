@@ -14,6 +14,6 @@ interfaces = { path = "../interfaces" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-mock-defindex = { path = "../mock-defindex" }
+mock-defindex = { path = "../mocks/mock-defindex" }
 vault = { path = "../vault" }
-mock-policy = { path = "../mock-policy" }
+mock-policy = { path = "../mocks/mock-policy" }

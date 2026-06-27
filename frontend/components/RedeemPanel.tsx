@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
+import type { ReserveContracts } from "@/lib/contracts";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
 import { fmtNav, fromStroops, stroopsToInput, parseToStroops, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
@@ -25,7 +26,7 @@ import type { RedeemRequest } from "vault";
 interface RedeemPanelProps {
   /** Connected wallet public key */
   address: string;
-  /** User's current MTVR share balance in stroops */
+  /** User's current share balance in stroops */
   balance: bigint;
   /** All pending request IDs from vaultPendingRequests() */
   requestIds: number[];
@@ -33,6 +34,10 @@ interface RedeemPanelProps {
   requests: Map<number, RedeemRequest>;
   /** Underlying token ticker redemptions pay out (e.g. "USDC" for the MUSD reserve) */
   depositToken: string;
+  /** Share-token symbol the user burns — the reserve's currency (e.g. "MBRL"). */
+  shareSymbol: string;
+  /** The active reserve's contract triple — redemptions write to this vault */
+  contracts: ReserveContracts;
   /** Called with tx hash after a successful tx; parent refreshes reads */
   onSuccess(hash: string): void;
 }
@@ -78,6 +83,8 @@ export function RedeemPanel({
   requestIds,
   requests,
   depositToken,
+  shareSymbol,
+  contracts,
   onSuccess,
 }: RedeemPanelProps) {
   const [rawInput, setRawInput] = useState("");
@@ -98,7 +105,7 @@ export function RedeemPanel({
   const sharesStroops: bigint | null = parseToStroops(rawInput);
 
   const shareBalanceDisplay = fromStroops(balance);
-  // Requested shares exceed the user's MTVR balance — block submit + hint.
+  // Requested shares exceed the user's share balance — block submit + hint.
   const exceedsBalance = sharesStroops !== null && sharesStroops > balance;
   const canSubmit =
     sharesStroops !== null &&
@@ -114,7 +121,7 @@ export function RedeemPanel({
     setRedeemError(null);
     setLastHash(null);
     try {
-      const hash = await txRequestRedeem(address, sharesStroops);
+      const hash = await txRequestRedeem(contracts, address, sharesStroops);
       setRawInput("");
       setRedeemStatus("idle");
       setLastHash(hash);
@@ -134,7 +141,7 @@ export function RedeemPanel({
       return next;
     });
     try {
-      const hash = await txClaim(address, BigInt(id));
+      const hash = await txClaim(contracts, address, BigInt(id));
       setActionState((prev) => {
         const next = new Map(prev);
         next.delete(id);
@@ -158,7 +165,7 @@ export function RedeemPanel({
       return next;
     });
     try {
-      const hash = await txCancelRedeem(address, BigInt(id));
+      const hash = await txCancelRedeem(contracts, address, BigInt(id));
       setActionState((prev) => {
         const next = new Map(prev);
         next.delete(id);
@@ -181,7 +188,7 @@ export function RedeemPanel({
 
   return (
     <section
-      aria-label="Redeem MTVR shares"
+      aria-label={`Redeem ${shareSymbol} shares`}
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
@@ -212,7 +219,7 @@ export function RedeemPanel({
             margin: 0,
           }}
         >
-          Redeem MTVR — Queue {depositToken}
+          Redeem {shareSymbol} — Queue {depositToken}
         </h2>
         <p
           className="font-body"
@@ -247,7 +254,7 @@ export function RedeemPanel({
           {/* Balance hint */}
           <p style={{ fontSize: "11px", color: "var(--color-text-3)", marginBottom: "6px" }}>
             <Mono>
-              Available: {shareBalanceDisplay.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} MTVR
+              Available: {shareBalanceDisplay.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} {shareSymbol}
             </Mono>
           </p>
 
@@ -277,7 +284,7 @@ export function RedeemPanel({
                 fontVariantNumeric: "tabular-nums",
                 outline: "none",
               }}
-              aria-label="MTVR shares to redeem"
+              aria-label={`${shareSymbol} shares to redeem`}
             />
             <span
               className="font-body"
@@ -292,7 +299,7 @@ export function RedeemPanel({
                 letterSpacing: "0.02em",
               }}
             >
-              MTVR
+              {shareSymbol}
             </span>
           </div>
 
@@ -314,7 +321,7 @@ export function RedeemPanel({
                 minimumFractionDigits: 4,
                 maximumFractionDigits: 4,
               })}{" "}
-              MTVR
+              {shareSymbol}
             </p>
           )}
         </div>
@@ -460,7 +467,7 @@ export function RedeemPanel({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                         <Mono style={{ fontSize: "13px", color: "var(--color-text)" }}>
-                          {fmtNav(req.shares)} MTVR
+                          {fmtNav(req.shares)} {shareSymbol}
                         </Mono>
                         {status === "claimable" && req.claimable > 0n && (
                           <Mono style={{ fontSize: "11px", color: "var(--color-success)" }}>

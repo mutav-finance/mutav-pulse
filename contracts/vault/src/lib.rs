@@ -7,7 +7,7 @@ use strategy::StrategyClient;
 use interfaces::{PolicyClient, Vault as VaultTrait};
 
 mod types;
-use types::{DataKey, RedeemRequest, StrategyAlloc, NAV_SCALE, VIRTUAL_OFFSET};
+use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, NAV_SCALE, VIRTUAL_OFFSET};
 
 mod test;
 
@@ -31,12 +31,11 @@ pub struct Vault;
 
 #[contractimpl]
 impl Vault {
-    pub fn __constructor(e: &Env, admin: Address, underlying: Address) {
-        Base::set_metadata(
-            e, 7,
-            String::from_str(e, "Mutav Pulse Reserve Share"),
-            String::from_str(e, "mtvR"),
-        );
+    pub fn __constructor(e: &Env, admin: Address, underlying: Address, name: String, symbol: String) {
+        // Share-token metadata is per-reserve: each fiat-pegged vault mints a share
+        // symboled for its currency (MUSD / MBRL / MARS), not a generic "mtvR".
+        // Set once at construction — changing it requires redeploy.
+        Base::set_metadata(e, 7, name, symbol);
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::Underlying, &underlying);
         e.storage().instance().set(&DataKey::ReservedForClaims, &0i128);
@@ -55,6 +54,26 @@ impl Vault {
     pub fn set_policy(e: &Env, policy: Address) {
         Self::admin(e).require_auth();
         e.storage().instance().set(&DataKey::Policy, &policy);
+    }
+
+    /// Admin-gated re-label of the share token (name + symbol). Decimals are
+    /// fixed at 7. Lets a deployed reserve adopt its per-currency symbol
+    /// (MUSD / MBRL / MARS) via `upgrade()` instead of a destructive redeploy —
+    /// balances, NAV, and seeded state are preserved.
+    pub fn set_token_metadata(e: &Env, name: String, symbol: String) {
+        Self::admin(e).require_auth();
+        Base::set_metadata(e, 7, name, symbol);
+    }
+
+    /// Fraction of idle (in bps) the vault retains as a liquid claim buffer at
+    /// rebalance time. 0 = deploy everything (legacy behavior). Set per reserve.
+    pub fn min_liquid_buffer_bps(e: &Env) -> u32 {
+        e.storage().instance().get(&DataKey::MinLiquidBufferBps).unwrap_or(0)
+    }
+    pub fn set_min_liquid_buffer_bps(e: &Env, bps: u32) {
+        Self::admin(e).require_auth();
+        assert!(bps <= 10_000, "min_liquid_buffer_bps exceeds 100%");
+        e.storage().instance().set(&DataKey::MinLiquidBufferBps, &bps);
     }
 
     fn reserved_for_claims(e: &Env) -> i128 {
@@ -88,12 +107,18 @@ impl Vault {
         Self::admin(e).require_auth();
         let idle = Self::available_held(e);
         if idle <= 0 { return; }
+        // Retain a liquid claim buffer (min_liquid_buffer_bps of idle); only the
+        // surplus above it is deployed. On-demand shortfalls are still pulled back
+        // from strategies via ensure_liquidity.
+        let buffer = idle * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
+        let deployable = idle - buffer;
+        if deployable <= 0 { return; }
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
         if total_weight == 0 { return; }
         let tok = Self::token_client(e);
         for s in list.iter() {
-            let portion = idle * (s.weight_bps as i128) / total_weight;
+            let portion = deployable * (s.weight_bps as i128) / total_weight;
             if portion > 0 {
                 tok.transfer(&e.current_contract_address(), &s.address, &portion);
                 StrategyClient::new(e, &s.address).invest(&portion);

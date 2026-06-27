@@ -9,7 +9,7 @@
  * No rounded corners. JetBrains Mono numbers. Surface stacking only, no shadows.
  */
 
-import { fmtUsd } from "@/lib/format";
+import { fmtFiat, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import type { StrategyAlloc } from "vault";
 
@@ -17,6 +17,8 @@ interface ReserveHealthHeaderProps {
   totalAssets: bigint;
   freeCapital: bigint;
   coverageRequired: bigint;
+  /** Reserve money context — denominates the value cells in the reserve's fiat. */
+  money: Money;
   pendingCount: number;
   strategies: StrategyAlloc[];
   loading?: boolean;
@@ -81,6 +83,7 @@ export function ReserveHealthHeader({
   totalAssets,
   freeCapital,
   coverageRequired,
+  money,
   pendingCount,
   strategies,
   loading = false,
@@ -139,7 +142,7 @@ export function ReserveHealthHeader({
           <div style={{ borderRight: "1px solid var(--color-border)" }}>
             <HealthCell
               label="Total Assets"
-              value={loading ? "—" : fmtUsd(totalAssets)}
+              value={loading ? "—" : fmtFiat(totalAssets, money)}
               loading={loading}
             />
           </div>
@@ -148,7 +151,7 @@ export function ReserveHealthHeader({
           <div style={{ borderRight: "1px solid var(--color-border)" }}>
             <HealthCell
               label="Free Capital"
-              value={loading ? "—" : fmtUsd(freeCapital)}
+              value={loading ? "—" : fmtFiat(freeCapital, money)}
               copper
               loading={loading}
             />
@@ -158,7 +161,7 @@ export function ReserveHealthHeader({
           <div style={{ borderRight: "1px solid var(--color-border)" }}>
             <HealthCell
               label="Coverage Required"
-              value={loading ? "—" : fmtUsd(coverageRequired)}
+              value={loading ? "—" : fmtFiat(coverageRequired, money)}
               loading={loading}
             />
           </div>
