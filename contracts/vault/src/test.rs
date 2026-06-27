@@ -43,6 +43,10 @@ pub fn setup() -> Ctx {
 
 pub fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
     let id = c.e.register(MockStrategy, (c.underlying.clone(),));
+    // Wire the controller to the reserve vault so vault-originated invest/divest
+    // (rebalance, ensure_liquidity, remove_strategy) authorize via the vault's
+    // self-auth subtree. (audit H1/H4 gate)
+    MockStrategyClient::new(&c.e, &id).set_controller(&c.vault_id);
     c.vault.add_strategy(&id, &weight_bps, &false);
     MockStrategyClient::new(&c.e, &id)
 }

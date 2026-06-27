@@ -11,6 +11,7 @@ struct Ctx {
     underlying: Address,
     adapter: AdapterDefindexClient<'static>,
     adapter_id: Address,
+    controller: Address,
     dfx: MockDefindexClient<'static>,
 }
 
@@ -25,10 +26,15 @@ fn setup() -> Ctx {
     let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
     let adapter = AdapterDefindexClient::new(&e, &adapter_id);
     adapter.set_vault(&dfx_id);
+    // Controller is a distinct generated address (a strategy never invests into
+    // itself). Under mock_all_auths_allowing_non_root_auth its non-root
+    // require_auth passes for direct client calls. (audit H1/H4 gate)
+    let controller = Address::generate(&e);
+    adapter.set_controller(&controller);
     Ctx {
         token: token::TokenClient::new(&e, &underlying),
         token_admin: token::StellarAssetClient::new(&e, &underlying),
-        underlying, adapter, adapter_id,
+        underlying, adapter, adapter_id, controller,
         dfx: MockDefindexClient::new(&e, &dfx_id),
         e,
     }
@@ -78,6 +84,66 @@ fn admin_can_tune_slippage_and_invalid_is_rejected() {
     }
     // The rejected write left the prior value intact.
     assert_eq!(c.adapter.max_slippage_bps(), 100);
+}
+
+// --- Audit H1 (CRITICAL) / H4: controller authorization gate ---
+
+/// H1: divest must trap for any caller that is not the stored controller. After a
+/// controller-authorized invest, drop all auths and assert a non-controller's
+/// `divest` returns Err — proving no third party can drain the position.
+#[test]
+fn divest_traps_for_non_controller_caller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000); // controller-authorized (mock_all_auths active)
+    // No auths satisfied -> the controller's require_auth cannot pass.
+    c.e.set_auths(&[]);
+    let attacker = Address::generate(&c.e);
+    assert!(c.adapter.try_divest(&100, &attacker).is_err());
+}
+
+/// H4: invest must trap for any caller that is not the stored controller.
+#[test]
+fn invest_traps_for_non_controller_caller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.e.set_auths(&[]);
+    assert!(c.adapter.try_invest(&1_000).is_err());
+}
+
+/// GREEN guard: with the controller set and authorized (mock_all_auths), divest
+/// still returns the underlying to `to`. Behavior-preserving for the legit path.
+#[test]
+fn divest_succeeds_for_controller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    let to = Address::generate(&c.e);
+    let returned = c.adapter.divest(&500, &to);
+    assert!(returned >= 500);
+    assert_eq!(c.token.balance(&to), returned);
+}
+
+/// `set_controller` is admin-gated, and `controller()` is fail-closed before any
+/// set. Mirrors `admin_can_tune_slippage_and_invalid_is_rejected`'s structure.
+#[test]
+fn controller_setter_is_admin_gated() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let issuer = Address::generate(&e);
+    let sac = e.register_stellar_asset_contract_v2(issuer);
+    let underlying = sac.address();
+    let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
+    let adapter = AdapterDefindexClient::new(&e, &adapter_id);
+
+    // (a) Fail-closed: controller() traps before any set_controller.
+    assert!(adapter.try_controller().is_err());
+
+    // (b) Admin-gated: with no auths satisfied, set_controller traps.
+    e.set_auths(&[]);
+    let x = Address::generate(&e);
+    assert!(adapter.try_set_controller(&x).is_err());
 }
 
 /// A withdraw whose realised proceeds stay within the slippage tolerance clears
@@ -238,6 +304,8 @@ fn adapter_drops_into_vault_allocator_and_earns_yield() {
     let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
     let adapter = AdapterDefindexClient::new(&e, &adapter_id);
     adapter.set_vault(&dfx_id);
+    // Controller is the reserve vault so vault-originated rebalance/divest authorize. (audit H1/H4)
+    adapter.set_controller(&vault_id);
     vault.add_strategy(&adapter_id, &10_000, &false);
 
     // Investor deposits; admin rebalances reserve into DeFindex.

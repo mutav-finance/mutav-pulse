@@ -3,7 +3,7 @@ use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{token, Address, Env, String};
 use vault::{Vault, VaultClient};
 use registry::{Registry, RegistryClient};
-use mock_strategy::MockStrategy;
+use mock_strategy::{MockStrategy, MockStrategyClient};
 use crate::{Policy, PolicyClient};
 
 struct Sys {
@@ -52,6 +52,8 @@ fn full_demo_flow_holds_solvency_invariant() {
 
     s.vault.deposit(&20_000, &alice, &alice, &alice);
     let sid = s.e.register(MockStrategy, (s.underlying.clone(),));
+    // Wire controller to the reserve vault so rebalance/divest authorize. (audit H1/H4 gate)
+    MockStrategyClient::new(&s.e, &sid).set_controller(&s.vault_id);
     s.vault.add_strategy(&sid, &10_000, &false);
     s.vault.rebalance();
     assert_eq!(s.policy.coverage_required(), 0); // no guarantees signed yet — coverage is vacuously zero

@@ -31,10 +31,16 @@ inv "$VAULT" set_policy --policy "$POLICY"
 if [ -n "${DEFINDEX_VAULT:-}" ]; then
   ADAPTER=$(dep adapter_defindex.wasm --admin "$ADMIN" --underlying "$USDC_SAC")
   inv "$ADAPTER" set_vault --addr "$DEFINDEX_VAULT"
+  # Controller must be set BEFORE add_strategy: any subsequent rebalance / remove_strategy
+  # / ensure_liquidity triggers invest/divest, whose fail-closed controller read would
+  # otherwise trap. (audit H1/H4 gate)
+  inv "$ADAPTER" set_controller --addr "$VAULT"
   inv "$VAULT" add_strategy --address "$ADAPTER" --weight_bps 10000 --volatile false
   echo "ADAPTER_DEFINDEX=$ADAPTER (DeFindex vault $DEFINDEX_VAULT)"
 else
   # DEFINDEX_VAULT unset -> fall back to the mock-strategy for local/testnet runs.
+  # Controller must be set BEFORE add_strategy (see DeFindex branch). (audit H1/H4 gate)
+  inv "$MOCK" set_controller --addr "$VAULT"
   inv "$VAULT" add_strategy --address "$MOCK" --weight_bps 10000 --volatile false
   echo "DEFINDEX_VAULT unset -> using mock-strategy slot only"
 fi

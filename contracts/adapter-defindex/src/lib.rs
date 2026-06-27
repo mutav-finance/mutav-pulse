@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, token, vec, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec, Address, BytesN, Env};
 use strategy::Strategy;
 use interfaces::DefindexVaultClient;
 
@@ -33,6 +33,11 @@ enum DataKey {
     Underlying,
     Vault, // the DeFindex vault address
     MaxSlippageBps, // withdrawal slippage floor tolerance (u32, bps)
+    // ADDITIVE (audit H1/H4): the controlling Mutav reserve/vault that owns this
+    // adapter. Appended LAST to preserve the upgrade()-able storage layout — do
+    // NOT reorder existing variants. Distinct from `Vault` above, which is the
+    // EXTERNAL DeFindex vault, not the controller.
+    Controller,
 }
 
 #[contract]
@@ -52,6 +57,14 @@ impl AdapterDefindex {
 
     pub fn admin(e: &Env) -> Address { e.storage().instance().get(&DataKey::Admin).unwrap() }
     pub fn vault(e: &Env) -> Address { e.storage().instance().get(&DataKey::Vault).expect("vault not set") }
+
+    /// The controlling Mutav reserve/vault that is authorized to call
+    /// `invest`/`divest`. FAIL-CLOSED: traps with "controller not set" if unset,
+    /// so an upgraded-but-not-yet-wired adapter bricks investing/divesting (the
+    /// safe direction — no funds lost) rather than silently allowing any caller.
+    pub fn controller(e: &Env) -> Address {
+        e.storage().instance().get(&DataKey::Controller).expect("controller not set")
+    }
 
     /// Current withdrawal slippage tolerance in bps. Defaults to
     /// `DEFAULT_MAX_SLIPPAGE_BPS` (50 = 0.5%); falls back to the default for
@@ -74,6 +87,17 @@ impl AdapterDefindex {
     pub fn set_vault(e: &Env, addr: Address) {
         Self::admin(e).require_auth();
         e.storage().instance().set(&DataKey::Vault, &addr);
+    }
+
+    /// Admin-gated. Sets the controlling Mutav reserve/vault authorized to call
+    /// `invest`/`divest` (audit H1/H4). OPERATIONAL: because `controller()` is
+    /// fail-closed, this MUST be re-invoked after every in-place `upgrade()` —
+    /// until then `invest`/`divest` trap (safe, no funds lost). Emits an event so
+    /// the wiring step is auditable on-chain.
+    pub fn set_controller(e: &Env, addr: Address) {
+        Self::admin(e).require_auth();
+        e.storage().instance().set(&DataKey::Controller, &addr);
+        e.events().publish((symbol_short!("ctrl_set"),), addr);
     }
     pub fn set_admin(e: &Env, new_admin: Address) {
         Self::admin(e).require_auth();
@@ -121,11 +145,20 @@ impl AdapterDefindex {
 #[contractimpl]
 impl Strategy for AdapterDefindex {
     fn invest(e: Env, amount: i128) {
+        // Authorization (audit H4): only the controlling reserve/vault may deploy
+        // funds. Any EOA/other-contract caller traps here before any token move.
+        AdapterDefindex::controller(&e).require_auth();
         let me = e.current_contract_address();
         AdapterDefindex::dfx(&e).deposit(&vec![&e, amount], &vec![&e, 0], &me, &true);
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {
+        // Authorization (audit H1 CRITICAL): only the controlling reserve/vault
+        // may withdraw the position. This supersedes a mere `to == vault` check —
+        // an equality-only guard would let a third party force liquidation /
+        // realize slippage (griefing). The caller-supplied `to` is safe because
+        // only the controller can reach the lines below.
+        AdapterDefindex::controller(&e).require_auth();
         // Read df_shares once; derive value inline to avoid a redundant cross-contract read.
         let shares = AdapterDefindex::df_shares(&e);
         if shares <= 0 { return 0; }
