@@ -21,6 +21,8 @@ interface MetricCardProps {
   tooltip?: string;
   /** amber accent on the value — use only for Net APY */
   accentValue?: boolean;
+  /** quieter borderless variant (smaller value, no box) — supporting metrics */
+  compact?: boolean;
   /** loading skeleton */
   loading?: boolean;
   /** error message */
@@ -33,6 +35,7 @@ export function MetricCard({
   unit,
   tooltip,
   accentValue = false,
+  compact = false,
   loading = false,
   error,
 }: MetricCardProps) {
@@ -41,9 +44,9 @@ export function MetricCard({
   return (
     <div
       style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        padding: "20px 24px",
+        backgroundColor: compact ? "transparent" : "var(--color-surface)",
+        border: compact ? "none" : "1px solid var(--color-border)",
+        padding: compact ? 0 : "20px 24px",
         position: "relative",
         display: "flex",
         flexDirection: "column",
@@ -88,8 +91,9 @@ export function MetricCard({
               justifyContent: "center",
               width: "14px",
               height: "14px",
+              backgroundColor: "var(--color-surface-3)",
               border: "1px solid var(--color-border)",
-              color: "var(--color-text-3)",
+              color: "var(--color-text-2)",
               fontSize: "9px",
               fontFamily: "var(--font-body)",
               fontWeight: 500,
@@ -160,7 +164,7 @@ export function MetricCard({
         <p
           className="font-display"
           style={{
-            fontSize: "28px",
+            fontSize: compact ? "22px" : "28px",
             color: accentValue ? "var(--color-accent)" : "var(--color-text)",
             letterSpacing: "-0.02em",
             lineHeight: 1,

@@ -324,6 +324,32 @@ input:disabled {
   border-color: var(--color-accent) !important;
 }
 
+/* ── Number input: keep the spinner buttons always visible (not hover-only) ── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* ── Dark scrollbar — for fixed-height scroll containers (e.g. registry list) ── */
+.scroll-dark {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-3) transparent;
+}
+.scroll-dark::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-dark::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+.scroll-dark::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border: 2px solid var(--color-surface);
+}
+.scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-3);
+}
+
 /* ── Reserve hub: fund-info (left) + sticky invest rail (right) ──────────────
    Goldfinch-style 2-column. Below 1024px it collapses to one column with the
    invest column FIRST (so the action is reachable without scrolling past the

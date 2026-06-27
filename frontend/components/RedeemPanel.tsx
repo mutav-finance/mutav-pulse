@@ -216,10 +216,11 @@ export function RedeemPanel({
             fontSize: "18px",
             color: "var(--color-text)",
             letterSpacing: "-0.01em",
+            textTransform: "uppercase",
             margin: 0,
           }}
         >
-          Redeem {shareSymbol} — Queue {depositToken}
+          Redeem {shareSymbol} / Queue {depositToken}
         </h2>
         <p
           className="font-body"
@@ -229,7 +230,7 @@ export function RedeemPanel({
             marginTop: "4px",
           }}
         >
-          Submit a redemption request. Once fulfilled by the vault operator, claim your {depositToken}.
+          Request a redemption. Once the operator fulfills it, claim your {depositToken}.
         </p>
       </div>
 
@@ -283,6 +284,7 @@ export function RedeemPanel({
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
                 outline: "none",
+                colorScheme: "dark",
               }}
               aria-label={`${shareSymbol} shares to redeem`}
             />

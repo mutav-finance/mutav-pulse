@@ -37,7 +37,7 @@ export function VerificationPanel() {
           fontSize: "11px",
           fontWeight: 500,
           letterSpacing: "0.08em",
-          color: "var(--color-text-2)",
+          color: "var(--color-accent)",
           textTransform: "uppercase",
           marginBottom: "16px",
           margin: "0 0 16px",

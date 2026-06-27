@@ -27,6 +27,7 @@ import { reserveReads } from "@/lib/contracts";
 import { InvestCard } from "@/components/InvestCard";
 import { ReserveTransparency } from "@/components/ReserveTransparency";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export default function ReserveHub() {
   const params = useParams<{ vault: string }>();
@@ -135,6 +136,11 @@ export default function ReserveHub() {
           <div className="reserve-hub-invest">
             <InvestCard reads={reads} reserve={reserve} />
           </div>
+        </div>
+
+        {/* ── Shared brand footer ─────────────────────────────────────────── */}
+        <div style={{ marginTop: "64px" }}>
+          <SiteFooter />
         </div>
       </div>
     </main>

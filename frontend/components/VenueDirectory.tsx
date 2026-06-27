@@ -50,7 +50,7 @@ const adapterLink: { href: string; label: string } = (() => {
   }
   return {
     href: contractUrl(config.contracts.vault),
-    label: "via reserve →",
+    label: "view ↗",
   };
 })();
 
@@ -124,7 +124,6 @@ function ActionCell({ venue }: { venue: Venue }) {
           color: "var(--color-text-2)",
           textDecoration: "none",
           fontFeatureSettings: '"tnum" 1',
-          whiteSpace: "nowrap",
           transition: "color 150ms ease-out",
         }}
         onMouseEnter={(e) => {
@@ -185,7 +184,6 @@ export function VenueDirectory() {
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
-        overflowX: "auto",
       }}
     >
       <table
@@ -193,11 +191,11 @@ export function VenueDirectory() {
         aria-label="Protocol integration directory"
       >
         <colgroup>
-          <col style={{ width: "22%" }} />
-          <col style={{ width: "14%" }} />
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "12%" }} />
           <col style={{ width: "40%" }} />
           <col style={{ width: "14%" }} />
-          <col style={{ width: "10%" }} />
+          <col style={{ width: "18%" }} />
         </colgroup>
         <thead>
           <tr>
@@ -219,6 +217,8 @@ export function VenueDirectory() {
                 style={{
                   backgroundColor: rowBg,
                   borderBottom: isLast ? "none" : "1px solid var(--color-border)",
+                  // Planned venues: a light dim so the whole row reads as "not yet live".
+                  opacity: venue.status === "live" ? 1 : 0.5,
                 }}
               >
                 {/* Protocol name */}

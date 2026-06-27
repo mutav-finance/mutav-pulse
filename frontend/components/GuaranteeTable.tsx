@@ -51,7 +51,7 @@ function StatusBadge({ active, isCurrent }: { active: boolean; isCurrent: boolea
       <span
         className="font-mono"
         style={{
-          fontSize: "11px",
+          fontSize: "10px",
           color: "var(--color-text-2)",
           letterSpacing: "0.06em",
           fontFeatureSettings: '"tnum" 1',
@@ -72,7 +72,7 @@ const COL_STYLE: React.CSSProperties = {
 
 const HEADER_STYLE: React.CSSProperties = {
   ...COL_STYLE,
-  fontSize: "10px",
+  fontSize: "9px",
   fontWeight: 500,
   letterSpacing: "0.08em",
   color: "var(--color-text-3)",
@@ -80,6 +80,10 @@ const HEADER_STYLE: React.CSSProperties = {
   textTransform: "uppercase",
   borderBottom: "1px solid var(--color-border)",
   backgroundColor: "var(--color-surface-2)",
+  // Stays pinned while the body scrolls inside the fixed-height container.
+  position: "sticky",
+  top: 0,
+  zIndex: 1,
 };
 
 export function GuaranteeTable({ guarantees, money, loading = false, error }: GuaranteeTableProps) {
@@ -147,14 +151,16 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
 
   return (
     <div
+      className="scroll-dark"
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
-        overflowX: "auto",
+        overflow: "auto",
+        maxHeight: "210px",
       }}
     >
       <table
-        style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" }}
+        style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto", fontSize: "13px", color: "var(--color-text-2)" }}
         aria-label="Active guarantee registry"
       >
         <thead>
@@ -207,7 +213,7 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
                     className="font-mono"
                     title={landlord}
                     style={{
-                      fontSize: "12px",
+                      fontSize: "11px",
                       color: "var(--color-text-2)",
                       fontFeatureSettings: '"tnum" 1',
                       letterSpacing: "0.01em",
@@ -230,7 +236,7 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
                 {/* Used / Cap */}
                 <td style={{ ...COL_STYLE, textAlign: "center" }}>
                   <Mono>
-                    <span style={{ color: "var(--color-text)" }}>{months_used}</span>
+                    <span style={{ color: "var(--color-text-2)" }}>{months_used}</span>
                     <span style={{ color: "var(--color-text-3)" }}>/{months_covered}</span>
                   </Mono>
                 </td>

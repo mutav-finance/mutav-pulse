@@ -61,7 +61,12 @@ export function DepositWidget({
 
   async function handleDeposit(e: React.FormEvent) {
     e.preventDefault();
-    if (!usdcStroops || status === "pending") return;
+    if (status === "pending") return;
+    if (!usdcStroops) {
+      setErrorMsg(`Enter an amount of ${depositToken} to deposit.`);
+      setStatus("error");
+      return;
+    }
 
     setStatus("pending");
     setErrorMsg(null);
@@ -79,7 +84,6 @@ export function DepositWidget({
   }
 
   const isPending = status === "pending";
-  const canSubmit = usdcStroops !== null && !isPending;
 
   return (
     <section
@@ -111,10 +115,11 @@ export function DepositWidget({
             fontSize: "18px",
             color: "var(--color-text)",
             letterSpacing: "-0.01em",
+            textTransform: "uppercase",
             margin: 0,
           }}
         >
-          Deposit {depositToken} — Earn {shareSymbol}
+          Deposit {depositToken} / Earn {shareSymbol}
         </h2>
         <p
           className="font-body"
@@ -124,7 +129,7 @@ export function DepositWidget({
             marginTop: "4px",
           }}
         >
-          Contribute {depositToken} to the MUTAV reserve and receive {shareSymbol} shares at current NAV.
+          Contribute {depositToken} to the reserve and receive {shareSymbol} shares at current NAV.
         </p>
       </div>
 
@@ -170,6 +175,8 @@ export function DepositWidget({
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
                 outline: "none",
+                // Dark native controls (number spinner) instead of the light default.
+                colorScheme: "dark",
                 // No border-radius (Precision Brutalism)
               }}
               aria-label={`${depositToken} amount to deposit`}
@@ -259,27 +266,10 @@ export function DepositWidget({
           </div>
         </div>
 
-        {/* Error message */}
-        {errorMsg && (
-          <p
-            className="font-mono"
-            role="alert"
-            style={{
-              fontSize: "11px",
-              color: "var(--color-error)",
-              marginBottom: "12px",
-              letterSpacing: "0.01em",
-              lineHeight: 1.4,
-            }}
-          >
-            {errorMsg}
-          </p>
-        )}
-
-        {/* Primary CTA — Investidor amber outline button */}
+        {/* Primary CTA — always-clickable solid amber button */}
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={isPending}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           className="font-body"
@@ -293,17 +283,11 @@ export function DepositWidget({
             fontSize: "14px",
             fontWeight: 500,
             letterSpacing: "0.01em",
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            // Investidor primary button spec
-            backgroundColor:
-              canSubmit && isHovered ? "var(--color-accent)" : "transparent",
-            color:
-              canSubmit && isHovered
-                ? "var(--color-canvas)"
-                : canSubmit
-                ? "var(--color-accent)"
-                : "var(--color-text-3)",
-            border: `1px solid ${canSubmit ? "var(--color-accent)" : "var(--color-border)"}`,
+            cursor: isPending ? "not-allowed" : "pointer",
+            // Always-prominent, always-clickable solid amber CTA.
+            backgroundColor: !isPending && isHovered ? "var(--color-amber-600)" : "var(--color-accent)",
+            color: "var(--color-canvas)",
+            border: "1px solid var(--color-accent)",
             // No border-radius
             opacity: isPending ? 0.6 : 1,
             transition: "color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out",
@@ -313,6 +297,22 @@ export function DepositWidget({
           {isPending && <span className="live-dot" aria-hidden="true" />}
           {isPending ? "Depositing…" : "Deposit"}
         </button>
+
+        {/* Error feedback — space is always reserved so the box never shifts. */}
+        <p
+          className="font-mono"
+          role="alert"
+          style={{
+            fontSize: "11px",
+            color: "var(--color-error)",
+            marginTop: "12px",
+            minHeight: "15px",
+            letterSpacing: "0.01em",
+            lineHeight: 1.4,
+          }}
+        >
+          {errorMsg}
+        </p>
 
         {/* Inline confirmation — tx state lives on the component that triggered it */}
         <TxStatus hash={lastHash} label="Deposit confirmed" />
