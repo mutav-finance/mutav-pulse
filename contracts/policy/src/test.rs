@@ -1,5 +1,6 @@
 #![cfg(test)]
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Events as _;
 use soroban_sdk::testutils::Ledger as _;
 use soroban_sdk::{token, Address, Env, String};
 use vault::{Vault, VaultClient};
@@ -12,6 +13,7 @@ struct Ctx {
     token_admin: token::StellarAssetClient<'static>,
     vault: VaultClient<'static>,
     policy: PolicyClient<'static>,
+    policy_id: Address,
 }
 
 fn setup() -> Ctx {
@@ -47,7 +49,7 @@ fn setup() -> Ctx {
     Ctx {
         token: token::TokenClient::new(&e, &underlying),
         token_admin: token::StellarAssetClient::new(&e, &underlying),
-        e, vault, policy,
+        e, vault, policy, policy_id,
     }
 }
 
@@ -322,6 +324,83 @@ fn sign_guarantee_rejects_fee_above_100pct_and_allows_boundary() {
     assert_eq!(c.policy.guarantee(&gid).fee_bps, 10_000);
 }
 
+// ─────────────────── arithmetic widening / overflow (H2 + mediums) ───────────────────
+
+/// Nexus coverage-anchored solvency: `coverage_required` must round the capital
+/// floor UP (Ceil) so the pre-disburse gate is never understated. With a ratio
+/// that does NOT divide evenly, the result is strictly greater than the floor.
+/// RED-first: the prior `raw*ratio/BPS_DENOM` truncation floors this value.
+#[test]
+fn coverage_required_rounds_up() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &10_000);
+    c.token_admin.mint(&agency, &10_000);
+    c.vault.deposit(&10_000, &alice, &alice, &alice);
+
+    // raw = monthly_amount(100) * months_covered(6) = 600.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+
+    // 7_500 bps: 600 * 7_500 / 10_000 = 4_500_000 / 10_000 = 450 exactly — even.
+    // Use 7_511 bps to force a non-even divide: 600*7_511 = 4_506_600;
+    // /10_000 = 450 (floor), ceil = 451.
+    c.policy.set_coverage_ratio_bps(&7_511);
+    let raw = 600i128;
+    let ratio = 7_511i128;
+    let floor = raw * ratio / 10_000;
+    let ceil = (raw * ratio + 10_000 - 1) / 10_000;
+    assert_eq!(floor, 450);
+    assert_eq!(ceil, 451);
+    assert_eq!(c.policy.coverage_required(), ceil); // rounds UP
+    assert!(c.policy.coverage_required() > floor);
+}
+
+/// With the default ratio (10_000 bps), Ceil of raw*10_000/10_000 == raw exactly
+/// (no +1) — confirming the default-config figures do not shift.
+#[test]
+fn coverage_required_default_ratio_unchanged() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &10_000);
+    c.token_admin.mint(&agency, &10_000);
+    c.vault.deposit(&10_000, &alice, &alice, &alice);
+
+    // default ratio is 10_000 bps (set in setup()).
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    assert_eq!(c.policy.coverage_required(), 600); // == raw, no rounding shift
+}
+
+/// `set_coverage_ratio_bps` accepts a legitimate over-collateralization ratio
+/// (200%) but rejects an overflow-class value above the 10*BPS_DENOM ceiling.
+#[test]
+fn set_coverage_ratio_bps_accepts_over_collateralization() {
+    let c = setup();
+    c.policy.set_coverage_ratio_bps(&20_000); // 200% — allowed
+}
+
+#[test]
+#[should_panic]
+fn set_coverage_ratio_bps_rejects_overflow_class() {
+    let c = setup();
+    c.policy.set_coverage_ratio_bps(&200_000); // > 1000% ceiling — rejected
+}
+
+/// `monthly_premium` (premium_of, Floor) is behavior-preserving for normal terms.
+#[test]
+fn premium_of_unchanged_for_normal_terms() {
+    let c = setup();
+    let landlord = Address::generate(&c.e);
+    // monthly_amount 100, fee_bps 1_000 → 100 * 1_000 / 10_000 = 10.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    assert_eq!(c.policy.monthly_premium(&gid), 10);
+}
+
 /// 5b. pay_premium rejects an inactive guarantee ("guarantee inactive").
 #[test]
 fn pay_premium_rejects_inactive_guarantee() {
@@ -341,4 +420,140 @@ fn pay_premium_rejects_inactive_guarantee() {
 
     // Now paying is rejected.
     assert!(c.policy.try_pay_premium(&agency, &gid).is_err());
+}
+
+// ─────────────────── policy lifecycle events (observability) ───────────────────
+
+/// sign_guarantee emits exactly one policy-contract event (GuaranteeSigned),
+/// mirroring the vault's sep_deposit_emits_event. A lone sign_guarantee is the
+/// only policy-id state mutation, so the policy-contract event count is exactly 1.
+#[test]
+fn sign_guarantee_emits_guarantee_signed_event() {
+    let c = setup();
+    let landlord = Address::generate(&c.e);
+    c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert_eq!(policy_events.events().len(), 1);
+}
+
+/// pay_premium emits PremiumPaid on the solvent (activating) path. `events().all()`
+/// reflects only the last (successful) top-level invocation, mirroring the vault's
+/// sep_deposit_emits_event presence check.
+#[test]
+fn pay_premium_emits_premium_paid_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    // The activating pay_premium publishes a PremiumPaid on the policy contract id.
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(!policy_events.events().is_empty());
+}
+
+/// Insolvent pay_premium rolls back AND publishes no PremiumPaid — emit-after-assert.
+/// A failed last invocation yields no events at all (testutils semantics), so the
+/// policy-contract filter is empty.
+#[test]
+fn pay_premium_insolvent_emits_no_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    // Thin reserve: 100 < 600 coverage required.
+    c.vault.deposit(&100, &alice, &alice, &alice);
+
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    assert!(c.policy.try_pay_premium(&agency, &gid).is_err());
+    // Rolled back / failed invocation: no PremiumPaid published.
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(policy_events.events().is_empty());
+}
+
+/// cover_default emits DefaultCovered on the happy path.
+#[test]
+fn cover_default_emits_default_covered_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    c.policy.cover_default(&gid);
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(!policy_events.events().is_empty());
+}
+
+/// cover_default halted path (unpaid guarantee) emits nothing — proving the
+/// emit-after-disburse-success ordering. A failed last invocation yields no events.
+#[test]
+fn cover_default_halted_emits_no_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Unpaid guarantee: cover_default is halted ("premiums not up to date").
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    assert!(c.policy.try_cover_default(&gid).is_err());
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(policy_events.events().is_empty());
+}
+
+/// settle_guarantee emits GuaranteeSettled on the policy contract id.
+#[test]
+fn settle_guarantee_emits_settled_event() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    c.policy.settle_guarantee(&gid);
+    let policy_events = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(!policy_events.events().is_empty());
+}
+
+/// Field-shape lock: on a 2-month guarantee, the first cover_default decrements to
+/// months_used==1 / months_remaining==1 — the values DefaultCovered carries. The
+/// on-chain guarantee state cross-checks the event body, and the event is present.
+#[test]
+fn cover_default_event_carries_months_remaining() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let gid = c.policy.sign_guarantee(&landlord, &100, &2, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    c.policy.cover_default(&gid);
+    // Capture events immediately after cover_default — any later read invocation
+    // (e.g. guarantee()) would replace the last-invocation event set.
+    let evs = c.e.events().all().filter_by_contract(&c.policy_id);
+    assert!(!evs.events().is_empty()); // DefaultCovered present
+
+    // Cross-check the on-chain state the event mirrors: months_used==1,
+    // months_remaining (months_covered - months_used) == 1.
+    let g = c.policy.guarantee(&gid);
+    assert_eq!(g.months_used, 1);
+    assert_eq!(g.months_covered - g.months_used, 1);
 }

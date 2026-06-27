@@ -14,6 +14,13 @@ enum DataKey {
     /// withdraw that settles below `get_asset_amounts_per_shares`' preview so the
     /// adapter's slippage floor can reject it. Defaults to 0 (faithful vault).
     WithdrawHaircutBps,
+    /// Test-only: deposit haircut in bps (audit H5). The vault mints
+    /// `shares * (10_000 - haircut_bps) / 10_000` to the depositor while still
+    /// taking the full underlying `amount`, letting a test simulate a deposit whose
+    /// minted shares are worth less than the amount paid so the adapter's NEW
+    /// deposit-side slippage floor can reject it. Defaults to 0 (faithful vault).
+    /// Appended LAST — additive, test-double only (never deployed).
+    DepositHaircutBps,
 }
 
 #[contract]
@@ -52,19 +59,43 @@ impl MockDefindex {
             .get(&DataKey::WithdrawHaircutBps)
             .unwrap_or(0u32) as i128
     }
+
+    /// Test-only (audit H5): set the deposit haircut (bps). Lets a test make
+    /// `deposit` mint fewer shares than the underlying paid, so the adapter's
+    /// deposit-side slippage floor trips.
+    pub fn set_deposit_haircut_bps(e: &Env, bps: u32) {
+        e.storage().instance().set(&DataKey::DepositHaircutBps, &bps);
+    }
+
+    fn deposit_haircut_bps(e: &Env) -> i128 {
+        e.storage()
+            .instance()
+            .get(&DataKey::DepositHaircutBps)
+            .unwrap_or(0u32) as i128
+    }
 }
 
 #[contractimpl]
 impl DefindexVaultTrait for MockDefindex {
-    fn deposit(e: Env, amounts_desired: Vec<i128>, _amounts_min: Vec<i128>, from: Address, _invest: bool) -> Val {
+    fn deposit(e: Env, amounts_desired: Vec<i128>, amounts_min: Vec<i128>, from: Address, _invest: bool) -> Val {
         let amount = amounts_desired.get(0).unwrap();
+        // Honor the caller's amount floor (audit H5): real DeFindex reverts when the
+        // amount consumed is below `amounts_min`. Trap to mirror that revert so the
+        // adapter's defense-in-depth `amount_floor` path is exercised under test.
+        let min_in = amounts_min.get(0).unwrap_or(0);
+        if amount < min_in {
+            panic!("deposit below amounts_min");
+        }
         let supply = Base::total_supply(&e);
         let held_before = Self::held(&e);
         let shares = if supply == 0 || held_before == 0 { amount } else { amount * supply / held_before };
+        // Optional deposit haircut (default 0) lets a test mint fewer shares than the
+        // underlying paid, so the minted-value preview drops below the adapter floor.
+        let minted = shares * (10_000 - Self::deposit_haircut_bps(&e)) / 10_000;
         token::TokenClient::new(&e, &Self::underlying_addr(&e))
             .transfer(&from, e.current_contract_address(), &amount);
-        Base::mint(&e, &from, shares);
-        shares.into_val(&e)
+        Base::mint(&e, &from, minted);
+        minted.into_val(&e)
     }
 
     fn withdraw(e: Env, df_amount: i128, min_amounts_out: Vec<i128>, from: Address) -> Vec<i128> {

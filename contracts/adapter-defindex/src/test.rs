@@ -11,6 +11,7 @@ struct Ctx {
     underlying: Address,
     adapter: AdapterDefindexClient<'static>,
     adapter_id: Address,
+    controller: Address,
     dfx: MockDefindexClient<'static>,
 }
 
@@ -25,10 +26,15 @@ fn setup() -> Ctx {
     let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
     let adapter = AdapterDefindexClient::new(&e, &adapter_id);
     adapter.set_vault(&dfx_id);
+    // Controller is a distinct generated address (a strategy never invests into
+    // itself). Under mock_all_auths_allowing_non_root_auth its non-root
+    // require_auth passes for direct client calls. (audit H1/H4 gate)
+    let controller = Address::generate(&e);
+    adapter.set_controller(&controller);
     Ctx {
         token: token::TokenClient::new(&e, &underlying),
         token_admin: token::StellarAssetClient::new(&e, &underlying),
-        underlying, adapter, adapter_id,
+        underlying, adapter, adapter_id, controller,
         dfx: MockDefindexClient::new(&e, &dfx_id),
         e,
     }
@@ -80,6 +86,66 @@ fn admin_can_tune_slippage_and_invalid_is_rejected() {
     assert_eq!(c.adapter.max_slippage_bps(), 100);
 }
 
+// --- Audit H1 (CRITICAL) / H4: controller authorization gate ---
+
+/// H1: divest must trap for any caller that is not the stored controller. After a
+/// controller-authorized invest, drop all auths and assert a non-controller's
+/// `divest` returns Err — proving no third party can drain the position.
+#[test]
+fn divest_traps_for_non_controller_caller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000); // controller-authorized (mock_all_auths active)
+    // No auths satisfied -> the controller's require_auth cannot pass.
+    c.e.set_auths(&[]);
+    let attacker = Address::generate(&c.e);
+    assert!(c.adapter.try_divest(&100, &attacker).is_err());
+}
+
+/// H4: invest must trap for any caller that is not the stored controller.
+#[test]
+fn invest_traps_for_non_controller_caller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.e.set_auths(&[]);
+    assert!(c.adapter.try_invest(&1_000).is_err());
+}
+
+/// GREEN guard: with the controller set and authorized (mock_all_auths), divest
+/// still returns the underlying to `to`. Behavior-preserving for the legit path.
+#[test]
+fn divest_succeeds_for_controller() {
+    let c = setup();
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    let to = Address::generate(&c.e);
+    let returned = c.adapter.divest(&500, &to);
+    assert!(returned >= 500);
+    assert_eq!(c.token.balance(&to), returned);
+}
+
+/// `set_controller` is admin-gated, and `controller()` is fail-closed before any
+/// set. Mirrors `admin_can_tune_slippage_and_invalid_is_rejected`'s structure.
+#[test]
+fn controller_setter_is_admin_gated() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let issuer = Address::generate(&e);
+    let sac = e.register_stellar_asset_contract_v2(issuer);
+    let underlying = sac.address();
+    let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
+    let adapter = AdapterDefindexClient::new(&e, &adapter_id);
+
+    // (a) Fail-closed: controller() traps before any set_controller.
+    assert!(adapter.try_controller().is_err());
+
+    // (b) Admin-gated: with no auths satisfied, set_controller traps.
+    e.set_auths(&[]);
+    let x = Address::generate(&e);
+    assert!(adapter.try_set_controller(&x).is_err());
+}
+
 /// A withdraw whose realised proceeds stay within the slippage tolerance clears
 /// the floor and succeeds. The mock's preview and settled amount are consistent
 /// (no haircut), so the floor (expected * 0.995) is comfortably met.
@@ -126,6 +192,104 @@ fn divest_haircut_within_raised_tolerance_succeeds() {
     let returned = c.adapter.divest(&5_000, &to);
     assert!(returned > 0);
     assert_eq!(c.token.balance(&to), returned);
+}
+
+// --- Audit H5: deposit-side slippage floor (mirrors the divest floor) ---
+//
+// The adapter's `invest` previously passed `amounts_min=[0]` (no floor) while
+// `divest` was slippage-guarded — an asymmetric defect. These tests prove the new
+// minted-share-value floor: after a `deposit`, the df-shares the adapter receives
+// are valued via the vault's own `get_asset_amounts_per_shares` preview and must
+// clear `amount * (10_000 - max_slippage_bps) / 10_000`.
+//
+// CRITICAL test-setup note (evaluator refinement): the floor can only short the
+// minted-value preview when there is PRE-EXISTING supply/held at invest time. With
+// supply==0 the mock mints `shares == amount` and the preview returns exactly
+// `amount` regardless of haircut, so the guard would pass vacuously. Each test
+// below seeds a prior deposit from a different party so supply/held are non-trivial.
+
+/// Seed the DeFindex vault with a prior deposit from an unrelated party so that at
+/// the adapter's invest time `total_supply > 0` and `held > 0`. This makes the
+/// minted-share-value preview (`minted * held / supply`) sensitive to a deposit
+/// haircut — without it the first-deposit path returns `amount` exactly and the
+/// floor never trips.
+fn seed_prior_supply(c: &Ctx, amount: i128) {
+    let other = Address::generate(&c.e);
+    c.token_admin.mint(&other, &amount);
+    // Drive the mock vault directly as the depositing party (mock omits auth).
+    c.dfx.deposit(
+        &soroban_sdk::vec![&c.e, amount],
+        &soroban_sdk::vec![&c.e, 0i128],
+        &other,
+        &true,
+    );
+}
+
+/// A faithful deposit (no haircut) with pre-existing supply clears the minted-value
+/// floor and succeeds — the new guard does not reject an honest invest. RED-first is
+/// not possible here (it only passes once the guard ships with the faithful mock).
+#[test]
+fn invest_within_tolerance_succeeds() {
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    // The adapter's df-shares are worth ~the invested amount (faithful vault).
+    assert_eq!(c.adapter.balance(), 1_000);
+}
+
+/// CORE red-first test: a 1% deposit haircut against the default 0.5% tolerance
+/// means the minted shares are worth less than the floor of the amount invested, so
+/// the adapter traps. Mirrors `divest_out_of_tolerance_is_rejected`. Without the fix
+/// `invest` would silently accept the shortfall.
+#[test]
+#[should_panic]
+fn invest_out_of_tolerance_is_rejected() {
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100); // 1% mint shortfall > 0.5% tolerance
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+}
+
+/// The typed 502 code surfaces (not an opaque trap) when the deposit floor is
+/// breached. Mirrors `balance_traps_typed_on_malformed_vault_response`.
+#[test]
+fn invest_typed_error_on_slippage() {
+    use crate::AdapterError;
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100);
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    match c.adapter.try_invest(&1_000) {
+        Err(Ok(err)) => assert_eq!(err, AdapterError::DepositSlippageExceeded.into()),
+        _ => panic!("expected DepositSlippageExceeded typed trap"),
+    }
+}
+
+/// The deposit floor is admin-tunable, not over-tight: raise tolerance to 2%, apply
+/// a 1% haircut, and the invest clears the (now-looser) floor. Mirrors
+/// `divest_haircut_within_raised_tolerance_succeeds`.
+#[test]
+fn invest_haircut_within_raised_tolerance_succeeds() {
+    let c = setup();
+    c.adapter.set_max_slippage_bps(&200); // 2% tolerance
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100); // 1% haircut, inside tolerance
+    c.token_admin.mint(&c.adapter_id, &10_000);
+    c.adapter.invest(&10_000);
+    // Minted value sits above the floor; balance reflects the (haircut) value.
+    assert!(c.adapter.balance() > 0);
+}
+
+/// Degenerate path: investing 0 is a no-op that does no cross-contract calls and
+/// leaves the balance at 0. Exercises the `amount <= 0` guard before the share-delta
+/// math.
+#[test]
+fn invest_zero_amount_is_noop() {
+    let c = setup();
+    c.adapter.invest(&0);
+    assert_eq!(c.adapter.balance(), 0);
 }
 
 #[test]
@@ -238,6 +402,8 @@ fn adapter_drops_into_vault_allocator_and_earns_yield() {
     let adapter_id = e.register(AdapterDefindex, (admin.clone(), underlying.clone()));
     let adapter = AdapterDefindexClient::new(&e, &adapter_id);
     adapter.set_vault(&dfx_id);
+    // Controller is the reserve vault so vault-originated rebalance/divest authorize. (audit H1/H4)
+    adapter.set_controller(&vault_id);
     vault.add_strategy(&adapter_id, &10_000, &false);
 
     // Investor deposits; admin rebalances reserve into DeFindex.

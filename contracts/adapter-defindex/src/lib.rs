@@ -1,7 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, token, vec, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec, Address, BytesN, Env};
 use strategy::Strategy;
-use interfaces::DefindexVaultClient;
+use interfaces::{BPS_DENOM, DefindexVaultClient};
 
 /// Adapter-side errors surfaced as stable `#[contracterror]` codes. Numbered in
 /// the `5xx` band to stay clear of the registry `2xx`, policy `3xx`, and
@@ -19,13 +19,19 @@ pub enum AdapterError {
     /// `set_max_slippage_bps` was called with a value `> 10_000` (more than
     /// 100%), which would be a nonsensical floor.
     InvalidSlippageBps = 501,
+    /// Audit H5: the df-shares minted by the DeFindex `deposit` are worth (per the
+    /// vault's own `get_asset_amounts_per_shares` preview) less than the
+    /// `max_slippage_bps` floor of the amount invested. Mirrors the divest-side
+    /// floor — `invest` previously passed `amounts_min=[0]` (no floor), silently
+    /// accepting any mint shortfall. Appended with an explicit discriminant after
+    /// `InvalidSlippageBps` so the error ABI stays append-only.
+    DepositSlippageExceeded = 502,
 }
 
 /// Conservative default withdrawal slippage tolerance: 50 bps = 0.5%. This is a
 /// SAFETY DEFAULT, not a mainnet-certified value — see `divest` for the
 /// assumption it guards (real-vault fee/rounding behavior is unverified).
 const DEFAULT_MAX_SLIPPAGE_BPS: u32 = 50;
-const BPS_DENOM: i128 = 10_000;
 
 #[contracttype]
 enum DataKey {
@@ -33,6 +39,11 @@ enum DataKey {
     Underlying,
     Vault, // the DeFindex vault address
     MaxSlippageBps, // withdrawal slippage floor tolerance (u32, bps)
+    // ADDITIVE (audit H1/H4): the controlling Mutav reserve/vault that owns this
+    // adapter. Appended LAST to preserve the upgrade()-able storage layout — do
+    // NOT reorder existing variants. Distinct from `Vault` above, which is the
+    // EXTERNAL DeFindex vault, not the controller.
+    Controller,
 }
 
 #[contract]
@@ -52,6 +63,14 @@ impl AdapterDefindex {
 
     pub fn admin(e: &Env) -> Address { e.storage().instance().get(&DataKey::Admin).unwrap() }
     pub fn vault(e: &Env) -> Address { e.storage().instance().get(&DataKey::Vault).expect("vault not set") }
+
+    /// The controlling Mutav reserve/vault that is authorized to call
+    /// `invest`/`divest`. FAIL-CLOSED: traps with "controller not set" if unset,
+    /// so an upgraded-but-not-yet-wired adapter bricks investing/divesting (the
+    /// safe direction — no funds lost) rather than silently allowing any caller.
+    pub fn controller(e: &Env) -> Address {
+        e.storage().instance().get(&DataKey::Controller).expect("controller not set")
+    }
 
     /// Current withdrawal slippage tolerance in bps. Defaults to
     /// `DEFAULT_MAX_SLIPPAGE_BPS` (50 = 0.5%); falls back to the default for
@@ -74,6 +93,17 @@ impl AdapterDefindex {
     pub fn set_vault(e: &Env, addr: Address) {
         Self::admin(e).require_auth();
         e.storage().instance().set(&DataKey::Vault, &addr);
+    }
+
+    /// Admin-gated. Sets the controlling Mutav reserve/vault authorized to call
+    /// `invest`/`divest` (audit H1/H4). OPERATIONAL: because `controller()` is
+    /// fail-closed, this MUST be re-invoked after every in-place `upgrade()` —
+    /// until then `invest`/`divest` trap (safe, no funds lost). Emits an event so
+    /// the wiring step is auditable on-chain.
+    pub fn set_controller(e: &Env, addr: Address) {
+        Self::admin(e).require_auth();
+        e.storage().instance().set(&DataKey::Controller, &addr);
+        e.events().publish((symbol_short!("ctrl_set"),), addr);
     }
     pub fn set_admin(e: &Env, new_admin: Address) {
         Self::admin(e).require_auth();
@@ -121,11 +151,52 @@ impl AdapterDefindex {
 #[contractimpl]
 impl Strategy for AdapterDefindex {
     fn invest(e: Env, amount: i128) {
+        // Authorization (audit H4): only the controlling reserve/vault may deploy
+        // funds. Any EOA/other-contract caller traps here before any token move.
+        AdapterDefindex::controller(&e).require_auth();
+        // Degenerate guard: a non-positive amount is a no-op with NO cross-contract
+        // calls (matches `slippage_floor`'s contract; keep this BEFORE the
+        // before-read so the zero path touches nothing).
+        if amount <= 0 {
+            return;
+        }
         let me = e.current_contract_address();
-        AdapterDefindex::dfx(&e).deposit(&vec![&e, amount], &vec![&e, 0], &me, &true);
+        let dfx = AdapterDefindex::dfx(&e);
+        // Slippage floor for the amount invested, reusing the SAME admin-tunable
+        // `max_slippage_bps` mechanism as divest (no new DataKey).
+        let amount_floor = AdapterDefindex::slippage_floor(&e, amount);
+        // Pre-deposit df-share balance (read via the df_shares() token-balance helper,
+        // NOT the ignored `Val` deposit return).
+        let before = AdapterDefindex::df_shares(&e);
+        // `amounts_min` floors the amount the vault may *consume*, not the shares
+        // *minted* — defense-in-depth, mirroring divest's `min_amounts_out`. The
+        // binding guard is the minted-share-value assertion below.
+        dfx.deposit(&vec![&e, amount], &vec![&e, amount_floor], &me, &true);
+        let after = AdapterDefindex::df_shares(&e);
+        // Faithfully `after >= before`; if somehow not (impossible faithfully), treat
+        // minted as 0 so the floor TRAPS rather than computing a negative value.
+        let minted = if after > before { after - before } else { 0 };
+        // The real defect fix (audit H5): value the minted shares via the vault's own
+        // preview and require it to clear the floor — exactly mirroring divest's
+        // `expected_out`/`min_out`. Overflow note: `minted * held` stays well below
+        // ~1e19 at USDC 7-decimal scale (same bound as divest's preview path).
+        let minted_value = if minted <= 0 {
+            0
+        } else {
+            AdapterDefindex::first_amount(&e, &dfx.get_asset_amounts_per_shares(&minted))
+        };
+        if minted_value < amount_floor {
+            panic_with_error!(&e, AdapterError::DepositSlippageExceeded);
+        }
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {
+        // Authorization (audit H1 CRITICAL): only the controlling reserve/vault
+        // may withdraw the position. This supersedes a mere `to == vault` check —
+        // an equality-only guard would let a third party force liquidation /
+        // realize slippage (griefing). The caller-supplied `to` is safe because
+        // only the controller can reach the lines below.
+        AdapterDefindex::controller(&e).require_auth();
         // Read df_shares once; derive value inline to avoid a redundant cross-contract read.
         let shares = AdapterDefindex::df_shares(&e);
         if shares <= 0 { return 0; }

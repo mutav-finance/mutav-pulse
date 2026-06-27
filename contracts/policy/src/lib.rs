@@ -1,8 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
-use interfaces::{Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
-
-const BPS_DENOM: i128 = 10_000;
+use soroban_sdk::{contract, contracterror, contractevent, contractimpl, contracttype, Address, BytesN, Env};
+use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
+use interfaces::{BPS_DENOM, Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
 
 /// Underwriting errors surfaced as stable `#[contracterror]` codes. Numbered in
 /// the `3xx` band to stay clear of the registry `2xx` and strategy `4xx` codes.
@@ -13,6 +12,60 @@ pub enum PolicyError {
     /// `fee_bps` exceeds 100% (10_000 bps). Previously accepted silently, which
     /// let a guarantee charge a premium above its own monthly amount.
     FeeTooHigh = 300,
+}
+
+// ─────────────────── Policy lifecycle events (SEP-0056 parity) ───────────────────
+// Observability for the underwriting state machine, mirroring the vault's bare
+// `#[contractevent]` Deposit convention. With no explicit `topics` attribute the
+// derive auto-derives a snake_case name topic from the struct ident, so these
+// publish stable name topics `guarantee_signed` / `premium_paid` /
+// `default_covered` / `guarantee_settled` for off-chain indexers. All Address
+// fields are owned (cloned at emit time). Topic counts stay under the 4 cap.
+
+/// Emitted by `sign_guarantee` after the guarantee is committed to the registry.
+/// Topics: [name, landlord] (2).
+#[contractevent]
+pub struct GuaranteeSigned {
+    #[topic]
+    pub landlord: Address,
+    pub id: u32,
+    pub monthly_amount: i128,
+    pub months_covered: u32,
+    pub fee_bps: u32,
+    pub period_secs: u64,
+}
+
+/// Emitted by `pay_premium` only after the post-activation solvency assert passes.
+/// Topics: [name, payer, id] (3).
+#[contractevent]
+pub struct PremiumPaid {
+    #[topic]
+    pub payer: Address,
+    #[topic]
+    pub id: u32,
+    pub premium: i128,
+    pub paid_until: u64,
+}
+
+/// Emitted by `cover_default` only after a successful `vault.disburse`.
+/// Topics: [name, id, landlord] (3).
+#[contractevent]
+pub struct DefaultCovered {
+    #[topic]
+    pub id: u32,
+    #[topic]
+    pub landlord: Address,
+    pub amount: i128,
+    pub months_used: u32,
+    pub months_remaining: u32,
+}
+
+/// Emitted by `settle_guarantee` after the deactivation is committed.
+/// Topics: [name, id] (2).
+#[contractevent]
+pub struct GuaranteeSettled {
+    #[topic]
+    pub id: u32,
 }
 
 #[contracttype]
@@ -26,7 +79,15 @@ enum DataKey {
 #[contract]
 pub struct Policy;
 
-fn premium_of(g: &Guarantee) -> i128 { g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM }
+fn premium_of(g: &Guarantee) -> i128 {
+    // Floor is favorable-to-vault for a premium charged to a payer. fee_bps is
+    // bounded <= 10_000 at sign_guarantee, so checked_mul alone closes the trap
+    // without pulling the I256 machinery for this site. Value-identical to prior.
+    g.monthly_amount
+        .checked_mul(g.fee_bps as i128)
+        .expect("premium mul overflow")
+        / BPS_DENOM
+}
 
 #[contractimpl]
 impl Policy {
@@ -47,7 +108,15 @@ impl Policy {
 
     pub fn set_vault(e: &Env, addr: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Vault, &addr); }
     pub fn set_registry(e: &Env, addr: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Registry, &addr); }
-    pub fn set_coverage_ratio_bps(e: &Env, bps: u32) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::CoverageRatioBps, &bps); }
+    pub fn set_coverage_ratio_bps(e: &Env, bps: u32) {
+        Self::admin(e).require_auth();
+        // Bound at 1000% (10x BPS_DENOM) so an absurd ratio can never overflow
+        // `raw * ratio` in coverage_required. Over-collateralization (>100%) is a
+        // legitimate knob, so this is NOT clamped to 10_000 — only overflow-class
+        // values are rejected.
+        assert!(bps <= 10 * BPS_DENOM as u32, "coverage_ratio_bps exceeds 1000%");
+        e.storage().instance().set(&DataKey::CoverageRatioBps, &bps);
+    }
     pub fn set_admin(e: &Env, new_admin: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Admin, &new_admin); }
     pub fn upgrade(e: &Env, new_wasm_hash: BytesN<32>) { Self::admin(e).require_auth(); e.deployer().update_current_contract_wasm(new_wasm_hash); }
 
@@ -69,10 +138,15 @@ impl Policy {
         }
         let reg = Self::registry(e);
         let id = reg.next_id();
+        let landlord_topic = landlord.clone();
         reg.put(&Guarantee {
             id, landlord, monthly_amount, months_covered, months_used: 0,
             fee_bps, period_secs, paid_until: 0, active: true,
         });
+        GuaranteeSigned {
+            landlord: landlord_topic, id, monthly_amount, months_covered, fee_bps, period_secs,
+        }
+        .publish(e);
         Ok(id)
     }
 
@@ -89,6 +163,7 @@ impl Policy {
         g.paid_until = base + g.period_secs;
         reg.put(&g);
         assert!(Self::vault(e).stable_assets() >= Self::coverage_required(e.clone()), "insufficient capital to activate coverage");
+        PremiumPaid { payer: payer.clone(), id, premium, paid_until: g.paid_until }.publish(e);
     }
 
     pub fn cover_default(e: &Env, id: u32) {
@@ -102,6 +177,14 @@ impl Policy {
         if g.months_used == g.months_covered { g.active = false; }
         reg.put(&g);
         Self::vault(e).disburse(&g.landlord, &g.monthly_amount);
+        DefaultCovered {
+            id,
+            landlord: g.landlord.clone(),
+            amount: g.monthly_amount,
+            months_used: g.months_used,
+            months_remaining: g.months_covered.saturating_sub(g.months_used),
+        }
+        .publish(e);
     }
 
     pub fn settle_guarantee(e: &Env, id: u32) {
@@ -110,6 +193,7 @@ impl Policy {
         let mut g = reg.get(&id);
         g.active = false;
         reg.put(&g);
+        GuaranteeSettled { id }.publish(e);
     }
 }
 
@@ -123,10 +207,23 @@ impl PolicyTrait for Policy {
         for id in reg.active_ids().iter() {
             let g = reg.get(&id);
             if g.paid_until > now {
-                raw += g.monthly_amount * (g.months_covered.saturating_sub(g.months_used) as i128);
+                // Overflow-safe accumulation (keeps the saturating_sub month delta).
+                raw = raw
+                    .checked_add(
+                        g.monthly_amount
+                            .checked_mul(g.months_covered.saturating_sub(g.months_used) as i128)
+                            .expect("coverage mul overflow"),
+                    )
+                    .expect("coverage sum overflow");
             }
         }
-        raw * ratio / BPS_DENOM
+        // Apply the ratio with CEIL so the capital floor is never understated
+        // (Nexus coverage-anchored solvency). Ceil only tightens the pre-disburse
+        // gate and composes safely with the re-entrancy invariant (policy reduces
+        // coverage BEFORE vault.disburse; vault never calls coverage_required
+        // mid-disburse). At ratio == 10_000 (default), ceil(raw*10_000/10_000)
+        // == raw exactly — default-config figures do not shift.
+        mul_div_with_rounding(&e, raw, ratio, BPS_DENOM, Rounding::Ceil)
     }
 }
 
