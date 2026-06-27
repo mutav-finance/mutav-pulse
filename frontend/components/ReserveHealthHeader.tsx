@@ -9,6 +9,7 @@
  * No rounded corners. JetBrains Mono numbers. Surface stacking only, no shadows.
  */
 
+import type { ReactNode, CSSProperties } from "react";
 import { fmtFiat, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import type { StrategyAlloc } from "vault";
@@ -23,6 +24,8 @@ interface ReserveHealthHeaderProps {
   strategies: StrategyAlloc[];
   loading?: boolean;
   error?: string | null;
+  /** Rendered below the metrics grid in the left column (e.g. the admin gate). */
+  children?: ReactNode;
 }
 
 /** Single metric cell */
@@ -88,6 +91,7 @@ export function ReserveHealthHeader({
   strategies,
   loading = false,
   error,
+  children,
 }: ReserveHealthHeaderProps) {
   const utilization =
     totalAssets > 0n
@@ -97,14 +101,7 @@ export function ReserveHealthHeader({
       : 0;
 
   return (
-    <div
-      data-front="terminal"
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        position: "relative",
-      }}
-    >
+    <div data-front="terminal">
       {/* Error overlay */}
       {error && !loading && (
         <div
@@ -112,7 +109,8 @@ export function ReserveHealthHeader({
           style={{
             padding: "10px 20px",
             backgroundColor: "var(--color-surface)",
-            borderBottom: "1px solid var(--color-error)",
+            border: "1px solid var(--color-error)",
+            marginBottom: "16px",
           }}
         >
           <p
@@ -124,22 +122,21 @@ export function ReserveHealthHeader({
         </div>
       )}
 
-      {/* Metrics row — hairline-separated cells */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        {/* Separator between cells via box shadow on right */}
-        <div
-          style={{
-            display: "contents",
-          }}
-        >
+      {/* ── Two separate blocks: metrics grid (left) · strategy allocs (right) ── */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch" }}>
+        {/* Left column: metrics grid + the gate (children) below it */}
+        <div style={{ flex: "1 1 480px", display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div
+            style={{
+              border: "1px solid var(--color-border)",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1px",
+              backgroundColor: "var(--color-border)",
+            }}
+          >
           {/* Total Assets */}
-          <div style={{ borderRight: "1px solid var(--color-border)" }}>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Total Assets"
               value={loading ? "—" : fmtFiat(totalAssets, money)}
@@ -148,7 +145,7 @@ export function ReserveHealthHeader({
           </div>
 
           {/* Free Capital — copper (it's the deployable buffer) */}
-          <div style={{ borderRight: "1px solid var(--color-border)" }}>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Free Capital"
               value={loading ? "—" : fmtFiat(freeCapital, money)}
@@ -158,7 +155,7 @@ export function ReserveHealthHeader({
           </div>
 
           {/* Coverage Required */}
-          <div style={{ borderRight: "1px solid var(--color-border)" }}>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Coverage Required"
               value={loading ? "—" : fmtFiat(coverageRequired, money)}
@@ -167,7 +164,7 @@ export function ReserveHealthHeader({
           </div>
 
           {/* Utilization % */}
-          <div style={{ borderRight: "1px solid var(--color-border)" }}>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Utilization"
               value={loading ? "—" : `${utilization}%`}
@@ -177,7 +174,7 @@ export function ReserveHealthHeader({
           </div>
 
           {/* Pending Redemptions */}
-          <div style={{ borderRight: "1px solid var(--color-border)" }}>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Pending Redemptions"
               value={loading ? "—" : String(pendingCount)}
@@ -187,103 +184,155 @@ export function ReserveHealthHeader({
           </div>
 
           {/* Strategy Count */}
-          <div>
+          <div style={{ backgroundColor: "var(--color-surface)" }}>
             <HealthCell
               label="Strategies"
               value={loading ? "—" : String(strategies.length)}
               loading={loading}
             />
           </div>
-        </div>
-      </div>
-
-      {/* Strategy allocations strip — only when strategies exist */}
-      {!loading && strategies.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0",
-            padding: "8px 20px",
-            alignItems: "center",
-          }}
-        >
-          <span
-            className="font-body"
-            style={{
-              fontSize: "10px",
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              color: "var(--color-text-3)",
-              textTransform: "uppercase",
-              marginRight: "16px",
-              flexShrink: 0,
-            }}
-          >
-            Strategy Allocs
-          </span>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px",
-              alignItems: "center",
-            }}
-          >
-            {strategies.map((s) => (
-              <div
-                key={s.address}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <Mono
-                  copper
-                  style={{ fontSize: "12px" }}
-                >
-                  {(s.weight_bps / 100).toFixed(0)}%
-                </Mono>
-                <Mono
-                  dim
-                  style={{ fontSize: "11px" }}
-                >
-                  {s.address.slice(0, 6)}…{s.address.slice(-4)}
-                </Mono>
-                {s.volatile && (
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: "9px",
-                      color: "var(--color-copper)",
-                      border: "1px solid var(--color-copper)",
-                      padding: "1px 4px",
-                      letterSpacing: "0.06em",
-                    }}
-                  >
-                    VOL
-                  </span>
-                )}
-              </div>
-            ))}
           </div>
+          {children}
         </div>
-      )}
 
-      {/* Loading strategies placeholder */}
-      {loading && (
-        <div style={{ padding: "10px 20px" }}>
+        {/* Right card: strategy allocations as a list */}
+        {!loading && strategies.length > 0 && (
           <div
-            aria-hidden="true"
             style={{
-              height: "14px",
-              width: "200px",
-              backgroundColor: "var(--color-surface-3)",
+              flex: "1 1 320px",
+              backgroundColor: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              display: "flex",
+              flexDirection: "column",
             }}
-          />
-        </div>
-      )}
+          >
+            <span
+              className="font-body"
+              style={{
+                fontSize: "10px",
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                color: "var(--color-text-3)",
+                textTransform: "uppercase",
+                padding: "14px 16px 12px",
+              }}
+            >
+              Strategy Allocs
+            </span>
+            <div className="scroll-dark" style={{ overflow: "auto", maxHeight: "152px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFeatureSettings: '"tnum" 1' }}>
+              <thead>
+                <tr>
+                  {["#", "Adapter", "Vault", "Alloc"].map((h, idx) => (
+                    <th
+                      key={h}
+                      className="font-body"
+                      style={{
+                        textAlign: idx === 3 ? "right" : "left",
+                        fontSize: "10px",
+                        fontWeight: 500,
+                        letterSpacing: "0.10em",
+                        textTransform: "uppercase",
+                        color: "var(--color-text-3)",
+                        padding: "8px 14px",
+                        borderTop: "1px solid var(--color-border)",
+                        borderBottom: "1px solid var(--color-border)",
+                        backgroundColor: "var(--color-surface-2)",
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: Math.max(3, strategies.length) }, (_, i) => {
+                  const s = strategies[i];
+                  const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-canvas)";
+                  const cell: CSSProperties = {
+                    padding: "10px 14px",
+                    borderBottom: "1px solid var(--color-border)",
+                    whiteSpace: "nowrap",
+                  };
+                  return (
+                    <tr key={i} style={{ backgroundColor: rowBg }}>
+                      <td style={cell}>
+                        <Mono dim style={{ fontSize: "12px" }}>#{i + 1}</Mono>
+                      </td>
+                      {s ? (
+                        <>
+                          <td style={cell}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <span className="font-body" style={{ fontSize: "12px", color: "var(--color-text)" }}>
+                                DeFindex
+                              </span>
+                              {s.volatile && (
+                                <span
+                                  className="font-mono"
+                                  style={{
+                                    fontSize: "8px",
+                                    color: "var(--color-copper)",
+                                    border: "1px solid var(--color-copper)",
+                                    padding: "0 3px",
+                                    letterSpacing: "0.06em",
+                                  }}
+                                >
+                                  VOL
+                                </span>
+                              )}
+                            </span>
+                          </td>
+                          <td style={cell}>
+                            <Mono dim style={{ fontSize: "11px" }}>
+                              {s.address.slice(0, 6)}…{s.address.slice(-4)}
+                            </Mono>
+                          </td>
+                          <td style={{ ...cell, textAlign: "right" }}>
+                            <Mono copper style={{ fontSize: "13px", fontWeight: 600 }}>
+                              {(s.weight_bps / 100).toFixed(0)}%
+                            </Mono>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={cell}>
+                            <Mono dim style={{ fontSize: "12px", color: "var(--color-text-3)" }}>—</Mono>
+                          </td>
+                          <td style={cell}>
+                            <Mono dim style={{ fontSize: "11px", color: "var(--color-text-3)" }}>—</Mono>
+                          </td>
+                          <td style={{ ...cell, textAlign: "right" }}>
+                            <Mono dim style={{ fontSize: "13px", color: "var(--color-text-3)" }}>—</Mono>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        )}
+
+        {/* Loading strategies placeholder card */}
+        {loading && (
+          <div style={{ flex: "1 1 240px", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", padding: "14px 20px", display: "flex", alignItems: "center" }}>
+            <div
+              aria-hidden="true"
+              style={{
+                height: "14px",
+                width: "200px",
+                backgroundColor: "var(--color-surface-3)",
+              }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -27,7 +27,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, notFound } from "next/navigation";
-import { resolveAddress, getReserve } from "@/lib/discovery";
+import Link from "next/link";
+import { resolveAddress, getReserve, getReserves } from "@/lib/discovery";
 import { reserveReads, type ReserveContracts } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -85,13 +86,15 @@ const INITIAL: ProtocolData = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Section label — uppercase, terminal-dim, hairline top border */
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, id, topBorder = true }: { children: React.ReactNode; id?: string; topBorder?: boolean }) {
   return (
     <div
+      id={id}
       style={{
         paddingTop: "24px",
         marginBottom: "8px",
-        borderTop: "1px solid var(--color-border)",
+        borderTop: topBorder ? "1px solid var(--color-border)" : "none",
+        scrollMarginTop: "112px",
       }}
     >
       <p
@@ -149,7 +152,7 @@ export default function ProtocolVaultPage() {
   }
 
   // Verified path — reserve and reads are narrowed to non-null
-  return <ReserveCockpit reads={reads} contracts={reserve.contracts!} depositToken={reserve.depositToken} money={reserve} />;
+  return <ReserveCockpit reads={reads} contracts={reserve.contracts!} depositToken={reserve.depositToken} money={reserve} currency={reserve.currency} currentAddress={vault} />;
 }
 
 // ─── Cockpit (inner) ──────────────────────────────────────────────────────────
@@ -158,15 +161,14 @@ export default function ProtocolVaultPage() {
  * The actual cockpit UI, receiving per-reserve reads + contracts.
  * Writes (admin-tx helpers) are parameterized by the reserve's contracts.
  */
-function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: ReturnType<typeof reserveReads>; contracts: ReserveContracts; depositToken: string; money: Money }) {
+function ReserveCockpit({ reads, contracts, depositToken, money, currency, currentAddress }: { reads: ReturnType<typeof reserveReads>; contracts: ReserveContracts; depositToken: string; money: Money; currency: string; currentAddress: string }) {
   const { address } = useWallet();
   const [data, setData] = useState<ProtocolData>(INITIAL);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState("underwriting");
 
-  // ── Refresh after any successful tx ─────────────────────────────────────────
-  const handleSuccess = useCallback((hash: string) => {
-    setLastTxHash(hash);
+  // ── Refresh after any successful tx (per-form card shows the hash) ──────────
+  const handleSuccess = useCallback((_hash: string) => {
     setRefreshKey((k) => k + 1);
   }, []);
 
@@ -322,19 +324,20 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 marginBottom: "6px",
               }}
             >
-              MUTAV PULSE PROTOCOL — RESERVE COCKPIT
+              MUTAV PULSE PROTOCOL
             </p>
             <h1
               className="font-display"
               style={{
                 fontSize: "22px",
                 color: "var(--color-text)",
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.01em",
+                textTransform: "uppercase",
                 lineHeight: 1.1,
                 margin: 0,
               }}
             >
-              Protocol Cockpit
+              {currency} RESERVE COCKPIT
             </h1>
           </div>
 
@@ -381,22 +384,75 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
             >
               {data.loading ? "LOADING…" : "↻ REFRESH"}
             </button>
-            {lastTxHash && (
-              <span
-                className="font-mono"
+          </div>
+        </div>
+
+        {/* ── Reserve switcher — each reserve is its own contract deploy ──── */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "24px" }}>
+          {getReserves().map((r) => {
+            const live = r.status === "live" && !!r.address;
+            const active = !!r.address && r.address === currentAddress;
+            const base: React.CSSProperties = {
+              fontFamily: "var(--font-mono)",
+              fontSize: "12px",
+              fontWeight: 500,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              padding: "8px 16px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              textDecoration: "none",
+            };
+            if (!live) {
+              return (
+                <span
+                  key={r.id}
+                  aria-disabled="true"
+                  title="Not yet deployed"
+                  style={{
+                    ...base,
+                    border: "1px solid var(--color-border)",
+                    color: "var(--color-text-3)",
+                    cursor: "not-allowed",
+                    opacity: 0.55,
+                  }}
+                >
+                  {r.currency}
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="square"
+                    aria-label="Locked"
+                    role="img"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <rect x="5" y="11" width="14" height="10" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                </span>
+              );
+            }
+            return (
+              <Link
+                key={r.id}
+                href={`/protocol/${r.address}`}
+                aria-current={active ? "page" : undefined}
                 style={{
-                  fontSize: "10px",
-                  color: "var(--color-success)",
-                  letterSpacing: "0.02em",
+                  ...base,
+                  border: active ? "1px solid var(--color-copper)" : "1px solid var(--color-border)",
+                  backgroundColor: active ? "var(--color-copper)" : "var(--color-surface-2)",
+                  color: active ? "var(--color-canvas)" : "var(--color-text-2)",
                 }}
               >
-                TX:{" "}
-                <Mono style={{ color: "var(--color-success)" }}>
-                  {lastTxHash.slice(0, 8)}…{lastTxHash.slice(-6)}
-                </Mono>
-              </span>
-            )}
-          </div>
+                {r.currency}
+              </Link>
+            );
+          })}
         </div>
 
         {/* ── Error banner ──────────────────────────────────────────────── */}
@@ -430,22 +486,20 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
             strategies={data.strategies}
             loading={data.loading}
             error={data.error}
-          />
-        </div>
-
-        {/* ── Admin gate notice ─────────────────────────────────────────── */}
-        {!address ? (
+          >
+            {/* ── Admin gate — connect / read-only, in the left column ── */}
+            {!address ? (
           <div
             style={{
               padding: "24px",
               backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-border)",
-              marginBottom: "24px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "16px",
+              flex: 1,
             }}
           >
             <div>
@@ -480,10 +534,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
               padding: "14px 20px",
               backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-border)",
-              marginBottom: "24px",
               display: "flex",
               alignItems: "center",
               gap: "12px",
+              flex: 1,
             }}
           >
             <span
@@ -517,15 +571,107 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
               </p>
             </div>
           </div>
-        ) : null}
+            ) : null}
+          </ReserveHealthHeader>
+        </div>
 
         {/* ── Admin action forms ────────────────────────────────────────── */}
         {/* Only shown when wallet is connected (admin or not — forms are
             disabled when not admin; still rendered for transparency) */}
         {address && (
           <>
+            {/* ══ Divider: reserve overview (above) → admin actions (below) ══ */}
+            <div
+              style={{
+                marginTop: "28px",
+                paddingTop: "22px",
+                borderTop: "2px solid var(--color-border)",
+                marginBottom: "18px",
+              }}
+            >
+              <p
+                className="font-display"
+                style={{ fontSize: "16px", color: "var(--color-text)", letterSpacing: "-0.01em", textTransform: "uppercase", margin: 0 }}
+              >
+                Admin Actions
+              </p>
+              <p
+                className="font-body"
+                style={{ fontSize: "12px", color: "var(--color-text-3)", margin: "4px 0 0", lineHeight: 1.4 }}
+              >
+                Execute protocol operations on the {currency} reserve. Pick a category below.
+              </p>
+            </div>
+
+            {/* ── Section tabs (sticky below the top NavShell) ──────── */}
+            <nav
+              aria-label="Cockpit sections"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: "2px",
+                marginBottom: "20px",
+                borderBottom: "1px solid var(--color-border)",
+              }}
+            >
+              {[
+                { id: "underwriting", label: "Underwriting" },
+                { id: "premiums", label: "Premiums" },
+                { id: "claims", label: "Claims" },
+                { id: "liquidity", label: "Liquidity" },
+                { id: "strategies", label: "Strategies" },
+              ].map((s) => {
+                const active = activeSection === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setActiveSection(s.id)}
+                    aria-current={active ? "true" : undefined}
+                    className="font-mono section-tab"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      padding: "10px 14px",
+                      cursor: "pointer",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: active
+                        ? "2px solid var(--color-copper)"
+                        : "2px solid transparent",
+                      marginBottom: "-1px",
+                      color: active ? "var(--color-text)" : undefined,
+                    }}
+                  >
+                    {s.label}
+                    <svg
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="square"
+                      aria-hidden="true"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </nav>
+
             {/* ── Underwriting ─────────────────────────────────────────── */}
-            <SectionLabel>Underwriting</SectionLabel>
+            {activeSection === "underwriting" && (
+            <>
+            <SectionLabel id="underwriting" topBorder={false}>Underwriting</SectionLabel>
             <ActionGrid>
               {/* Sign Guarantee */}
               <ProtocolActionForm
@@ -675,9 +821,13 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 )}
               </ProtocolActionForm>
             </ActionGrid>
+            </>
+            )}
 
             {/* ── Premiums ─────────────────────────────────────────────── */}
-            <SectionLabel>Premiums</SectionLabel>
+            {activeSection === "premiums" && (
+            <>
+            <SectionLabel id="premiums" topBorder={false}>Premiums</SectionLabel>
             <ActionGrid>
               <ProtocolActionForm
                 title="Pay Premium"
@@ -740,15 +890,20 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 </p>
               </div>
             </ActionGrid>
+            </>
+            )}
 
             {/* ── Claims ───────────────────────────────────────────────── */}
-            <SectionLabel>Claims</SectionLabel>
+            {activeSection === "claims" && (
+            <>
+            <SectionLabel id="claims" topBorder={false}>Claims</SectionLabel>
             <ActionGrid>
               <ProtocolActionForm
                 title="Cover Default"
                 description="policy.cover_default"
                 actionLabel="Cover Default"
                 disabled={!isPolicyAdmin}
+                requireConfirm
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!cdId) throw new Error("select a guarantee first");
@@ -885,9 +1040,13 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 )}
               </div>
             </ActionGrid>
+            </>
+            )}
 
             {/* ── Liquidity ────────────────────────────────────────────── */}
-            <SectionLabel>Liquidity</SectionLabel>
+            {activeSection === "liquidity" && (
+            <>
+            <SectionLabel id="liquidity" topBorder={false}>Liquidity</SectionLabel>
             <ActionGrid>
               {/* Rebalance */}
               <ProtocolActionForm
@@ -945,9 +1104,13 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 />
               </ProtocolActionForm>
             </ActionGrid>
+            </>
+            )}
 
             {/* ── Strategies ───────────────────────────────────────────── */}
-            <SectionLabel>Strategies</SectionLabel>
+            {activeSection === "strategies" && (
+            <>
+            <SectionLabel id="strategies" topBorder={false}>Strategies</SectionLabel>
 
             {/* Live strategy list */}
             {!data.loading && data.strategies.length > 0 && (
@@ -1096,6 +1259,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 description="vault.remove_strategy"
                 actionLabel="Remove"
                 disabled={!isVaultAdmin}
+                requireConfirm
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!rsAddress) throw new Error("select a strategy first");
@@ -1134,6 +1298,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money }: { reads: Retu
                 </p>
               </ProtocolActionForm>
             </ActionGrid>
+            </>
+            )}
 
             {/* ── Admin addresses ──────────────────────────────────────── */}
             {!data.loading && (

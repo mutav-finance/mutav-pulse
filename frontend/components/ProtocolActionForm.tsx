@@ -31,6 +31,8 @@ interface ProtocolActionFormProps {
   onSuccess?(hash: string): void;
   /** Form is disabled (e.g. not admin, or global pending) */
   disabled?: boolean;
+  /** Require a second "confirm" click before executing (consequential actions). */
+  requireConfirm?: boolean;
   children?: React.ReactNode;
 }
 
@@ -41,6 +43,7 @@ export function ProtocolActionForm({
   onSubmit,
   onSuccess,
   disabled = false,
+  requireConfirm = false,
   children,
 }: ProtocolActionFormProps) {
   const [status, setStatus] = useState<"idle" | "pending" | "success" | "error">(
@@ -49,6 +52,7 @@ export function ProtocolActionForm({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastHash, setLastHash] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const isPending = status === "pending";
   const canSubmit = !disabled && !isPending;
@@ -56,6 +60,12 @@ export function ProtocolActionForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    // First click on a consequential action arms the confirm step.
+    if (requireConfirm && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
 
     setStatus("pending");
     setErrorMsg(null);
@@ -189,7 +199,7 @@ export function ProtocolActionForm({
         )}
 
         {/* Submit row */}
-        <div style={{ padding: "12px 20px" }}>
+        <div style={{ padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", flexWrap: "wrap" }}>
           <button
             type="submit"
             disabled={!canSubmit}
@@ -207,12 +217,13 @@ export function ProtocolActionForm({
               letterSpacing: "0.04em",
               textTransform: "uppercase",
               cursor: canSubmit ? "pointer" : "not-allowed",
+              // When armed (confirming) or hovered, fill copper to signal it's primed.
               backgroundColor:
-                canSubmit && isHovered
+                canSubmit && (confirming || isHovered)
                   ? "var(--color-copper)"
                   : "transparent",
               color:
-                canSubmit && isHovered
+                canSubmit && (confirming || isHovered)
                   ? "var(--color-canvas)"
                   : canSubmit
                     ? "var(--color-copper)"
@@ -236,8 +247,37 @@ export function ProtocolActionForm({
                 aria-hidden="true"
               />
             )}
-            {isPending ? "Submitting…" : actionLabel}
+            {isPending ? "Submitting…" : confirming ? `Confirm ${actionLabel}` : actionLabel}
           </button>
+          {confirming && !isPending && (
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="font-mono"
+                style={{
+                  height: "32px",
+                  padding: "0 14px",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  background: "transparent",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-3)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <span
+                className="font-mono"
+                style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+              >
+                irreversible — click confirm to execute
+              </span>
+            </>
+          )}
         </div>
       </form>
     </section>

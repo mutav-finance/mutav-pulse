@@ -324,6 +324,15 @@ input:disabled {
   border-color: var(--color-accent) !important;
 }
 
+/* ── Section tabs (protocol cockpit) — underline-style, copper active ── */
+.section-tab {
+  color: var(--color-text-2);
+  transition: color 150ms ease-out;
+}
+.section-tab:hover {
+  color: var(--color-text);
+}
+
 /* ── Number input: keep the spinner buttons always visible (not hover-only) ── */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
