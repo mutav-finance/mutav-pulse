@@ -1,6 +1,12 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, panic_with_error, Address, BytesN, Env, Vec};
 use interfaces::{Guarantee, Registry as RegistryTrait, RegistryError};
+
+/// Schema version of this contract's storage layout. Bumped only by a migrating
+/// binary that changes the on-chain layout; an in-place `upgrade()` is refused
+/// (VersionMismatch) when the stored version differs from this, so a stale-layout
+/// instance is routed through redeploy + `bootstrap.sh` re-wire instead.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 // ───────────────────────────── H6: storage TTL hygiene ─────────────────────────────
 //
@@ -42,6 +48,20 @@ pub enum DataKey {
     NextId,
     ActiveIds,    // Vec<u32>
     Guarantee(u32),
+    // ADDITIVE + LAYOUT-PRESERVING: appended LAST. The contracttype enum encoding
+    // is positional, so appending preserves the encoding of every existing key
+    // (Admin/Writer/NextId/ActiveIds/Guarantee). Never reorder or remove a variant.
+    SchemaVersion,
+}
+
+/// Emitted by `upgrade` after the wasm swap is committed. Mirrors the vault's bare
+/// `#[contractevent]` idiom (auto snake_case name topic `upgraded`).
+#[contractevent]
+pub struct Upgraded {
+    #[topic]
+    pub admin: Address,
+    pub version: u32,
+    pub wasm_hash: BytesN<32>,
 }
 
 #[contract]
@@ -53,10 +73,21 @@ impl Registry {
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::NextId, &0u32);
         e.storage().instance().set(&DataKey::ActiveIds, &Vec::<u32>::new(e));
+        // Default Writer=admin (OZ-Ownable convention): closes the unset-writer
+        // trap window between deploy and set_writer. admin is borrowed (&admin),
+        // not consumed, so it stays in scope for the SchemaVersion write below.
+        e.storage().instance().set(&DataKey::Writer, &admin);
+        e.storage().instance().set(&DataKey::SchemaVersion, &CURRENT_SCHEMA_VERSION);
     }
 
     pub fn admin(e: &Env) -> Address {
         e.storage().instance().get(&DataKey::Admin).unwrap()
+    }
+
+    /// On-chain storage schema version. `0` for a pre-versioning instance upgraded
+    /// in before this binary (the upgrade guard treats that as a mismatch).
+    pub fn schema_version(e: &Env) -> u32 {
+        e.storage().instance().get(&DataKey::SchemaVersion).unwrap_or(0)
     }
 
     pub fn set_writer(e: Env, writer: Address) {
@@ -66,7 +97,13 @@ impl Registry {
     }
 
     pub fn writer(e: Env) -> Address {
-        e.storage().instance().get(&DataKey::Writer).unwrap()
+        // Typed fallback instead of a bare unwrap host trap. Unreachable for a
+        // freshly-deployed instance (constructor defaults Writer=admin); converts
+        // an old pre-default upgraded-in instance's trap into a stable error.
+        e.storage()
+            .instance()
+            .get(&DataKey::Writer)
+            .unwrap_or_else(|| panic_with_error!(&e, RegistryError::WriterNotSet))
     }
 
     pub fn set_admin(e: Env, new_admin: Address) {
@@ -77,11 +114,26 @@ impl Registry {
 
     pub fn upgrade(e: Env, new_wasm_hash: BytesN<32>) {
         Self::admin(&e).require_auth();
-        e.deployer().update_current_contract_wasm(new_wasm_hash);
+        // Refuse an in-place upgrade when the on-chain layout version does not
+        // match what this binary expects (stale / layout-incompatible storage).
+        // A pre-versioning instance reads 0 (!= 1) and is refused — routed through
+        // redeploy + bootstrap.sh re-wire instead. The version stays 1 until a
+        // migrating binary bumps it; layout-CHANGING edits never ride upgrade().
+        let stored: u32 = e.storage().instance().get(&DataKey::SchemaVersion).unwrap_or(0);
+        if stored != CURRENT_SCHEMA_VERSION {
+            panic_with_error!(&e, RegistryError::VersionMismatch);
+        }
+        let admin = Self::admin(&e);
+        e.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        Upgraded { admin, version: CURRENT_SCHEMA_VERSION, wasm_hash: new_wasm_hash }.publish(&e);
     }
 
     fn require_writer(e: &Env) {
-        let writer: Address = e.storage().instance().get(&DataKey::Writer).unwrap();
+        let writer: Address = e
+            .storage()
+            .instance()
+            .get(&DataKey::Writer)
+            .unwrap_or_else(|| panic_with_error!(e, RegistryError::WriterNotSet));
         writer.require_auth();
     }
 
@@ -113,6 +165,16 @@ impl RegistryTrait for Registry {
     fn put(e: Env, g: Guarantee) {
         Registry::require_writer(&e);
         Registry::bump_instance(&e);
+        // Id-trust hardening (CWE-840): the registry derives ids from its own
+        // monotonic NextId counter. A writer must never fabricate the primary key,
+        // so reject any id at-or-beyond the next-to-issue. `>=` (not `>`) also
+        // closes the empty-registry id=0 footgun (NextId==0) while still allowing
+        // re-puts of any previously-issued id (pay_premium / cover_default /
+        // settle_guarantee all re-put existing ids, all of which are id < NextId).
+        let next: u32 = e.storage().instance().get(&DataKey::NextId).unwrap_or(0);
+        if g.id >= next {
+            panic_with_error!(&e, RegistryError::InvalidId);
+        }
         let mut active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
         let present = active.iter().any(|x| x == g.id);
         if g.active && !present {

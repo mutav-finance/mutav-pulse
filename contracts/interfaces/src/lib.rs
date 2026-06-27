@@ -13,6 +13,23 @@ pub enum RegistryError {
     /// No guarantee is stored under the requested id (previously a host trap
     /// from `Option::unwrap` on missing storage).
     GuaranteeNotFound = 200,
+    /// Caller supplied a guarantee id outside the issued range (>= NextId). The
+    /// registry derives ids from its own monotonic counter; a writer must never
+    /// fabricate the primary key, nor overwrite a not-yet-issued slot (CWE-840).
+    /// ADDITIVE: new discriminant; `GuaranteeNotFound = 200` is unchanged so the
+    /// `#[contracterror]` ABI stays stable for in-place `upgrade()`.
+    InvalidId = 201,
+    /// The Writer role was read before it was set. The constructor now defaults
+    /// Writer=admin, so this is defense-in-depth: it converts the host trap that
+    /// an older (pre-default) upgraded-in instance would hit into a stable typed
+    /// error. ADDITIVE.
+    WriterNotSet = 202,
+    /// `upgrade` was called against an on-chain schema version this binary does
+    /// not expect (stale / layout-incompatible storage). Distinct from `InvalidId`
+    /// so a refused stale-layout upgrade is distinguishable from a put id error in
+    /// logs. Layout-changing edits must redeploy + re-wire via `bootstrap.sh`, not
+    /// `upgrade()`. ADDITIVE.
+    VersionMismatch = 203,
 }
 
 /// Stable core of a guarantee. Model-specific extras live in the policy's own
