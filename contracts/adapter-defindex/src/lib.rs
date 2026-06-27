@@ -19,6 +19,13 @@ pub enum AdapterError {
     /// `set_max_slippage_bps` was called with a value `> 10_000` (more than
     /// 100%), which would be a nonsensical floor.
     InvalidSlippageBps = 501,
+    /// Audit H5: the df-shares minted by the DeFindex `deposit` are worth (per the
+    /// vault's own `get_asset_amounts_per_shares` preview) less than the
+    /// `max_slippage_bps` floor of the amount invested. Mirrors the divest-side
+    /// floor — `invest` previously passed `amounts_min=[0]` (no floor), silently
+    /// accepting any mint shortfall. Appended with an explicit discriminant after
+    /// `InvalidSlippageBps` so the error ABI stays append-only.
+    DepositSlippageExceeded = 502,
 }
 
 /// Conservative default withdrawal slippage tolerance: 50 bps = 0.5%. This is a
@@ -148,8 +155,40 @@ impl Strategy for AdapterDefindex {
         // Authorization (audit H4): only the controlling reserve/vault may deploy
         // funds. Any EOA/other-contract caller traps here before any token move.
         AdapterDefindex::controller(&e).require_auth();
+        // Degenerate guard: a non-positive amount is a no-op with NO cross-contract
+        // calls (matches `slippage_floor`'s contract; keep this BEFORE the
+        // before-read so the zero path touches nothing).
+        if amount <= 0 {
+            return;
+        }
         let me = e.current_contract_address();
-        AdapterDefindex::dfx(&e).deposit(&vec![&e, amount], &vec![&e, 0], &me, &true);
+        let dfx = AdapterDefindex::dfx(&e);
+        // Slippage floor for the amount invested, reusing the SAME admin-tunable
+        // `max_slippage_bps` mechanism as divest (no new DataKey).
+        let amount_floor = AdapterDefindex::slippage_floor(&e, amount);
+        // Pre-deposit df-share balance (read via the df_shares() token-balance helper,
+        // NOT the ignored `Val` deposit return).
+        let before = AdapterDefindex::df_shares(&e);
+        // `amounts_min` floors the amount the vault may *consume*, not the shares
+        // *minted* — defense-in-depth, mirroring divest's `min_amounts_out`. The
+        // binding guard is the minted-share-value assertion below.
+        dfx.deposit(&vec![&e, amount], &vec![&e, amount_floor], &me, &true);
+        let after = AdapterDefindex::df_shares(&e);
+        // Faithfully `after >= before`; if somehow not (impossible faithfully), treat
+        // minted as 0 so the floor TRAPS rather than computing a negative value.
+        let minted = if after > before { after - before } else { 0 };
+        // The real defect fix (audit H5): value the minted shares via the vault's own
+        // preview and require it to clear the floor — exactly mirroring divest's
+        // `expected_out`/`min_out`. Overflow note: `minted * held` stays well below
+        // ~1e19 at USDC 7-decimal scale (same bound as divest's preview path).
+        let minted_value = if minted <= 0 {
+            0
+        } else {
+            AdapterDefindex::first_amount(&e, &dfx.get_asset_amounts_per_shares(&minted))
+        };
+        if minted_value < amount_floor {
+            panic_with_error!(&e, AdapterError::DepositSlippageExceeded);
+        }
     }
 
     fn divest(e: Env, amount: i128, to: Address) -> i128 {

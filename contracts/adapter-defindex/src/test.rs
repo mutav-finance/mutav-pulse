@@ -194,6 +194,104 @@ fn divest_haircut_within_raised_tolerance_succeeds() {
     assert_eq!(c.token.balance(&to), returned);
 }
 
+// --- Audit H5: deposit-side slippage floor (mirrors the divest floor) ---
+//
+// The adapter's `invest` previously passed `amounts_min=[0]` (no floor) while
+// `divest` was slippage-guarded — an asymmetric defect. These tests prove the new
+// minted-share-value floor: after a `deposit`, the df-shares the adapter receives
+// are valued via the vault's own `get_asset_amounts_per_shares` preview and must
+// clear `amount * (10_000 - max_slippage_bps) / 10_000`.
+//
+// CRITICAL test-setup note (evaluator refinement): the floor can only short the
+// minted-value preview when there is PRE-EXISTING supply/held at invest time. With
+// supply==0 the mock mints `shares == amount` and the preview returns exactly
+// `amount` regardless of haircut, so the guard would pass vacuously. Each test
+// below seeds a prior deposit from a different party so supply/held are non-trivial.
+
+/// Seed the DeFindex vault with a prior deposit from an unrelated party so that at
+/// the adapter's invest time `total_supply > 0` and `held > 0`. This makes the
+/// minted-share-value preview (`minted * held / supply`) sensitive to a deposit
+/// haircut — without it the first-deposit path returns `amount` exactly and the
+/// floor never trips.
+fn seed_prior_supply(c: &Ctx, amount: i128) {
+    let other = Address::generate(&c.e);
+    c.token_admin.mint(&other, &amount);
+    // Drive the mock vault directly as the depositing party (mock omits auth).
+    c.dfx.deposit(
+        &soroban_sdk::vec![&c.e, amount],
+        &soroban_sdk::vec![&c.e, 0i128],
+        &other,
+        &true,
+    );
+}
+
+/// A faithful deposit (no haircut) with pre-existing supply clears the minted-value
+/// floor and succeeds — the new guard does not reject an honest invest. RED-first is
+/// not possible here (it only passes once the guard ships with the faithful mock).
+#[test]
+fn invest_within_tolerance_succeeds() {
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+    // The adapter's df-shares are worth ~the invested amount (faithful vault).
+    assert_eq!(c.adapter.balance(), 1_000);
+}
+
+/// CORE red-first test: a 1% deposit haircut against the default 0.5% tolerance
+/// means the minted shares are worth less than the floor of the amount invested, so
+/// the adapter traps. Mirrors `divest_out_of_tolerance_is_rejected`. Without the fix
+/// `invest` would silently accept the shortfall.
+#[test]
+#[should_panic]
+fn invest_out_of_tolerance_is_rejected() {
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100); // 1% mint shortfall > 0.5% tolerance
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    c.adapter.invest(&1_000);
+}
+
+/// The typed 502 code surfaces (not an opaque trap) when the deposit floor is
+/// breached. Mirrors `balance_traps_typed_on_malformed_vault_response`.
+#[test]
+fn invest_typed_error_on_slippage() {
+    use crate::AdapterError;
+    let c = setup();
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100);
+    c.token_admin.mint(&c.adapter_id, &1_000);
+    match c.adapter.try_invest(&1_000) {
+        Err(Ok(err)) => assert_eq!(err, AdapterError::DepositSlippageExceeded.into()),
+        _ => panic!("expected DepositSlippageExceeded typed trap"),
+    }
+}
+
+/// The deposit floor is admin-tunable, not over-tight: raise tolerance to 2%, apply
+/// a 1% haircut, and the invest clears the (now-looser) floor. Mirrors
+/// `divest_haircut_within_raised_tolerance_succeeds`.
+#[test]
+fn invest_haircut_within_raised_tolerance_succeeds() {
+    let c = setup();
+    c.adapter.set_max_slippage_bps(&200); // 2% tolerance
+    seed_prior_supply(&c, 10_000);
+    c.dfx.set_deposit_haircut_bps(&100); // 1% haircut, inside tolerance
+    c.token_admin.mint(&c.adapter_id, &10_000);
+    c.adapter.invest(&10_000);
+    // Minted value sits above the floor; balance reflects the (haircut) value.
+    assert!(c.adapter.balance() > 0);
+}
+
+/// Degenerate path: investing 0 is a no-op that does no cross-contract calls and
+/// leaves the balance at 0. Exercises the `amount <= 0` guard before the share-delta
+/// math.
+#[test]
+fn invest_zero_amount_is_noop() {
+    let c = setup();
+    c.adapter.invest(&0);
+    assert_eq!(c.adapter.balance(), 0);
+}
+
 #[test]
 fn divest_full_value_exits_cleanly() {
     let c = setup();
