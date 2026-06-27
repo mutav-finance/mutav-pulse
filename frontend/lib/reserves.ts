@@ -75,7 +75,7 @@ export const RESERVES: Reserve[] = [
   {
     id: "usdc",
     currency: "MUSD",
-    name: "Mutav USD Reserve (testnet)",
+    name: "Mutav USD Reserve",
     underlying: "USDC · stablecoin DeFi (DeFindex)",
     depositToken: "USDC",
     fiatSymbol: "$",
@@ -95,7 +95,7 @@ export const RESERVES: Reserve[] = [
   {
     id: "brl",
     currency: "MBRL",
-    name: "Mutav BRL Reserve (testnet)",
+    name: "Mutav BRL Reserve",
     underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
     depositToken: "TESOURO",
     fiatSymbol: "R$",

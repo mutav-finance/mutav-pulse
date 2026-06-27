@@ -46,32 +46,49 @@ export default function ReservesPage() {
         </p>
         <h1
           className="font-display"
-          style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", lineHeight: 1.05, margin: "0 0 12px", color: "var(--color-text)" }}
+          style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.01em", textTransform: "uppercase", lineHeight: 1.05, margin: "0 0 12px", color: "var(--color-text)" }}
         >
           Reserves directory
         </h1>
         <p
           className="font-body"
-          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 8px", maxWidth: "62ch" }}
+          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 10px", maxWidth: "62ch" }}
         >
-          One protocol, one Mutav vault per fiat. Each reserve is solvency-gated and pays defaults in
-          its own currency — never cross-subsidized. Live reserves are click-through; APYs are modeled
-          from each currency&apos;s peg, not live returns.
+          Every currency gets its own Mutav reserve: solvency-gated, independently capitalized, and
+          never cross-subsidized.
         </p>
-        <p
-          className="font-mono"
+        <div
           style={{
-            fontSize: "12px",
-            letterSpacing: "0.02em",
-            color: "var(--color-text-3)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: "16px",
             margin: "0 0 28px",
-            fontFeatureSettings: '"tnum" 1',
-            fontVariantNumeric: "tabular-nums",
           }}
         >
-          {liveCount} live (testnet PoC) · {plannedCount} coming · live AUM{" "}
-          <span style={{ color: "var(--color-text-2)" }}>{primaryLabel}</span>
-        </p>
+          <p
+            className="font-body"
+            style={{ fontSize: "14px", lineHeight: 1.5, color: "var(--color-text-3)", margin: 0, maxWidth: "62ch" }}
+          >
+            The APYs below are modeled from each currency&apos;s peg, not live returns.
+          </p>
+          <p
+            className="font-mono"
+            style={{
+              fontSize: "12px",
+              letterSpacing: "0.02em",
+              color: "var(--color-text-3)",
+              margin: 0,
+              whiteSpace: "nowrap",
+              fontFeatureSettings: '"tnum" 1',
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {liveCount} live (testnet PoC) · {plannedCount} coming · live AUM{" "}
+            <span style={{ color: "var(--color-text-2)" }}>{primaryLabel}</span>
+          </p>
+        </div>
 
         {/* Reserve comparison table */}
         <div style={{ overflowX: "auto", border: "1px solid var(--color-border)" }}>
@@ -165,13 +182,15 @@ export default function ReservesPage() {
                     }}
                   >
                     <td style={cell}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}>
-                        <CurrencyLogo currency={r.currency} width={24} />
-                        <span className="font-display" style={{ fontSize: "15px", color: "var(--color-text)" }}>
-                          {r.currency}
-                        </span>
-                        <span className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-3)" }}>
-                          {r.name}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+                        <CurrencyLogo currency={r.currency} width={24} muted={!live} />
+                        <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                          <span className="font-display" style={{ fontSize: "15px", color: "var(--color-text)", lineHeight: 1 }}>
+                            {r.currency}
+                          </span>
+                          <span className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-3)", lineHeight: 1 }}>
+                            {r.name}
+                          </span>
                         </span>
                       </span>
                     </td>
@@ -179,6 +198,9 @@ export default function ReservesPage() {
                       <span
                         className="font-mono"
                         style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
                           fontSize: "9px",
                           letterSpacing: "0.08em",
                           textTransform: "uppercase",
@@ -188,6 +210,22 @@ export default function ReservesPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
+                        {!live && (
+                          <svg
+                            width="9"
+                            height="9"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="square"
+                            aria-hidden="true"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <rect x="5" y="11" width="14" height="10" />
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                          </svg>
+                        )}
                         {r.tag ?? (live ? "Live" : "Planned")}
                       </span>
                     </td>
