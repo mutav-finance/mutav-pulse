@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractevent, contractimpl, contracttype, Address, BytesN, Env};
 use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
 use interfaces::{Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
 
@@ -14,6 +14,60 @@ pub enum PolicyError {
     /// `fee_bps` exceeds 100% (10_000 bps). Previously accepted silently, which
     /// let a guarantee charge a premium above its own monthly amount.
     FeeTooHigh = 300,
+}
+
+// ─────────────────── Policy lifecycle events (SEP-0056 parity) ───────────────────
+// Observability for the underwriting state machine, mirroring the vault's bare
+// `#[contractevent]` Deposit convention. With no explicit `topics` attribute the
+// derive auto-derives a snake_case name topic from the struct ident, so these
+// publish stable name topics `guarantee_signed` / `premium_paid` /
+// `default_covered` / `guarantee_settled` for off-chain indexers. All Address
+// fields are owned (cloned at emit time). Topic counts stay under the 4 cap.
+
+/// Emitted by `sign_guarantee` after the guarantee is committed to the registry.
+/// Topics: [name, landlord] (2).
+#[contractevent]
+pub struct GuaranteeSigned {
+    #[topic]
+    pub landlord: Address,
+    pub id: u32,
+    pub monthly_amount: i128,
+    pub months_covered: u32,
+    pub fee_bps: u32,
+    pub period_secs: u64,
+}
+
+/// Emitted by `pay_premium` only after the post-activation solvency assert passes.
+/// Topics: [name, payer, id] (3).
+#[contractevent]
+pub struct PremiumPaid {
+    #[topic]
+    pub payer: Address,
+    #[topic]
+    pub id: u32,
+    pub premium: i128,
+    pub paid_until: u64,
+}
+
+/// Emitted by `cover_default` only after a successful `vault.disburse`.
+/// Topics: [name, id, landlord] (3).
+#[contractevent]
+pub struct DefaultCovered {
+    #[topic]
+    pub id: u32,
+    #[topic]
+    pub landlord: Address,
+    pub amount: i128,
+    pub months_used: u32,
+    pub months_remaining: u32,
+}
+
+/// Emitted by `settle_guarantee` after the deactivation is committed.
+/// Topics: [name, id] (2).
+#[contractevent]
+pub struct GuaranteeSettled {
+    #[topic]
+    pub id: u32,
 }
 
 #[contracttype]
@@ -86,10 +140,15 @@ impl Policy {
         }
         let reg = Self::registry(e);
         let id = reg.next_id();
+        let landlord_topic = landlord.clone();
         reg.put(&Guarantee {
             id, landlord, monthly_amount, months_covered, months_used: 0,
             fee_bps, period_secs, paid_until: 0, active: true,
         });
+        GuaranteeSigned {
+            landlord: landlord_topic, id, monthly_amount, months_covered, fee_bps, period_secs,
+        }
+        .publish(e);
         Ok(id)
     }
 
@@ -106,6 +165,7 @@ impl Policy {
         g.paid_until = base + g.period_secs;
         reg.put(&g);
         assert!(Self::vault(e).stable_assets() >= Self::coverage_required(e.clone()), "insufficient capital to activate coverage");
+        PremiumPaid { payer: payer.clone(), id, premium, paid_until: g.paid_until }.publish(e);
     }
 
     pub fn cover_default(e: &Env, id: u32) {
@@ -119,6 +179,14 @@ impl Policy {
         if g.months_used == g.months_covered { g.active = false; }
         reg.put(&g);
         Self::vault(e).disburse(&g.landlord, &g.monthly_amount);
+        DefaultCovered {
+            id,
+            landlord: g.landlord.clone(),
+            amount: g.monthly_amount,
+            months_used: g.months_used,
+            months_remaining: g.months_covered.saturating_sub(g.months_used),
+        }
+        .publish(e);
     }
 
     pub fn settle_guarantee(e: &Env, id: u32) {
@@ -127,6 +195,7 @@ impl Policy {
         let mut g = reg.get(&id);
         g.active = false;
         reg.put(&g);
+        GuaranteeSettled { id }.publish(e);
     }
 }
 
