@@ -1,6 +1,6 @@
 #![no_std]
 // MuxedAddress is required by the FungibleToken macro even though it is not used directly.
-use soroban_sdk::{contract, contractevent, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
+use soroban_sdk::{contract, contracterror, contractevent, contractimpl, panic_with_error, token, Address, BytesN, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
 use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
 use strategy::StrategyClient;
@@ -10,6 +10,24 @@ pub mod types;
 use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, MAX_ENTRY_TTL, NAV_SCALE, REQUEST_TTL_LEDGERS, VIRTUAL_OFFSET};
 
 mod test;
+
+/// Vault-side errors surfaced as stable `#[contracterror]` codes. Numbered in the
+/// `6xx` band to stay clear of the interfaces `2xx`, policy `3xx`, strategy `4xx`,
+/// and adapter `5xx` codes. Mirrors the adapter-defindex `AdapterError` pattern:
+/// a money-path revert that carries a diagnosable code instead of an opaque host
+/// trap. Code-only (not a storage entry) so it is layout-safe for in-place
+/// `upgrade()`.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VaultError {
+    /// #34 / code-review H1: a money path (`disburse` / `process_redemptions`)
+    /// asked `ensure_liquidity` for more underlying than the strategies could
+    /// realize (e.g. a lossy/slippage adapter that reports `balance()` above what
+    /// `divest()` actually delivers). Yearn-v3 stance: revert rather than realize
+    /// an incorrect loss — the whole tx rolls back atomically.
+    InsufficientLiquidity = 600,
+}
 
 /// SEP-0056 `Deposit` event — topics `["deposit", operator, from, receiver]`,
 /// data `[assets, shares]`. Emitted by `deposit` and `mint`. (The SEP `Withdraw`
@@ -192,6 +210,12 @@ impl Vault {
     /// the `free_capital` redemption gate + disburse ordering). Capped overflow
     /// simply remains idle above `target_idle`. Divest pass runs before invest so
     /// pulled-back funds are available to fund the deploys.
+    ///
+    /// Under a LOSSY divest (a slippage/fee adapter that delivers less underlying
+    /// than its reported balance implies), the invest pass is clamped to the
+    /// realized live idle, so full convergence to target may take an ADDITIONAL
+    /// rebalance call off the fresh post-loss snapshot — at-target-in-one-call is
+    /// not guaranteed under loss (Yearn-v3 bidirectional rebalance-under-loss).
     pub fn rebalance(e: &Env) {
         Self::admin(e).require_auth();
         // Reentrancy guard (M2): divest calls out to adapters; shared with process_redemptions.
@@ -228,15 +252,30 @@ impl Vault {
                 client.divest(&(cur - target), &here);
             }
         }
-        // Invest pass: top up every under-target strategy (funds now available).
+        // Invest pass: top up every under-target strategy, clamped to LIVE idle.
+        // Targets are still computed off the pre-divest `total` snapshot (keeps
+        // rebalance a policy, not cash-chasing / idempotency), but the deploy is
+        // clamped to the spendable idle ON HAND right now — a lossy divest pass
+        // delivers less underlying than the snapshot implied, so `target - cur`
+        // could exceed the balance and trap the token transfer. Yearn-v3
+        // `_freeFunds`: use the balance, not a stale accounted figure. Overflow
+        // simply stays idle above target_idle (as the doc-comment promises).
+        // `available_held` nets reserved_for_claims, so the clamp never deploys
+        // claim escrow. Re-read live each iteration: strategy ORDER (the existing
+        // Strategies Vec order) deterministically tie-breaks who is funded first
+        // under a shortfall.
         for s in list.iter() {
             let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
             let client = StrategyClient::new(e, &s.address);
             let cur = client.balance();
             if target > cur {
-                let amount = target - cur;
-                tok.transfer(&here, &s.address, &amount);
-                client.invest(&amount);
+                let want = target - cur;
+                let spendable = Self::available_held(e);
+                let amount = if want < spendable { want } else { spendable };
+                if amount > 0 {
+                    tok.transfer(&here, &s.address, &amount);
+                    client.invest(&amount);
+                }
             }
         }
 
@@ -253,8 +292,22 @@ impl Vault {
         }
         e.storage().instance().set(&DataKey::Strategies, &next);
     }
+    /// Raise at least `needed` underlying into the vault's spendable balance,
+    /// divesting strategies as required. Infallible-or-revert (whole-tx-atomic):
+    /// the only two callers (`disburse`, `process_redemptions`) are money paths
+    /// that must revert-not-short (Yearn-v3: "better to revert if withdraws are
+    /// simply illiquid so as not to realize incorrect losses"), so the signature
+    /// stays `(&Env, i128)` and a shortfall is a typed revert.
     pub(crate) fn ensure_liquidity(e: &Env, needed: i128) {
         if Self::available_held(e) >= needed { return; }
+        // Single pass over strategies (each visited at most once → terminating).
+        // `available_held` is re-read from the LIVE token balance at the loop top,
+        // so the realized (post-loss) amount of each divest is what counts toward
+        // progress — a lossy adapter that returns < requested simply leaves the
+        // shortfall, the next strategy (if any) is tried, and the terminal guard
+        // catches any residual shortfall. `client.divest` returns the realized
+        // amount but we deliberately rely on the live re-read rather than the
+        // return value, which is the source of truth for what actually landed.
         for s in Self::strategies(e).iter() {
             if Self::available_held(e) >= needed { break; }
             let short = needed - Self::available_held(e);
@@ -263,7 +316,11 @@ impl Vault {
             let pull = if short < avail { short } else { avail };
             if pull > 0 { client.divest(&pull, &e.current_contract_address()); }
         }
-        assert!(Self::available_held(e) >= needed, "insufficient liquidity");
+        if Self::available_held(e) < needed {
+            // Typed revert (code 600) instead of an opaque host trap. Both roll
+            // back the whole tx; this gives a stable diagnosable code.
+            panic_with_error!(e, VaultError::InsufficientLiquidity);
+        }
     }
 
     pub fn nav_per_share(e: &Env) -> i128 {
