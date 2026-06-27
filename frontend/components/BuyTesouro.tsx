@@ -43,7 +43,7 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
 
   useEffect(() => {
     // Intentional on-mount external-system read (Horizon trustline/balance), not a
-    // render-driven state sync — same pattern as TestnetOnramp.
+    // render-driven state sync — same pattern as the faucet card.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);

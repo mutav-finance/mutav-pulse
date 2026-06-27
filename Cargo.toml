@@ -13,6 +13,7 @@ members = [
   "contracts/mocks/mock-policy",
   "contracts/mocks/mock-defindex",
   "contracts/mocks/defindex-hodl",
+  "contracts/mocks/mock-tesouro",
   "contracts/mocks/faucet",
 ]
 

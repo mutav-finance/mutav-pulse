@@ -1,7 +1,7 @@
 /**
  * lib/trustline.ts — shared classic-asset primitives.
  *
- * Both the demo-USDC on-ramp (lib/onramp.ts) and the TESOURO swap
+ * Both the demo-USDC faucet (lib/faucet.ts) and the TESOURO swap
  * (lib/buy-tesouro.ts) need the same two operations against different assets:
  * read a trustline + balance from Horizon, and build/sign a change_trust. Kept
  * here so the careful Horizon error handling (404 → "no trustline"; any other
@@ -32,7 +32,7 @@ export interface AssetInfo {
  * 404 = account not found on Horizon → genuinely no trustline (unfunded or never
  * created). Any other non-OK status is a transient/server error and MUST NOT be
  * silently read as "no trustline" — throw so callers can surface it and retry
- * instead of mislabelling the on-ramp state.
+ * instead of mislabelling the faucet state.
  */
 export async function readAssetInfo(
   address: string,

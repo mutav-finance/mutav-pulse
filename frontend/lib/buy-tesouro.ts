@@ -4,7 +4,7 @@
  * A Soroban contract cannot reach the classic SDEX, so acquiring TESOURO is a
  * CLIENT-SIGNED classic path payment (USDC → TESOURO) on the SDEX, plus a
  * one-time trustline. No KYC — TESOURO is auth_required=false. Mirrors the
- * trustline/balance patterns in lib/onramp.ts and submits via wallet.signAndSubmit
+ * trustline/balance patterns in lib/faucet.ts and submits via wallet.signAndSubmit
  * (Soroban RPC accepts classic ops). The vault never swaps; users arrive holding
  * TESOURO, then deposit it.
  */

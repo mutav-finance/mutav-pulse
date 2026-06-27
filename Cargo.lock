@@ -995,6 +995,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-tesouro"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "strategy",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1809,6 +1817,7 @@ dependencies = [
  "interfaces",
  "mock-policy",
  "mock-strategy",
+ "mock-tesouro",
  "soroban-sdk",
  "stellar-contract-utils",
  "stellar-tokens",

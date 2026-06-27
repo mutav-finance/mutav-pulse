@@ -1,31 +1,47 @@
 "use client";
 
 /**
- * TestnetOnramp — demo-only USDC on-ramp (trustline + faucet).
+ * FaucetCard — generic testnet faucet (trustline + drip) for a demo asset.
  *
- * TESTNET ONLY. Rendered solely when `faucetEnabled` (see lib/config.ts). Our
- * demo USDC is a mock classic-asset SAC testers can't otherwise acquire, so this
- * gives them the two prerequisites for depositing: a trustline, then USDC from
- * the on-chain faucet. On mainnet users hold real USDC and this never renders.
+ * TESTNET ONLY. Our demo deposit tokens (USDC, cBRL) are mock classic-asset SACs
+ * testers can't otherwise acquire, so this gives them the two prerequisites for
+ * depositing: a trustline, then tokens from the on-chain faucet. Parameterized by
+ * asset so a single component serves every reserve (USDC, cBRL, …); thin presets
+ * (UsdcFaucet, CbrlFaucet) supply the per-asset config.
  *
  * Design: Precision Brutalism, investidor front. Amber CTA, mono data labels,
  * a "TESTNET" tag so it never reads as a permanent product surface.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { getUsdcInfo, addTrustline, dripFaucet } from "@/lib/onramp";
+import type { AssetInfo } from "@/lib/trustline";
 import { TxStatus } from "@/components/TxStatus";
 
-interface TestnetOnrampProps {
+export interface FaucetCardProps {
   /** Connected wallet public key */
   address: string;
   /** Called after a successful trustline/drip so the parent refreshes balances */
   onSuccess(): void;
+  /** Asset ticker shown in labels, e.g. "USDC" / "cBRL". */
+  assetCode: string;
+  /** Human drip-amount label, e.g. "1,000". */
+  dripAmount: string;
+  getInfo(address: string): Promise<AssetInfo>;
+  addTrustline(address: string): Promise<string>;
+  drip(address: string): Promise<string>;
 }
 
 type Action = "trustline" | "drip" | null;
 
-export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
+export function FaucetCard({
+  address,
+  onSuccess,
+  assetCode,
+  dripAmount,
+  getInfo,
+  addTrustline,
+  drip,
+}: FaucetCardProps) {
   const [hasTrustline, setHasTrustline] = useState<boolean | null>(null);
   const [balance, setBalance] = useState("0");
   const [pending, setPending] = useState<Action>(null);
@@ -36,14 +52,14 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
 
   const refresh = useCallback(async () => {
     try {
-      const info = await getUsdcInfo(address);
+      const info = await getInfo(address);
       setHasTrustline(info.hasTrustline);
       setBalance(info.balance);
     } catch {
       setHasTrustline(false);
       setBalance("0");
     }
-  }, [address]);
+  }, [address, getInfo]);
 
   useEffect(() => {
     // Intentional on-mount external-system read (wallet trustline/balance), not derived state.
@@ -57,12 +73,9 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
       setLastHash(null);
       setPending(action);
       try {
-        const hash =
-          action === "trustline"
-            ? await addTrustline(address)
-            : await dripFaucet(address);
+        const hash = action === "trustline" ? await addTrustline(address) : await drip(address);
         setLastHash(hash);
-        setLastLabel(action === "trustline" ? "Trustline added" : "1,000 USDC received");
+        setLastLabel(action === "trustline" ? "Trustline added" : `${dripAmount} ${assetCode} received`);
         await refresh();
         onSuccess();
       } catch (err) {
@@ -71,7 +84,7 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
         setPending(null);
       }
     },
-    [address, refresh, onSuccess],
+    [address, refresh, onSuccess, addTrustline, drip, assetCode, dripAmount],
   );
 
   const busy = pending !== null;
@@ -81,10 +94,10 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
   const label = isTrustlineStep
     ? pending === "trustline"
       ? "Adding trustline…"
-      : "Add USDC trustline"
+      : `Add ${assetCode} trustline`
     : pending === "drip"
       ? "Requesting…"
-      : "Get 1,000 test USDC";
+      : `Get ${dripAmount} test ${assetCode}`;
 
   return (
     <div
@@ -112,7 +125,7 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
             color: "var(--color-text-2)",
           }}
         >
-          Testnet USDC faucet
+          Testnet {assetCode} faucet
         </span>
         <span
           className="font-mono"
@@ -141,11 +154,11 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {hasTrustline ? `${balance} USDC` : "— USDC"}
+          {hasTrustline ? `${balance} ${assetCode}` : `— ${assetCode}`}
         </span>
         <span className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)" }}>
           {isTrustlineStep
-            ? "Add a trustline to receive demo USDC"
+            ? `Add a trustline to receive demo ${assetCode}`
             : "Demo funds to test deposit and redeem"}
         </span>
       </div>
@@ -165,16 +178,8 @@ export function TestnetOnramp({ address, onSuccess }: TestnetOnrampProps) {
           fontWeight: 500,
           letterSpacing: "0.01em",
           color: busy || !ready ? "var(--color-text-3)" : "var(--color-canvas)",
-          backgroundColor:
-            busy || !ready
-              ? "var(--color-surface)"
-              : hovered
-                ? "var(--color-accent)"
-                : "var(--color-accent)",
-          border:
-            busy || !ready
-              ? "1px solid var(--color-border)"
-              : "1px solid var(--color-accent)",
+          backgroundColor: busy || !ready ? "var(--color-surface)" : "var(--color-accent)",
+          border: busy || !ready ? "1px solid var(--color-border)" : "1px solid var(--color-accent)",
           padding: "7px 16px",
           cursor: busy || !ready ? "not-allowed" : "pointer",
           whiteSpace: "nowrap",

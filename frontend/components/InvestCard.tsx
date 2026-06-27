@@ -20,11 +20,12 @@ import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
 import { DepositWidget } from "@/components/DepositWidget";
 import { RedeemPanel } from "@/components/RedeemPanel";
-import { TestnetOnramp } from "@/components/TestnetOnramp";
+import { UsdcFaucet } from "@/components/UsdcFaucet";
+import { CbrlFaucet } from "@/components/CbrlFaucet";
 import { BuyTesouro } from "@/components/BuyTesouro";
 import { Mono } from "@/components/Mono";
-import { faucetEnabled, config } from "@/lib/config";
-import { getUsdcInfo } from "@/lib/onramp";
+import { faucetEnabled, cbrlFaucetEnabled, config } from "@/lib/config";
+import { getUsdcInfo, getCbrlInfo } from "@/lib/faucet";
 import { getTesouroInfo } from "@/lib/buy-tesouro";
 import { fmtNav, fmtFiat, fmtAmount, fmtUnitPrice, fromStroops, errMsg, STROOP_SCALE } from "@/lib/format";
 import type { RedeemRequest } from "vault";
@@ -72,11 +73,13 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   // Whether this reserve offers a way to acquire the deposit token (Fund tab):
   // TESOURO is swappable on the SDEX; the demo USDC only via the testnet faucet.
   // A reserve whose deposit token is neither (e.g. a future MARS/ARS) has no
-  // on-ramp here — show no Fund tab rather than the WRONG (USDC) faucet.
+  // faucet here — show no Fund tab rather than the WRONG (USDC) faucet.
   const isTesouro = reserve.depositToken === config.tesouro.code;
   const isUsdc = reserve.depositToken === config.usdc.code;
+  const isCbrl = reserve.depositToken === config.cbrl.code;
   const canFaucet = faucetEnabled && isUsdc;
-  const hasFund = isTesouro || canFaucet;
+  const canCbrl = cbrlFaucetEnabled && isCbrl;
+  const hasFund = isTesouro || canFaucet || canCbrl;
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +103,9 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
             ? getTesouroInfo(address)
             : isUsdc
               ? getUsdcInfo(address)
-              : Promise.resolve({ balance: "0" })
+              : isCbrl
+                ? getCbrlInfo(address)
+                : Promise.resolve({ balance: "0" })
           ).catch(() => ({ balance: "0" })),
         ]);
         if (cancelled) return;
@@ -129,7 +134,7 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
     return () => {
       cancelled = true;
     };
-  }, [address, refreshKey, reads, isTesouro, isUsdc]);
+  }, [address, refreshKey, reads, isTesouro, isUsdc, isCbrl]);
 
   const navStr = data.navPerShare > 0n ? fmtNav(data.navPerShare) : "—";
   const myShares = fromStroops(data.balance).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
@@ -291,7 +296,9 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
               isTesouro ? (
                 <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
               ) : canFaucet ? (
-                <TestnetOnramp address={address} onSuccess={handleSuccess} />
+                <UsdcFaucet address={address} onSuccess={handleSuccess} />
+              ) : canCbrl ? (
+                <CbrlFaucet address={address} onSuccess={handleSuccess} />
               ) : null
             )}
           </div>

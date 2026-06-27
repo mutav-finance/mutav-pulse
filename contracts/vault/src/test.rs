@@ -3,6 +3,7 @@ use soroban_sdk::testutils::{Address as _, Events as _, Ledger as _};
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env, String};
 use mock_strategy::{MockStrategy, MockStrategyClient};
+use mock_tesouro::{MockTesouro, MockTesouroClient};
 use mock_policy::{MockPolicy, MockPolicyClient};
 use strategy::Strategy;
 use crate::types::{DataKey, MAX_ENTRY_TTL, REQUEST_TTL_LEDGERS};
@@ -52,6 +53,18 @@ pub fn add_mock(c: &Ctx, weight_bps: u32) -> MockStrategyClient<'static> {
     MockStrategyClient::new(&c.e, &id).set_controller(&c.vault_id);
     c.vault.add_strategy(&id, &weight_bps, &false);
     MockStrategyClient::new(&c.e, &id)
+}
+
+/// Add a `mock-tesouro` adapter as a stable (non-volatile) strategy. Mirrors the
+/// BRL-native reserve wiring: `underlying` = the BRL stable (cBRL stand-in), so
+/// `balance()` is BRL-denominated and counts toward the solvency floor.
+pub fn add_tesouro(c: &Ctx, weight_bps: u32) -> MockTesouroClient<'static> {
+    let id = c.e.register(MockTesouro, (c.admin.clone(), c.underlying.clone()));
+    // Wire the controller to the reserve vault so vault-originated invest/divest
+    // authorize via the vault's self-auth subtree. (audit H1/H4 gate)
+    MockTesouroClient::new(&c.e, &id).set_controller(&c.vault_id);
+    c.vault.add_strategy(&id, &weight_bps, &false);
+    MockTesouroClient::new(&c.e, &id)
 }
 
 #[test]
@@ -695,6 +708,92 @@ fn sep_deposit_emits_event() {
     // The vault emits a Deposit event (only deposit/mint emit from the vault id).
     let vault_events = c.e.events().all().filter_by_contract(&c.vault_id);
     assert!(!vault_events.events().is_empty());
+}
+
+// ───────────────────────── BRL-native money path (mock-tesouro) ─────────────────────────
+
+/// Full BRL-native lifecycle against the `mock-tesouro` adapter (spec §5):
+/// deposit underlying → shares at NAV 1.0 → `rebalance` deploys the surplus
+/// above the buffer to mock-tesouro (buffer retained) → `accrue` pushes yield so
+/// `nav_per_share` rises (in the BRL underlying) → `request_redeem` /
+/// `process_redemptions` / `claim` pays out with the exit haircut applied via
+/// `ensure_liquidity` → the buffer holds across a second rebalance → the
+/// solvency floor `stable_assets >= coverage_required` holds (adapter added
+/// `volatile=false`, so its BRL value counts toward the floor).
+#[test]
+fn brl_native_money_path_with_tesouro() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+
+    // Deposit 10_000 of the BRL underlying → 10_000 shares at NAV 1.0.
+    c.token_admin.mint(&alice, &10_000);
+    assert_eq!(c.vault.deposit(&10_000, &alice, &alice, &alice), 10_000);
+    assert_eq!(c.vault.nav_per_share(), 10_000_000); // 1.0
+
+    // Add the TESOURO adapter (stable: counts toward the solvency floor) as the
+    // primary yield sleeve, plus a small stable cash-like sleeve that absorbs the
+    // residual of a haircut divest (so `ensure_liquidity` divests a bit more to
+    // cover the shortfall — the redeemer is made whole, the reserve eats the
+    // spread). 10% liquid buffer. Rebalance deploys the surplus, keeping the
+    // buffer idle. Tesouro is added FIRST so the redeem-time divest hits it first.
+    let tesouro = add_tesouro(&c, 9_000); // 90% weight
+    let sleeve = add_mock(&c, 1_000); // 10% weight, no exit cost
+    c.vault.set_min_liquid_buffer_bps(&1_000); // 10%
+    c.vault.rebalance();
+    assert_eq!(c.vault.available_held(), 1_000); // buffer retained idle
+    assert_eq!(tesouro.balance(), 8_100); // 90% of the 9_000 surplus
+    assert_eq!(sleeve.balance(), 900); //  10% of the 9_000 surplus
+    assert_eq!(c.vault.total_assets(), 10_000); // funds only moved location
+
+    // Keeper push: pre-fund the adapter with BRL then `accrue` (TESOURO NAV
+    // rose). NAV per share rises, in the BRL underlying.
+    c.token_admin.mint(&tesouro.address, &900);
+    tesouro.accrue(&900);
+    assert_eq!(tesouro.balance(), 9_000);
+    assert_eq!(c.vault.total_assets(), 10_900);
+    assert!(c.vault.nav_per_share() > 10_000_000); // NAV rose in cBRL
+    let nav_after_yield = c.vault.nav_per_share();
+
+    // Configure a forced-exit haircut on the TESOURO adapter (2%).
+    tesouro.set_exit_bps(&200);
+
+    // Redeem 2_000 shares. Claimable value > idle buffer, so `ensure_liquidity`
+    // must divest — tesouro first (with the haircut), then the no-cost sleeve
+    // tops up the haircut shortfall. The redeemer is paid the full claimable.
+    c.policy.set_coverage(&0); // free capital ample
+    let claimable = c.vault.convert_to_assets(&2_000);
+    let assets_pre = c.vault.total_assets();
+    assert!(claimable > c.vault.available_held()); // forces a divest
+    let rid = c.vault.request_redeem(&alice, &2_000);
+    c.vault.process_redemptions(&10);
+    assert!(c.vault.request(&rid).fulfilled);
+    let paid_before = c.token.balance(&alice);
+    c.vault.claim(&rid);
+    let paid = c.token.balance(&alice) - paid_before;
+    assert_eq!(paid, claimable); // redeemer paid the full claimable amount
+
+    // The haircut was borne by the reserve: total_assets dropped by MORE than the
+    // amount paid out (the stranded exit spread left the adapter's marked value).
+    assert!(c.vault.total_assets() < assets_pre - claimable);
+
+    // The buffer holds across repeated rebalances (load-bearing buffer fix). A
+    // forced TESOURO divest carries the exit haircut, so each rebalance recovers
+    // slightly less net than the nominal target — the idle buffer therefore
+    // converges UP toward `target_idle` and must never decay toward zero.
+    c.vault.rebalance();
+    let buffer_1 = c.vault.available_held();
+    assert!(buffer_1 > 0); // buffer rebuilt
+    assert!(buffer_1 <= c.vault.target_idle()); // bounded by the nominal target
+    c.vault.rebalance(); // repeated call: buffer holds/converges up, never drains
+    let buffer_2 = c.vault.available_held();
+    assert!(buffer_2 >= buffer_1); // no decay across repeated rebalances
+
+    // Solvency floor holds: stable assets (cash + the non-volatile tesouro and
+    // sleeve positions, all in cBRL) cover the required coverage.
+    c.policy.set_coverage(&5_000);
+    assert!(c.vault.stable_assets() >= 5_000);
+    // NAV stayed above 1.0 after the yield push (net of the redeemed haircut).
+    assert!(nav_after_yield > 10_000_000);
 }
 
 // ───────────────── #34 / code-review H1: lossy divest vs ensure_liquidity ─────────────────

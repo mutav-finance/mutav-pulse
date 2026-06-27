@@ -47,6 +47,16 @@ export const config = {
     usdc: requireEnv("NEXT_PUBLIC_USDC_ID", process.env.NEXT_PUBLIC_USDC_ID),
     // Testnet-only demo faucet. Empty/undefined on mainnet.
     faucet: process.env.NEXT_PUBLIC_FAUCET_ID ?? "",
+    // BRL-native MBRL reserve contract set. OPTIONAL — empty until that reserve
+    // is deployed (see bootstrap.sh). The MBRL reserve entry in lib/reserves.ts
+    // degrades to non-live (status flips off) when these are blank, so the build
+    // and pages never break on a not-yet-deployed reserve.
+    mbrlVault: process.env.NEXT_PUBLIC_MBRL_VAULT_ID ?? "",
+    mbrlPolicy: process.env.NEXT_PUBLIC_MBRL_POLICY_ID ?? "",
+    mbrlRegistry: process.env.NEXT_PUBLIC_MBRL_REGISTRY_ID ?? "",
+    // Testnet-only cBRL faucet (the BRL-native reserve's demo faucet). Empty
+    // until deployed (bootstrap.sh BRL_NATIVE path). Mirrors `faucet` for USDC.
+    cbrlFaucet: process.env.NEXT_PUBLIC_CBRL_FAUCET_ID ?? "",
   },
   // Classic asset behind the USDC SAC — needed to build the change_trust op and
   // to read the trustline/balance from Horizon.
@@ -67,6 +77,14 @@ export const config = {
     // FX leak). Default ≈ accrued NAV per Etherfuse.
     priceBrl: Number(process.env.NEXT_PUBLIC_TESOURO_PRICE_BRL ?? "1.22107"),
   },
+  // Classic asset behind the cBRL SAC — the BRL-native MBRL reserve's deposit
+  // token (a mock BRL stablecoin on testnet). cBRL is fiat-pegged (1 cBRL ≈ R$1),
+  // so unlike TESOURO it carries no indicative price. Empty issuer until the
+  // cBRL asset is deployed (see bootstrap.sh).
+  cbrl: {
+    code: process.env.NEXT_PUBLIC_CBRL_CODE ?? "cBRL",
+    issuer: process.env.NEXT_PUBLIC_CBRL_ISSUER ?? "",
+  },
 } as const;
 
 /** Explorer URL for a transaction hash. */
@@ -86,7 +104,29 @@ export const isTestnet = config.networkPassphrase === Networks.TESTNET;
 export const tesouroConfigured = config.tesouro.issuer.length > 0;
 
 /**
- * Whether to surface the testnet on-ramp (trustline + faucet). Gated to testnet
+ * Whether the BRL-native MBRL reserve is deployed and configured — true only
+ * when the full contract set (vault/policy/registry) is present in the env.
+ * The MBRL reserve in lib/reserves.ts gates its `status: "live"` on this so a
+ * not-yet-deployed reserve degrades to non-live instead of crashing pages that
+ * read `.address`/`.contracts` (which the LiveReserve guard would otherwise
+ * leave unset). cBRL asset config (issuer) is separate and gates only the
+ * trustline/faucet UI, mirroring `tesouroConfigured`.
+ */
+export const mbrlConfigured =
+  config.contracts.mbrlVault.length > 0 &&
+  config.contracts.mbrlPolicy.length > 0 &&
+  config.contracts.mbrlRegistry.length > 0;
+
+/**
+ * Whether to surface the testnet faucet (trustline + faucet). Gated to testnet
  * with a configured faucet — on mainnet users hold real USDC, so this never shows.
  */
 export const faucetEnabled = isTestnet && config.contracts.faucet.length > 0;
+
+/**
+ * Whether to surface the cBRL testnet faucet (trustline + faucet) for the
+ * BRL-native MBRL reserve. Needs testnet + a configured cBRL issuer + a deployed
+ * cBRL faucet — so a not-yet-provisioned reserve shows no (broken) Fund affordance.
+ */
+export const cbrlFaucetEnabled =
+  isTestnet && config.cbrl.issuer.length > 0 && config.contracts.cbrlFaucet.length > 0;
