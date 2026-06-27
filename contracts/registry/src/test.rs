@@ -31,10 +31,16 @@ fn writer_gating_and_active_set() {
     r.set_writer(&policy);
     assert_eq!(r.writer(), policy);
 
+    // next_id returns sequential ids 0, 1, 2, ... The counter uses checked_add
+    // internally (panics on the u32::MAX wrap instead of silently colliding
+    // Guarantee(0)); the full 4.2B-id boundary is unreachable in-test, so this
+    // asserts the behavior-preserving sequential path only.
     let id0 = r.next_id();
     let id1 = r.next_id();
+    let id2 = r.next_id();
     assert_eq!(id0, 0);
     assert_eq!(id1, 1);
+    assert_eq!(id2, 2);
 
     r.put(&g(&e, id0, &landlord, true));
     r.put(&g(&e, id1, &landlord, true));

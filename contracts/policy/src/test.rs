@@ -322,6 +322,83 @@ fn sign_guarantee_rejects_fee_above_100pct_and_allows_boundary() {
     assert_eq!(c.policy.guarantee(&gid).fee_bps, 10_000);
 }
 
+// ─────────────────── arithmetic widening / overflow (H2 + mediums) ───────────────────
+
+/// Nexus coverage-anchored solvency: `coverage_required` must round the capital
+/// floor UP (Ceil) so the pre-disburse gate is never understated. With a ratio
+/// that does NOT divide evenly, the result is strictly greater than the floor.
+/// RED-first: the prior `raw*ratio/BPS_DENOM` truncation floors this value.
+#[test]
+fn coverage_required_rounds_up() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &10_000);
+    c.token_admin.mint(&agency, &10_000);
+    c.vault.deposit(&10_000, &alice, &alice, &alice);
+
+    // raw = monthly_amount(100) * months_covered(6) = 600.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+
+    // 7_500 bps: 600 * 7_500 / 10_000 = 4_500_000 / 10_000 = 450 exactly — even.
+    // Use 7_511 bps to force a non-even divide: 600*7_511 = 4_506_600;
+    // /10_000 = 450 (floor), ceil = 451.
+    c.policy.set_coverage_ratio_bps(&7_511);
+    let raw = 600i128;
+    let ratio = 7_511i128;
+    let floor = raw * ratio / 10_000;
+    let ceil = (raw * ratio + 10_000 - 1) / 10_000;
+    assert_eq!(floor, 450);
+    assert_eq!(ceil, 451);
+    assert_eq!(c.policy.coverage_required(), ceil); // rounds UP
+    assert!(c.policy.coverage_required() > floor);
+}
+
+/// With the default ratio (10_000 bps), Ceil of raw*10_000/10_000 == raw exactly
+/// (no +1) — confirming the default-config figures do not shift.
+#[test]
+fn coverage_required_default_ratio_unchanged() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &10_000);
+    c.token_admin.mint(&agency, &10_000);
+    c.vault.deposit(&10_000, &alice, &alice, &alice);
+
+    // default ratio is 10_000 bps (set in setup()).
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    c.policy.pay_premium(&agency, &gid);
+    assert_eq!(c.policy.coverage_required(), 600); // == raw, no rounding shift
+}
+
+/// `set_coverage_ratio_bps` accepts a legitimate over-collateralization ratio
+/// (200%) but rejects an overflow-class value above the 10*BPS_DENOM ceiling.
+#[test]
+fn set_coverage_ratio_bps_accepts_over_collateralization() {
+    let c = setup();
+    c.policy.set_coverage_ratio_bps(&20_000); // 200% — allowed
+}
+
+#[test]
+#[should_panic]
+fn set_coverage_ratio_bps_rejects_overflow_class() {
+    let c = setup();
+    c.policy.set_coverage_ratio_bps(&200_000); // > 1000% ceiling — rejected
+}
+
+/// `monthly_premium` (premium_of, Floor) is behavior-preserving for normal terms.
+#[test]
+fn premium_of_unchanged_for_normal_terms() {
+    let c = setup();
+    let landlord = Address::generate(&c.e);
+    // monthly_amount 100, fee_bps 1_000 → 100 * 1_000 / 10_000 = 10.
+    let gid = c.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    assert_eq!(c.policy.monthly_premium(&gid), 10);
+}
+
 /// 5b. pay_premium rejects an inactive guarantee ("guarantee inactive").
 #[test]
 fn pay_premium_rejects_inactive_guarantee() {

@@ -1,5 +1,6 @@
 #![no_std]
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
+use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
 use interfaces::{Guarantee, Policy as PolicyTrait, RegistryClient, VaultClient};
 
 const BPS_DENOM: i128 = 10_000;
@@ -26,7 +27,15 @@ enum DataKey {
 #[contract]
 pub struct Policy;
 
-fn premium_of(g: &Guarantee) -> i128 { g.monthly_amount * (g.fee_bps as i128) / BPS_DENOM }
+fn premium_of(g: &Guarantee) -> i128 {
+    // Floor is favorable-to-vault for a premium charged to a payer. fee_bps is
+    // bounded <= 10_000 at sign_guarantee, so checked_mul alone closes the trap
+    // without pulling the I256 machinery for this site. Value-identical to prior.
+    g.monthly_amount
+        .checked_mul(g.fee_bps as i128)
+        .expect("premium mul overflow")
+        / BPS_DENOM
+}
 
 #[contractimpl]
 impl Policy {
@@ -47,7 +56,15 @@ impl Policy {
 
     pub fn set_vault(e: &Env, addr: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Vault, &addr); }
     pub fn set_registry(e: &Env, addr: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Registry, &addr); }
-    pub fn set_coverage_ratio_bps(e: &Env, bps: u32) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::CoverageRatioBps, &bps); }
+    pub fn set_coverage_ratio_bps(e: &Env, bps: u32) {
+        Self::admin(e).require_auth();
+        // Bound at 1000% (10x BPS_DENOM) so an absurd ratio can never overflow
+        // `raw * ratio` in coverage_required. Over-collateralization (>100%) is a
+        // legitimate knob, so this is NOT clamped to 10_000 — only overflow-class
+        // values are rejected.
+        assert!(bps <= 10 * BPS_DENOM as u32, "coverage_ratio_bps exceeds 1000%");
+        e.storage().instance().set(&DataKey::CoverageRatioBps, &bps);
+    }
     pub fn set_admin(e: &Env, new_admin: Address) { Self::admin(e).require_auth(); e.storage().instance().set(&DataKey::Admin, &new_admin); }
     pub fn upgrade(e: &Env, new_wasm_hash: BytesN<32>) { Self::admin(e).require_auth(); e.deployer().update_current_contract_wasm(new_wasm_hash); }
 
@@ -123,10 +140,23 @@ impl PolicyTrait for Policy {
         for id in reg.active_ids().iter() {
             let g = reg.get(&id);
             if g.paid_until > now {
-                raw += g.monthly_amount * (g.months_covered.saturating_sub(g.months_used) as i128);
+                // Overflow-safe accumulation (keeps the saturating_sub month delta).
+                raw = raw
+                    .checked_add(
+                        g.monthly_amount
+                            .checked_mul(g.months_covered.saturating_sub(g.months_used) as i128)
+                            .expect("coverage mul overflow"),
+                    )
+                    .expect("coverage sum overflow");
             }
         }
-        raw * ratio / BPS_DENOM
+        // Apply the ratio with CEIL so the capital floor is never understated
+        // (Nexus coverage-anchored solvency). Ceil only tightens the pre-disburse
+        // gate and composes safely with the re-entrancy invariant (policy reduces
+        // coverage BEFORE vault.disburse; vault never calls coverage_required
+        // mid-disburse). At ratio == 10_000 (default), ceil(raw*10_000/10_000)
+        // == raw exactly — default-config figures do not shift.
+        mul_div_with_rounding(&e, raw, ratio, BPS_DENOM, Rounding::Ceil)
     }
 }
 

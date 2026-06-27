@@ -119,6 +119,33 @@ fn coverage_required_scales_above_one_x() {
     assert_eq!(s.policy.coverage_required(), 6_000 * 15_000 / 10_000);
 }
 
+/// Activation under Ceil coverage rounding: with a non-evenly-dividing ratio the
+/// pre-activation solvency gate (`stable_assets >= coverage_required`) uses the
+/// ceil'd (tighter) coverage. Seeding stable_assets to exactly the ceil value
+/// must still activate — Ceil composes safely with the gate (boundary, not an
+/// off-by-one revert).
+#[test]
+fn pay_premium_activation_with_ceil_coverage() {
+    let s = wire();
+    let agency = Address::generate(&s.e);
+    let landlord = Address::generate(&s.e);
+    let alice = Address::generate(&s.e);
+    s.token_admin.mint(&agency, &10_000);
+    s.token_admin.mint(&alice, &10_000);
+
+    // raw = 100 * 6 = 600. Ratio 7_511 → ceil(600*7_511/10_000) = 451.
+    // Premium = 100 * 1_000bps / 10_000 = 10. Deposit 441 so post-premium
+    // stable_assets = 441 + 10 = 451 == ceil(coverage). Boundary must succeed.
+    s.vault.deposit(&441, &alice, &alice, &alice);
+    s.policy.set_coverage_ratio_bps(&7_511);
+
+    let gid = s.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    s.policy.pay_premium(&agency, &gid); // must not revert at the exact ceil boundary
+    assert!(s.policy.is_current(&gid));
+    assert_eq!(s.policy.coverage_required(), 451);
+    assert!(s.vault.stable_assets() >= s.policy.coverage_required());
+}
+
 #[test]
 fn policy_swap_preserves_data_and_funds() {
     let s = wire();

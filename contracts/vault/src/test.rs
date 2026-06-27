@@ -400,6 +400,126 @@ fn remove_strategy_divests_including_yield() {
     assert_eq!(c.vault.nav_per_share(), nav_before);   // NAV invariant holds
 }
 
+// ─────────────────── arithmetic widening / overflow (H2 + mediums) ───────────────────
+
+/// H2: `process_redemptions` must settle a request at the SAME price the user
+/// previews via `preview_redeem` (to_assets Floor). At a non-unit NAV the
+/// settlement and the preview must be byte-identical — closing the inline
+/// multiply-before-divide that diverged from the audited primitive.
+#[test]
+fn process_redemptions_prices_identically_to_preview_redeem() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice); // 1_000 shares
+
+    // Push NAV to a fractional ratio: collect a 333 premium (no shares minted),
+    // total_assets = 1_333, supply = 1_000 → shares*assets/supply is non-integer.
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&agency, &1_000);
+    c.policy.call_collect(&agency, &333);
+    assert_eq!(c.vault.total_assets(), 1_333);
+
+    c.policy.set_coverage(&0); // ample free capital
+
+    let redeem_shares = 700i128;
+    let previewed = c.vault.preview_redeem(&redeem_shares);
+    let rid = c.vault.request_redeem(&alice, &redeem_shares);
+    c.vault.process_redemptions(&10);
+    let req = c.vault.request(&rid);
+    assert!(req.fulfilled);
+    // Settlement parity: claimable == preview_redeem(shares).
+    assert_eq!(req.claimable, previewed);
+}
+
+/// ERC-4626 favor-the-vault on the settlement path: when
+/// shares*(total+1)/(supply+1) is fractional, claimable rounds DOWN — the vault
+/// never overpays a redeemer.
+#[test]
+fn process_redemptions_floors_claimable_favoring_vault() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice); // 1_000 shares
+
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&agency, &1_000);
+    c.policy.call_collect(&agency, &333); // total_assets = 1_333, supply = 1_000
+    c.policy.set_coverage(&0);
+
+    let redeem_shares = 700i128;
+    // Hand-computed floor: 700 * (1_333 + 1) / (1_000 + 1) = 700*1_334/1_001
+    // = 933_800 / 1_001 = 932 (933_800 = 932*1_001 + 868 → floor 932).
+    let expected_floor = 700i128 * (1_333 + 1) / (1_000 + 1);
+    assert_eq!(expected_floor, 932);
+
+    let rid = c.vault.request_redeem(&alice, &redeem_shares);
+    c.vault.process_redemptions(&10);
+    assert_eq!(c.vault.request(&rid).claimable, expected_floor);
+}
+
+/// `nav_per_share` must be unchanged after routing through
+/// `mul_div_with_rounding` (Floor): value-identical to the prior truncating `/`
+/// for non-negative operands, and the supply==0 guard still returns NAV_SCALE.
+#[test]
+fn nav_per_share_unchanged_after_widening() {
+    let c = setup();
+    // Guard: empty vault returns unit NAV.
+    assert_eq!(c.vault.nav_per_share(), 10_000_000);
+
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    assert_eq!(c.vault.nav_per_share(), 10_000_000); // unit NAV at 1:1
+
+    // Non-trivial NAV: collect 333 premium → total 1_333, supply 1_000.
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&agency, &1_000);
+    c.policy.call_collect(&agency, &333);
+    // floor(1_333 * 10_000_000 / 1_000) = 13_330_000.
+    let expected = 1_333i128 * 10_000_000 / 1_000;
+    assert_eq!(c.vault.nav_per_share(), expected);
+    assert_eq!(expected, 13_330_000);
+}
+
+/// `target_idle` and the `strategy_max_debt_bps` cap must be value-identical
+/// after the widening (Floor matches prior truncation for non-negative operands).
+#[test]
+fn target_idle_and_max_debt_cap_match_after_widening() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // 25% buffer → target_idle = floor(1_000 * 2_500 / 10_000) = 250.
+    c.vault.set_min_liquid_buffer_bps(&2_500);
+    assert_eq!(c.vault.target_idle(), 250);
+
+    // Two equal-weight strategies, cap A at 30% → balances unchanged post-widening.
+    let s_a = add_mock(&c, 5_000);
+    let s_b = add_mock(&c, 5_000);
+    c.vault.set_min_liquid_buffer_bps(&0);
+    c.vault.set_strategy_max_debt_bps(&s_a.address, &3_000); // 30% of total = 300
+    c.vault.rebalance();
+    assert_eq!(s_a.balance(), 300);
+    assert_eq!(s_b.balance(), 500);
+    assert_eq!(c.vault.available_held(), 200);
+}
+
+/// Consecutive `request_redeem` calls return sequentially incrementing ids
+/// (0 then 1). Documents the `checked_add` swap on `NextRequestId` (the full
+/// u32::MAX wrap-to-0 boundary is unreachable in-test).
+#[test]
+fn request_redeem_ids_increment_checked() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let r0 = c.vault.request_redeem(&alice, &100);
+    let r1 = c.vault.request_redeem(&alice, &100);
+    assert_eq!(r0, 0);
+    assert_eq!(r1, 1);
+}
+
 #[test]
 fn sep_query_asset_is_underlying() {
     let c = setup();

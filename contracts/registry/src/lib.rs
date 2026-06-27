@@ -56,7 +56,12 @@ impl RegistryTrait for Registry {
     fn next_id(e: Env, ) -> u32 {
         Registry::require_writer(&e);
         let id: u32 = e.storage().instance().get(&DataKey::NextId).unwrap();
-        e.storage().instance().set(&DataKey::NextId, &(id + 1));
+        // checked_add: in wasm release `id + 1` wraps silently at u32::MAX -> 0,
+        // colliding the live Guarantee(0) entry. Panic instead (signature stays
+        // plain u32, so the RegistryClient trait is unchanged).
+        e.storage()
+            .instance()
+            .set(&DataKey::NextId, &id.checked_add(1).expect("registry id space exhausted"));
         id
     }
 

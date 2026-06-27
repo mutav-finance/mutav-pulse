@@ -82,7 +82,17 @@ impl Vault {
     /// Target idle cash retained as the liquid buffer: `total_assets × bps`.
     /// The surplus above this is what `rebalance` deploys across strategies.
     pub fn target_idle(e: &Env) -> i128 {
-        Self::total_assets(e) * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM
+        // Floor keeps the retained buffer from over-reserving (Yearn-v3
+        // total-anchored idle). BPS_DENOM (10_000) is a non-zero constant.
+        // Value-identical to the prior truncating `/` for non-negative operands;
+        // routed through the audited primitive for i128 overflow-safety.
+        mul_div_with_rounding(
+            e,
+            Self::total_assets(e),
+            Self::min_liquid_buffer_bps(e) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        )
     }
 
     /// Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
@@ -111,12 +121,22 @@ impl Vault {
         deployable_total: i128,
         total_weight: i128,
     ) -> i128 {
+        // Floor on both the weighted target and the concentration cap guarantees
+        // neither is exceeded by rounding (Yearn-v3 target-to-balance / max_debt).
+        // Routed through the audited primitive for i128 overflow-safety;
+        // value-identical to the prior truncating `/` for non-negative operands.
         let mut target = if total_weight > 0 {
-            deployable_total * (s.weight_bps as i128) / total_weight
+            mul_div_with_rounding(e, deployable_total, s.weight_bps as i128, total_weight, Rounding::Floor)
         } else {
             0
         };
-        let cap = total * (Self::strategy_max_debt_bps_inner(e, &s.address) as i128) / BPS_DENOM;
+        let cap = mul_div_with_rounding(
+            e,
+            total,
+            Self::strategy_max_debt_bps_inner(e, &s.address) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        );
         if target > cap {
             target = cap;
         }
@@ -174,7 +194,16 @@ impl Vault {
 
         // Snapshot once → idempotent. total/target_idle exclude reserved_for_claims.
         let total = Self::total_assets(e);
-        let target_idle = total * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
+        // Off the single `total` snapshot (NOT Self::target_idle, which re-reads
+        // total_assets) to preserve the idempotency contract above. Same Floor /
+        // overflow-safe primitive as target_idle.
+        let target_idle = mul_div_with_rounding(
+            e,
+            total,
+            Self::min_liquid_buffer_bps(e) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        );
         let deployable_total = if total > target_idle { total - target_idle } else { 0 };
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
@@ -230,8 +259,14 @@ impl Vault {
 
     pub fn nav_per_share(e: &Env) -> i128 {
         let supply = Base::total_supply(e);
+        // Guard is load-bearing: this denominator has NO virtual offset, so a
+        // zero `supply` would be a native divide-by-zero host panic in
+        // mul_div_with_rounding (not a typed error). Floor matches a per-share
+        // price quote and equals the prior truncating `/` for non-negative
+        // operands — overflow-safety on the total_assets*NAV_SCALE product is
+        // the only change.
         if supply == 0 { return NAV_SCALE; }
-        Self::total_assets(e) * NAV_SCALE / supply
+        mul_div_with_rounding(e, Self::total_assets(e), NAV_SCALE, supply, Rounding::Floor)
     }
 
     // ───────────────────────── SEP-0056 (Tokenized Vault Standard) ─────────────────────────
@@ -354,7 +389,10 @@ impl Vault {
         Base::update(e, Some(&owner), Some(&e.current_contract_address()), shares);
 
         let id: u32 = e.storage().instance().get(&DataKey::NextRequestId).unwrap();
-        e.storage().instance().set(&DataKey::NextRequestId, &(id + 1));
+        e.storage().instance().set(
+            &DataKey::NextRequestId,
+            &id.checked_add(1).expect("request id space exhausted"),
+        );
         let req = RedeemRequest {
             id,
             owner,
@@ -415,12 +453,17 @@ impl Vault {
             }
             processed += 1;
 
-            let supply = Base::total_supply(e);
-            let claimable = if supply == 0 {
-                0
-            } else {
-                req.shares * (Self::total_assets(e) + VIRTUAL_OFFSET) / (supply + VIRTUAL_OFFSET)
-            };
+            // H2: settle through the identical audited primitive used by
+            // preview_redeem (to_assets Floor) — restoring ERC-4626
+            // rounding-favors-the-vault on payout, preview/settlement parity, and
+            // i128 overflow-safety (I256 promotion) vs. the prior raw
+            // multiply-before-divide that traps. The old `supply == 0` branch is
+            // unreachable here: request_redeem escrowed `req.shares` into the
+            // contract, so live total_supply >= req.shares > 0; to_assets'
+            // denominator `total_supply + VIRTUAL_OFFSET` (>= 2) can never be zero
+            // and it already short-circuits shares == 0.
+            debug_assert!(Base::total_supply(e) > 0);
+            let claimable = Self::to_assets(e, req.shares, Rounding::Floor);
             // Gate on stable surplus only (H2).
             if claimable > 0 && Self::free_capital(e) >= claimable {
                 Self::ensure_liquidity(e, claimable);
