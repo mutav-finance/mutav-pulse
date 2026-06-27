@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode, CSSProperties } from "react";
-import { fmtFiat, type Money } from "@/lib/format";
+import { fmtFiat, truncAddr, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import type { StrategyAlloc } from "vault";
 
@@ -288,7 +288,7 @@ export function ReserveHealthHeader({
                           </td>
                           <td style={cell}>
                             <Mono dim style={{ fontSize: "11px" }}>
-                              {s.address.slice(0, 6)}…{s.address.slice(-4)}
+                              {truncAddr(s.address)}
                             </Mono>
                           </td>
                           <td style={{ ...cell, textAlign: "right" }}>

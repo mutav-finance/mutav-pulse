@@ -35,47 +35,45 @@ interface Venue {
   actionLabel?: string;
 }
 
-// DeFindex: if NEXT_PUBLIC_ADAPTER_ID is configured, link to adapter;
-// otherwise fall back to the vault contract with a "via reserve" label.
-const adapterLink: { href: string; label: string } = (() => {
+// DeFindex: if NEXT_PUBLIC_ADAPTER_ID is configured, link to adapter; otherwise
+// fall back to THIS reserve's vault contract (passed in) with a "via reserve"
+// label — so the link is correct on every reserve hub, not just the primary.
+function defindexLink(vaultId: string): { href: string; label: string } {
   const adapterId =
     typeof process !== "undefined"
       ? process.env.NEXT_PUBLIC_ADAPTER_ID
       : undefined;
   if (adapterId) {
-    return {
-      href: contractUrl(adapterId),
-      label: "View adapter →",
-    };
+    return { href: contractUrl(adapterId), label: "View adapter →" };
   }
-  return {
-    href: contractUrl(config.contracts.vault),
-    label: "view ↗",
-  };
-})();
+  return { href: contractUrl(vaultId), label: "view ↗" };
+}
 
-const VENUES: Venue[] = [
-  {
-    name: "DeFindex",
-    role: "Yield",
-    description: "Multi-strategy vault allocator. Reserve capital is routed to the DeFindex adapter wired to the MUTAV vault to generate yield in the testnet PoC.",
-    status: "live",
-    href: adapterLink.href,
-    actionLabel: adapterLink.label,
-  },
-  {
-    name: "Soroswap",
-    role: "Swap",
-    description: "AMM on Stellar for efficient on-chain USDC routing and reserve rebalancing.",
-    status: "planned",
-  },
-  {
-    name: "Blend",
-    role: "Lending",
-    description: "Lending protocol on Stellar enabling collateralized lending from reserve surplus.",
-    status: "planned",
-  },
-];
+function buildVenues(vaultId: string): Venue[] {
+  const adapterLink = defindexLink(vaultId);
+  return [
+    {
+      name: "DeFindex",
+      role: "Yield",
+      description: "Multi-strategy vault allocator. Reserve capital is routed to the DeFindex adapter wired to the MUTAV vault to generate yield in the testnet PoC.",
+      status: "live",
+      href: adapterLink.href,
+      actionLabel: adapterLink.label,
+    },
+    {
+      name: "Soroswap",
+      role: "Swap",
+      description: "AMM on Stellar for efficient on-chain USDC routing and reserve rebalancing.",
+      status: "planned",
+    },
+    {
+      name: "Blend",
+      role: "Lending",
+      description: "Lending protocol on Stellar enabling collateralized lending from reserve surplus.",
+      status: "planned",
+    },
+  ];
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -178,7 +176,9 @@ const BODY_CELL: React.CSSProperties = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function VenueDirectory() {
+export function VenueDirectory({ vaultId }: { vaultId?: string } = {}) {
+  // Per-reserve vault for the DeFindex fallback link; defaults to the primary.
+  const venues = buildVenues(vaultId ?? config.contracts.vault);
   return (
     <div
       style={{
@@ -207,9 +207,9 @@ export function VenueDirectory() {
           </tr>
         </thead>
         <tbody>
-          {VENUES.map((venue, i) => {
+          {venues.map((venue, i) => {
             const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-canvas)";
-            const isLast = i === VENUES.length - 1;
+            const isLast = i === venues.length - 1;
 
             return (
               <tr

@@ -16,6 +16,8 @@ import { fmtFiat } from "./format";
 export function useLiveAum() {
   // vault address -> total_assets (bigint); absent until that reserve's read lands.
   const [aum, setAum] = useState<Record<string, bigint>>({});
+  // vault addresses whose read failed — render "—" instead of a perpetual "…".
+  const [errored, setErrored] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +28,9 @@ export function useLiveAum() {
           if (!cancelled) setAum((m) => ({ ...m, [r.address]: v }));
         })
         .catch(() => {
-          /* leave absent → renders "…" */
+          // Read failed (e.g. vault not reachable) — mark it so the card
+          // settles on "—" rather than loading forever.
+          if (!cancelled) setErrored((s) => new Set(s).add(r.address));
         });
     }
     return () => {
@@ -34,21 +38,19 @@ export function useLiveAum() {
     };
   }, []);
 
-  /** Formatted AUM for a reserve: its own live value, "…" while loading, "—" if no address. */
+  /** Formatted AUM for a reserve: its own live value, "…" while loading, "—" if no address or its read failed. */
   const aumFor = useCallback(
     (reserve: Reserve): string => {
       if (!reserve.address) return "—";
       const v = aum[reserve.address];
-      return v === undefined ? "…" : fmtFiat(v, reserve);
+      if (v !== undefined) return fmtFiat(v, reserve);
+      return errored.has(reserve.address) ? "—" : "…";
     },
-    [aum],
+    [aum, errored],
   );
 
   // Aggregate label for the primary reserve (the strip header uses this).
-  const primaryLabel =
-    aum[PRIMARY_RESERVE.address] === undefined
-      ? "…"
-      : fmtFiat(aum[PRIMARY_RESERVE.address], PRIMARY_RESERVE);
+  const primaryLabel = aumFor(PRIMARY_RESERVE);
 
   return { primaryLabel, aumFor };
 }

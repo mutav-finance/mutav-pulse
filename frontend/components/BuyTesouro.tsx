@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getTesouroInfo, addTesouroTrustline, buyTesouro, type AssetInfo } from "@/lib/buy-tesouro";
-import { config } from "@/lib/config";
+import { config, tesouroConfigured } from "@/lib/config";
 import { errMsg, fmtUnitPrice, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
@@ -70,6 +70,30 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
   const code = config.tesouro.code;
   const isPending = status === "pending";
   const canBuy = !!info?.hasTrustline && parseFloat(amount) > 0 && !isPending;
+
+  // The TESOURO issuer isn't configured in this deploy — the trustline/swap
+  // would throw on Asset construction, so surface that up front instead.
+  if (!tesouroConfigured) {
+    return (
+      <section
+        aria-label={`Buy ${code}`}
+        style={{
+          backgroundColor: "var(--color-surface)",
+          border: "1px solid var(--color-border)",
+          padding: "24px",
+        }}
+      >
+        <p
+          className="font-body"
+          style={{ fontSize: "13px", color: "var(--color-text-2)", margin: 0, lineHeight: 1.5 }}
+        >
+          {code} is not configured in this environment. Set{" "}
+          <Mono style={{ fontSize: "12px" }}>NEXT_PUBLIC_TESOURO_ISSUER</Mono> to
+          enable the on-chain swap.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section

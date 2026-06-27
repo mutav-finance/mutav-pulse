@@ -16,6 +16,7 @@ import { standardProductEconomics } from "@/lib/economics";
 import { fmtPct } from "@/lib/format";
 import { useLiveAum } from "@/lib/use-live-aum";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
+import { LockIcon } from "@/components/LockIcon";
 
 const MAX_W = "1280px";
 
@@ -210,22 +211,7 @@ export default function ReservesPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {!live && (
-                          <svg
-                            width="9"
-                            height="9"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="square"
-                            aria-hidden="true"
-                            style={{ flexShrink: 0 }}
-                          >
-                            <rect x="5" y="11" width="14" height="10" />
-                            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                          </svg>
-                        )}
+                        {!live && <LockIcon size={9} strokeWidth={2.5} />}
                         {r.tag ?? (live ? "Live" : "Planned")}
                       </span>
                     </td>

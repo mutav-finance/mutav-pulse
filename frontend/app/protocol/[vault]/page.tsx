@@ -33,6 +33,7 @@ import { reserveReads, type ReserveContracts } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
 import { ReserveHealthHeader } from "@/components/ReserveHealthHeader";
+import { LockIcon } from "@/components/LockIcon";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { Mono } from "@/components/Mono";
 import {
@@ -157,7 +158,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   const [activeSection, setActiveSection] = useState("underwriting");
 
   // ── Refresh after any successful tx (per-form card shows the hash) ──────────
-  const handleSuccess = useCallback((_hash: string) => {
+  const handleSuccess = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
@@ -259,16 +260,25 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   // ── Form state: Remove Strategy ──────────────────────────────────────────────
   const [rsAddress, setRsAddress] = useState("");
 
-  // ── Guarantee options for pickers ────────────────────────────────────────────
-  const guaranteeOptions = data.activeGuarantees.map((g) => ({
-    value: String(g.id),
-    label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
-  }));
+  // ── Guarantee / strategy options for pickers (memoized — stable refs so the
+  //    FormSelects don't re-render on unrelated form-state keystrokes) ──────────
+  const guaranteeOptions = useMemo(
+    () =>
+      data.activeGuarantees.map((g) => ({
+        value: String(g.id),
+        label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
+      })),
+    [data.activeGuarantees, money],
+  );
 
-  const strategyOptions = data.strategies.map((s) => ({
-    value: s.address,
-    label: `${truncAddr(s.address)} · ${(s.weight_bps / 100).toFixed(0)}%${s.volatile ? " · VOL" : ""}`,
-  }));
+  const strategyOptions = useMemo(
+    () =>
+      data.strategies.map((s) => ({
+        value: s.address,
+        label: `${truncAddr(s.address)} · ${(s.weight_bps / 100).toFixed(0)}%${s.volatile ? " · VOL" : ""}`,
+      })),
+    [data.strategies],
+  );
 
   return (
     <main
@@ -408,21 +418,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   }}
                 >
                   {r.currency}
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="square"
-                    aria-label="Locked"
-                    role="img"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <rect x="5" y="11" width="14" height="10" />
-                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                  </svg>
+                  <LockIcon size={11} label="Locked" />
                 </span>
               );
             }
@@ -692,13 +688,13 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     periodSecs,
                   );
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setSgLandlord("");
                   setSgMonthly("");
                   setSgMonths("");
                   setSgFeeBps("");
                   setSgPeriodDays("30");
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormField
@@ -788,9 +784,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
                   return settleGuarantee(contracts, address, id);
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setSettleId("");
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormSelect
@@ -833,9 +829,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
                   return payPremium(contracts, address, id);
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setPpId("");
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormSelect
@@ -904,9 +900,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
                   return coverDefault(contracts, address, id);
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setCdId("");
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormSelect
@@ -1213,11 +1209,11 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     isVolatile,
                   );
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setAsAddress("");
                   setAsWeightBps("");
                   setIsVolatile(false);
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormField
@@ -1262,9 +1258,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!rsAddress) throw new Error("select a strategy first");
                   return removeStrategy(contracts, address, rsAddress);
                 }}
-                onSuccess={(hash) => {
+                onSuccess={() => {
                   setRsAddress("");
-                  handleSuccess(hash);
+                  handleSuccess();
                 }}
               >
                 <FormSelect

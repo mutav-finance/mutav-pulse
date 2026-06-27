@@ -41,9 +41,6 @@ export function stroopsToInput(v: bigint): string {
   const frac = (v % STROOP_SCALE).toString().padStart(7, "0").replace(/0+$/, "");
   return frac ? `${whole}.${frac}` : `${whole}`;
 }
-export function fmtUsd(v: bigint): string {
-  return "$" + fromStroops(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 /**
  * Reserve money presentation. Every on-chain amount is denominated in the

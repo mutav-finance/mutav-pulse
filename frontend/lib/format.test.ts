@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fromStroops, stroopsToInput, fmtUsd, fmtNav, fmtBps, fmtPct, truncAddr, parseToStroops } from "./format";
+import { fromStroops, stroopsToInput, fmtFiat, fmtNav, fmtBps, fmtPct, truncAddr, parseToStroops } from "./format";
 
 describe("format", () => {
   it("fromStroops divides by 1e7", () => {
@@ -13,8 +13,12 @@ describe("format", () => {
     expect(stroopsToInput(10_000_001n)).toBe("1.0000001");
     expect(stroopsToInput(0n)).toBe("0");
   });
-  it("fmtUsd renders 2dp with $", () => {
-    expect(fmtUsd(1_012_0000000n)).toBe("$1,012.00");
+  it("fmtFiat applies the reserve's symbol + indicative unit price", () => {
+    const usd = { depositToken: "USDC", fiatSymbol: "$", unitPriceFiat: 1 };
+    expect(fmtFiat(1_012_0000000n, usd)).toBe("$1,012.00");
+    // Non-1:1 reserve: value is scaled by unitPriceFiat and carries its symbol.
+    const brl = { depositToken: "TESOURO", fiatSymbol: "R$", unitPriceFiat: 1.22107 };
+    expect(fmtFiat(1_000_0000000n, brl)).toBe("R$1,221.07");
   });
   it("fmtNav renders NAV_SCALE 1e7 as 1.0000", () => {
     expect(fmtNav(10_100_000n)).toBe("1.0100"); // nav_per_share scaled 1e7

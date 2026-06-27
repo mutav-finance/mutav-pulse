@@ -11,8 +11,8 @@
  * - No rounded corners, no shadows, surface-1 background
  */
 
-import { useState } from "react";
 import { Mono } from "@/components/Mono";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 interface MetricCardProps {
   label: string;
@@ -39,8 +39,6 @@ export function MetricCard({
   loading = false,
   error,
 }: MetricCardProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
   return (
     <div
       style={{
@@ -77,63 +75,9 @@ export function MetricCard({
           {label}
         </p>
         {tooltip && (
-          <span
-            role="button"
-            aria-label={`Info: ${label}`}
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-            onFocus={() => setShowTooltip(true)}
-            onBlur={() => setShowTooltip(false)}
-            tabIndex={0}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "14px",
-              height: "14px",
-              backgroundColor: "var(--color-surface-3)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text-2)",
-              fontSize: "9px",
-              fontFamily: "var(--font-body)",
-              fontWeight: 500,
-              cursor: "default",
-              flexShrink: 0,
-              lineHeight: 1,
-            }}
-          >
-            ?
-          </span>
-        )}
-
-        {/* Tooltip bubble */}
-        {tooltip && showTooltip && (
-          <div
-            role="tooltip"
-            style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              left: 0,
-              zIndex: 10,
-              backgroundColor: "var(--color-surface-2)",
-              border: "1px solid var(--color-border)",
-              padding: "8px 12px",
-              maxWidth: "220px",
-              pointerEvents: "none",
-            }}
-          >
-            <p
-              className="font-body"
-              style={{
-                fontSize: "11px",
-                color: "var(--color-text-2)",
-                lineHeight: 1.5,
-                margin: 0,
-              }}
-            >
-              {tooltip}
-            </p>
-          </div>
+          <InfoTooltip label={`Info: ${label}`} width={220}>
+            {tooltip}
+          </InfoTooltip>
         )}
       </div>
 

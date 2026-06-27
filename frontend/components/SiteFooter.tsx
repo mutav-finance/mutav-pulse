@@ -13,7 +13,7 @@ import { contractUrl } from "@/lib/config";
 export function SiteFooter() {
   const links = [
     { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address), ext: true },
-    { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
+    { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}#transparency`, ext: false },
     { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
   ];
 

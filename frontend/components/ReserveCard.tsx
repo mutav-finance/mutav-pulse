@@ -14,6 +14,7 @@ import Link from "next/link";
 import { standardProductEconomics } from "@/lib/economics";
 import { fmtPct } from "@/lib/format";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
+import { LockIcon } from "@/components/LockIcon";
 import type { Reserve } from "@/lib/reserves";
 
 export function ReserveCard({
@@ -51,23 +52,7 @@ export function ReserveCard({
             {reserve.currency}
           </span>
           {/* Lock — planned reserves are not yet available */}
-          {!live && (
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--color-text-3)"
-              strokeWidth="2"
-              strokeLinecap="square"
-              aria-label="Not yet available"
-              role="img"
-              style={{ flexShrink: 0 }}
-            >
-              <rect x="5" y="11" width="14" height="10" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-            </svg>
-          )}
+          {!live && <LockIcon size={12} stroke="var(--color-text-3)" label="Not yet available" />}
         </span>
         <span
           className="font-mono"

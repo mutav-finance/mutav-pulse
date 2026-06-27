@@ -70,26 +70,38 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   const handleSuccess = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   // Whether this reserve offers a way to acquire the deposit token (Fund tab):
-  // TESOURO is always swappable on the SDEX; USDC only via the testnet faucet.
+  // TESOURO is swappable on the SDEX; the demo USDC only via the testnet faucet.
+  // A reserve whose deposit token is neither (e.g. a future MARS/ARS) has no
+  // on-ramp here — show no Fund tab rather than the WRONG (USDC) faucet.
   const isTesouro = reserve.depositToken === config.tesouro.code;
-  const hasFund = isTesouro || faucetEnabled;
+  const isUsdc = reserve.depositToken === config.usdc.code;
+  const canFaucet = faucetEnabled && isUsdc;
+  const hasFund = isTesouro || canFaucet;
 
   useEffect(() => {
     let cancelled = false;
     setData((prev) => ({ ...prev, loading: true, error: null }));
     async function fetchAll() {
       try {
-        const navPerShare = await reads.vaultNavPerShare();
-        if (cancelled) return;
         if (!address) {
+          const navPerShare = await reads.vaultNavPerShare();
+          if (cancelled) return;
           setData({ ...EMPTY_DATA, navPerShare, loading: false });
           return;
         }
-        const [balance, pendingIds, depositInfo] = await Promise.all([
+        // NAV is independent of the position reads — fetch all in parallel.
+        const [navPerShare, balance, pendingIds, depositInfo] = await Promise.all([
+          reads.vaultNavPerShare(),
           reads.vaultBalance(address),
           reads.vaultPendingRequests(),
           // Wallet balance of the deposit token, to gate the "add funds" hint.
-          (isTesouro ? getTesouroInfo(address) : getUsdcInfo(address)).catch(() => ({ balance: "0" })),
+          // Only known deposit tokens have a balance reader; others gate to 0.
+          (isTesouro
+            ? getTesouroInfo(address)
+            : isUsdc
+              ? getUsdcInfo(address)
+              : Promise.resolve({ balance: "0" })
+          ).catch(() => ({ balance: "0" })),
         ]);
         if (cancelled) return;
         const requestEntries = await Promise.all(
@@ -117,7 +129,7 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
     return () => {
       cancelled = true;
     };
-  }, [address, refreshKey, reads, isTesouro]);
+  }, [address, refreshKey, reads, isTesouro, isUsdc]);
 
   const navStr = data.navPerShare > 0n ? fmtNav(data.navPerShare) : "—";
   const myShares = fromStroops(data.balance).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
@@ -278,7 +290,7 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
               /* Fund — acquire the deposit token */
               isTesouro ? (
                 <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
-              ) : faucetEnabled ? (
+              ) : canFaucet ? (
                 <TestnetOnramp address={address} onSuccess={handleSuccess} />
               ) : null
             )}

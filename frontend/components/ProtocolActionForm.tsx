@@ -14,8 +14,16 @@
  * callers catch and forward the raw error message.
  */
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { Mono } from "@/components/Mono";
+
+/**
+ * True while a consequential action is armed (confirm pending). The shared field
+ * components below read this and lock themselves, so an operator can't change the
+ * selection (e.g. which guarantee to cover) between reviewing it and confirming —
+ * the value executed is the one that was reviewed. To edit, Cancel and re-arm.
+ */
+const ConfirmLockContext = createContext(false);
 
 interface ProtocolActionFormProps {
   title: string;
@@ -165,7 +173,11 @@ export function ProtocolActionForm({
               borderBottom: "1px solid var(--color-border)",
             }}
           >
-            {children}
+            {/* Lock inputs once the confirm step is armed so the reviewed value
+                is the one executed (see ConfirmLockContext). */}
+            <ConfirmLockContext.Provider value={confirming && !isPending}>
+              {children}
+            </ConfirmLockContext.Provider>
           </div>
         )}
 
@@ -329,6 +341,8 @@ export function FormField({
   min?: string;
   step?: string;
 }) {
+  const locked = useContext(ConfirmLockContext);
+  const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
       <label
@@ -351,7 +365,7 @@ export function FormField({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
+        disabled={isDisabled}
         className="font-mono"
         style={{
           backgroundColor: "var(--color-canvas)",
@@ -399,6 +413,8 @@ export function FormCheckbox({
   onChange(v: boolean): void;
   disabled?: boolean;
 }) {
+  const locked = useContext(ConfirmLockContext);
+  const isDisabled = disabled || locked;
   return (
     <label
       htmlFor={id}
@@ -406,7 +422,7 @@ export function FormCheckbox({
         display: "flex",
         alignItems: "center",
         gap: "8px",
-        cursor: disabled ? "not-allowed" : "pointer",
+        cursor: isDisabled ? "not-allowed" : "pointer",
       }}
     >
       <input
@@ -414,12 +430,12 @@ export function FormCheckbox({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled}
+        disabled={isDisabled}
         style={{
           width: "14px",
           height: "14px",
           accentColor: "var(--color-copper)",
-          cursor: disabled ? "not-allowed" : "pointer",
+          cursor: isDisabled ? "not-allowed" : "pointer",
         }}
       />
       <span
@@ -454,6 +470,8 @@ export function FormSelect({
   disabled?: boolean;
   placeholder?: string;
 }) {
+  const locked = useContext(ConfirmLockContext);
+  const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
       <label
@@ -472,7 +490,7 @@ export function FormSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
+        disabled={isDisabled}
         className="font-mono"
         style={{
           backgroundColor: "var(--color-canvas)",
@@ -482,7 +500,7 @@ export function FormSelect({
           padding: "7px 10px",
           outline: "none",
           width: "100%",
-          cursor: disabled ? "not-allowed" : "pointer",
+          cursor: isDisabled ? "not-allowed" : "pointer",
         }}
       >
         {placeholder && (

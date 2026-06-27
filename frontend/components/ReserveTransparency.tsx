@@ -177,6 +177,12 @@ export function ReserveTransparency({
   const totalNum = Number(data.totalAssets);
   const committedFrac = totalNum > 0 ? Number(data.coverageRequired) / totalNum : 0;
   const bufferFrac = totalNum > 0 ? Number(data.freeCapital) / totalNum : 0;
+  // Arc geometry must stay within the ring even when the reserve is insolvent
+  // (coverage > total → committedFrac > 1, freeCapital < 0 → bufferFrac < 0),
+  // otherwise the committed arc overruns and overlaps the buffer arc. Clamp the
+  // GEOMETRY only — the pct labels below keep the true ratio so ">100%" still
+  // surfaces the danger.
+  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
   const refreshControl = (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
@@ -334,14 +340,14 @@ export function ReserveTransparency({
                 label: "Committed to guarantees",
                 display: fmtFiat(data.coverageRequired, reserve),
                 pct: `${(committedFrac * 100).toFixed(1)}%`,
-                fraction: committedFrac,
+                fraction: clamp01(committedFrac),
                 color: "var(--color-accent)",
               },
               {
                 label: "Liquidity buffer",
                 display: fmtFiat(data.freeCapital, reserve),
                 pct: `${(bufferFrac * 100).toFixed(1)}%`,
-                fraction: bufferFrac,
+                fraction: clamp01(bufferFrac),
                 color: "var(--color-text-3)",
               },
             ]}
@@ -385,7 +391,10 @@ export function ReserveTransparency({
           <MetricCard
             label="Premiums Collected"
             value={loading ? "—" : fmtFiat(data.premiumIncome, reserve)}
-            unit={`cumulative premium income · ${reserve.depositToken}`}
+            // Value is an indicative fiat conversion (fmtFiat applies unitPriceFiat),
+            // so the unit must NOT claim the deposit-token ticker — that mislabels
+            // an R$ figure as a TESOURO amount for non-1:1 reserves.
+            unit={`cumulative premium income · indicative ${reserve.fiatSymbol}`}
             compact
             loading={loading}
             error={error ?? undefined}
@@ -505,7 +514,7 @@ export function ReserveTransparency({
 
       {/* ── Venue directory ───────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
-        <VenueDirectory />
+        <VenueDirectory vaultId={reserve.contracts?.vault} />
       </div>
 
       {/* ── Verification panel ────────────────────────────────────────── */}

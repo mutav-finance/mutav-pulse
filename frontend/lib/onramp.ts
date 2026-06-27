@@ -10,66 +10,30 @@
  *   dripFaucet(addr)   — call the on-chain faucet to receive demo USDC
  */
 
-import {
-  rpc as StellarRpc,
-  TransactionBuilder,
-  Operation,
-  Asset,
-  BASE_FEE,
-} from "@stellar/stellar-sdk";
+import { Asset } from "@stellar/stellar-sdk";
 import { Client as FaucetClient } from "faucet";
 import { config } from "./config";
-import { signAndSubmit, makeWriterOpts } from "./wallet";
+import { makeWriterOpts } from "./wallet";
+import { readAssetInfo, addTrustlineFor, type AssetInfo } from "./trustline";
 
-export interface UsdcInfo {
-  /** True when the account holds a trustline to the demo USDC. */
-  hasTrustline: boolean;
-  /** Human-readable balance string (e.g. "5000.0000000"); "0" when no trustline. */
-  balance: string;
-}
+/** @deprecated alias kept for existing imports — use AssetInfo from lib/trustline. */
+export type UsdcInfo = AssetInfo;
 
 /**
  * Read the connected account's demo-USDC trustline + balance from Horizon.
  * No signing; returns { hasTrustline: false, balance: "0" } for unfunded or
- * trustline-less accounts.
+ * trustline-less accounts. Transient (non-404) Horizon errors throw.
  */
-export async function getUsdcInfo(address: string): Promise<UsdcInfo> {
-  const res = await fetch(`${config.horizonUrl}/accounts/${address}`);
-  // 404 = account not found on Horizon → genuinely no trustline (unfunded
-  // or never created). Any other non-OK status is a transient/server error
-  // and must NOT be silently read as "no trustline" — throw so callers can
-  // surface it and retry instead of mislabelling the on-ramp state.
-  if (res.status === 404) return { hasTrustline: false, balance: "0" };
-  if (!res.ok) {
-    throw new Error(
-      `Horizon request failed (${res.status} ${res.statusText}) while reading the USDC trustline.`,
-    );
-  }
-  const data = await res.json();
-  const line = (data.balances ?? []).find(
-    (b: { asset_code?: string; asset_issuer?: string }) =>
-      b.asset_code === config.usdc.code && b.asset_issuer === config.usdc.issuer,
-  );
-  if (!line) return { hasTrustline: false, balance: "0" };
-  return { hasTrustline: true, balance: line.balance ?? "0" };
+export function getUsdcInfo(address: string): Promise<AssetInfo> {
+  return readAssetInfo(address, config.usdc.code, config.usdc.issuer);
 }
 
 /**
  * Build and sign a `change_trust` establishing a trustline to the demo USDC.
  * Classic operation — signed by the user's wallet, submitted via Soroban RPC.
  */
-export async function addTrustline(address: string): Promise<string> {
-  const asset = new Asset(config.usdc.code, config.usdc.issuer);
-  const server = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
-  const account = await server.getAccount(address);
-  const tx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
-    networkPassphrase: config.networkPassphrase,
-  })
-    .addOperation(Operation.changeTrust({ asset }))
-    .setTimeout(180)
-    .build();
-  return signAndSubmit(tx.toXDR(), address);
+export function addTrustline(address: string): Promise<string> {
+  return addTrustlineFor(address, new Asset(config.usdc.code, config.usdc.issuer));
 }
 
 /**

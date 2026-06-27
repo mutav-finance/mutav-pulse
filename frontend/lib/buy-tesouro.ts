@@ -18,43 +18,41 @@ import {
 } from "@stellar/stellar-sdk";
 import { config } from "./config";
 import { signAndSubmit } from "./wallet";
+import { parseToStroops, stroopsToInput } from "./format";
+import {
+  readAssetInfo,
+  addTrustlineFor,
+  type AssetInfo,
+} from "./trustline";
 
-const tesouroAsset = () => new Asset(config.tesouro.code, config.tesouro.issuer);
+export type { AssetInfo };
+
+/**
+ * Build the TESOURO Asset, failing fast with a clear, named error when the issuer
+ * is unconfigured. `config.tesouro.issuer` falls back to "" when
+ * NEXT_PUBLIC_TESOURO_ISSUER is unset; `new Asset(code, "")` would otherwise
+ * throw a cryptic SDK error deep in the trustline/swap flow. Guard at the source
+ * so a misconfigured deploy surfaces an actionable message (and the UI can gate
+ * the Buy action up front — see `tesouroConfigured` in lib/config).
+ */
+const tesouroAsset = () => {
+  if (!config.tesouro.issuer) {
+    throw new Error(
+      "TESOURO issuer not configured (set NEXT_PUBLIC_TESOURO_ISSUER).",
+    );
+  }
+  return new Asset(config.tesouro.code, config.tesouro.issuer);
+};
 const usdcAsset = () => new Asset(config.usdc.code, config.usdc.issuer);
 
-export interface AssetInfo {
-  hasTrustline: boolean;
-  /** Human-readable balance string (e.g. "12.3456789"); "0" when no trustline. */
-  balance: string;
-}
-
 /** Read the connected account's TESOURO trustline + balance from Horizon. */
-export async function getTesouroInfo(address: string): Promise<AssetInfo> {
-  const res = await fetch(`${config.horizonUrl}/accounts/${address}`);
-  if (res.status === 404) return { hasTrustline: false, balance: "0" };
-  if (!res.ok) throw new Error(`Horizon ${res.status} reading TESOURO trustline`);
-  const data = await res.json();
-  const line = (data.balances ?? []).find(
-    (b: { asset_code?: string; asset_issuer?: string }) =>
-      b.asset_code === config.tesouro.code &&
-      b.asset_issuer === config.tesouro.issuer,
-  );
-  if (!line) return { hasTrustline: false, balance: "0" };
-  return { hasTrustline: true, balance: line.balance ?? "0" };
+export function getTesouroInfo(address: string): Promise<AssetInfo> {
+  return readAssetInfo(address, config.tesouro.code, config.tesouro.issuer);
 }
 
 /** Build + sign a change_trust establishing a TESOURO trustline (permissionless). */
-export async function addTesouroTrustline(address: string): Promise<string> {
-  const server = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
-  const account = await server.getAccount(address);
-  const tx = new TransactionBuilder(account, {
-    fee: BASE_FEE,
-    networkPassphrase: config.networkPassphrase,
-  })
-    .addOperation(Operation.changeTrust({ asset: tesouroAsset() }))
-    .setTimeout(180)
-    .build();
-  return signAndSubmit(tx.toXDR(), address);
+export function addTesouroTrustline(address: string): Promise<string> {
+  return addTrustlineFor(address, tesouroAsset());
 }
 
 /**
@@ -103,10 +101,17 @@ export async function buyTesouro(
   slippageBps = 100,
 ): Promise<string> {
   const { destEstimate, path } = await quoteBuyTesouro(sendUsdc);
-  // destMin = estimate * (10000 - slippageBps) / 10000, as a 7-dec string.
-  const estStroops = BigInt(Math.round(parseFloat(destEstimate) * 1e7));
-  const minStroops = (estStroops * BigInt(10_000 - slippageBps)) / 10_000n;
-  const destMin = (Number(minStroops) / 1e7).toFixed(7);
+  // destMin = estimate * (10000 - slippageBps) / 10000, in exact stroops.
+  // Parse + format through BigInt only (no lossy parseFloat/Number round-trip),
+  // and never let the floor collapse to 0 — a 0 destMin means NO slippage
+  // protection and the swap could fill at any rate.
+  const estStroops = parseToStroops(destEstimate);
+  if (estStroops === null) {
+    throw new Error(`Invalid quote from Horizon (destEstimate="${destEstimate}")`);
+  }
+  let minStroops = (estStroops * BigInt(10_000 - slippageBps)) / 10_000n;
+  if (minStroops < 1n) minStroops = 1n;
+  const destMin = stroopsToInput(minStroops);
 
   const server = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
   const account = await server.getAccount(address);

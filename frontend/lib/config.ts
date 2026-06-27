@@ -78,6 +78,14 @@ export const contractUrl = (id: string) => `${config.explorerBase}/contract/${id
 export const isTestnet = config.networkPassphrase === Networks.TESTNET;
 
 /**
+ * Whether the TESOURO asset is fully configured (issuer present). The MBRL
+ * reserve's Buy/trustline flow builds `new Asset("TESOURO", issuer)`, which
+ * throws when the issuer is empty — so the UI gates that action on this flag
+ * instead of letting the swap hard-throw at click time.
+ */
+export const tesouroConfigured = config.tesouro.issuer.length > 0;
+
+/**
  * Whether to surface the testnet on-ramp (trustline + faucet). Gated to testnet
  * with a configured faucet — on mainnet users hold real USDC, so this never shows.
  */

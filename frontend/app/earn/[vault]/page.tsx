@@ -130,7 +130,7 @@ export default function ReserveHub() {
 
         {/* ── 2-column body: fund info (left) + invest rail (right) ────────── */}
         <div className="reserve-hub-grid">
-          <div className="reserve-hub-info">
+          <div className="reserve-hub-info" id="transparency" style={{ scrollMarginTop: "88px" }}>
             <ReserveTransparency reads={reads} reserve={reserve} embedded />
           </div>
           <div className="reserve-hub-invest">
