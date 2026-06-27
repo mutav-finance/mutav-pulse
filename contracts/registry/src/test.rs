@@ -3,7 +3,7 @@ use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::{Address, Env};
 use interfaces::{Guarantee, RegistryError};
-use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ENTRY_TTL};
+use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ACTIVE_GUARANTEES, MAX_ENTRY_TTL};
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
     Guarantee {
@@ -363,6 +363,106 @@ fn writer_unset_returns_typed_error() {
         Err(Ok(err)) => assert_eq!(err, RegistryError::WriterNotSet.into()),
         _ => panic!("expected WriterNotSet typed error"),
     }
+}
+
+// ──────────────────── H3: bounded active set (coverage_required cost cap) ────────────────────
+
+/// `put` enforces MAX_ACTIVE_GUARANTEES on the branch that PUSHES a newly-active id.
+/// Filling the active set to the cap succeeds; the (cap+1)-th first-activation of a
+/// brand-new id is rejected with the typed `ActiveSetFull` error. This bounds the
+/// unbounded `Vec<u32>` that policy.coverage_required iterates (re-audit H3).
+/// RED before the fix: the cap const + the put() guard do not exist.
+#[test]
+fn put_rejects_active_set_overflow() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    // Drive next_id for each id (put rejects fabricated ids >= NextId), then
+    // activate exactly MAX_ACTIVE_GUARANTEES distinct guarantees.
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // One more brand-new id, first activation — must hit the cap.
+    let overflow_id = r.next_id();
+    assert_eq!(overflow_id, MAX_ACTIVE_GUARANTEES);
+    match r.try_put(&g(&e, overflow_id, &landlord, true)) {
+        Err(Ok(err)) => assert_eq!(err, RegistryError::ActiveSetFull.into()),
+        _ => panic!("expected ActiveSetFull at the cap boundary"),
+    }
+    // The rejected put did not grow the set.
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+}
+
+/// The cap must NOT block a re-put of an ALREADY-active id. pay_premium /
+/// cover_default re-put existing guarantees (same id, active:true); only a brand-new
+/// id's first activation can hit the cap. Behavior-preservation guard.
+#[test]
+fn put_cap_does_not_block_reput_of_existing_active_id() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // Re-put id 0 (already active, still active) at the cap — must SUCCEED.
+    let mut g0 = g(&e, 0, &landlord, true);
+    g0.months_used = 1; // a real update, e.g. cover_default
+    r.put(&g0);
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+    assert_eq!(r.get(&0).months_used, 1);
+}
+
+/// The cap counts only currently-active entries. Deactivating one (settle /
+/// final cover_default) frees a slot, after which a new activating put succeeds again.
+#[test]
+fn put_cap_frees_slot_on_deactivation() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    for i in 0..MAX_ACTIVE_GUARANTEES {
+        let issued = r.next_id();
+        assert_eq!(issued, i);
+        r.put(&g(&e, issued, &landlord, true));
+    }
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
+
+    // Deactivate id 0 → frees one slot.
+    r.put(&g(&e, 0, &landlord, false));
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES - 1);
+
+    // A new activating put now succeeds again (slot freed).
+    let new_id = r.next_id();
+    r.put(&g(&e, new_id, &landlord, true));
+    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
 }
 
 /// The constructor records the current schema version.

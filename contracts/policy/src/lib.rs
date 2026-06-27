@@ -199,6 +199,26 @@ impl Policy {
 
 #[contractimpl]
 impl PolicyTrait for Policy {
+    // H3 (re-audit): this STILL iterates the registry's active set — and that is
+    // deliberate, not an un-fixed defect. An exact-equivalent O(1) scalar aggregate
+    // is provably impossible here for two code-grounded reasons:
+    //   (1) The `paid_until > now` time-gate below flips with the passage of time
+    //       ALONE — a guarantee silently drops out of coverage when its premium
+    //       lapses, with no state-mutating call to hook an increment/decrement onto.
+    //       A running scalar cannot track that without a Centrifuge-style epoch/timer
+    //       (out of scope for this prototype). The lapse->0 / per-month step-down /
+    //       unpaid->0 semantics that policy/src/test.rs encodes depend on this gate.
+    //   (2) A policy-INSTANCE aggregate would violate the stateless-policy-swap
+    //       invariant: test_system.rs::policy_swap_preserves_data_and_funds deploys a
+    //       fresh policy-v2 wired to the EXISTING registry and asserts
+    //       `policy2.coverage_required() == coverage_before` with NO migration call —
+    //       a per-instance scalar would read 0 on the swapped-in instance and fail.
+    //       coverage_required must remain a PURE FUNCTION of registry state.
+    // The cost is bounded instead at the registry via `MAX_ACTIVE_GUARANTEES`
+    // (Yearn-v3 — avoid unbounded per-call iteration over a growth-unbounded set),
+    // making this loop's worst-case a known constant while keeping behavior 100%
+    // preserved. The checked_mul/checked_add below stay overflow-safe at the cap
+    // (cap * monthly_amount * 10x ratio is well inside i128 for realistic amounts).
     fn coverage_required(e: Env) -> i128 {
         let ratio = Self::ratio(&e);
         let now = e.ledger().timestamp();

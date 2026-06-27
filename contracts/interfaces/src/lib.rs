@@ -30,6 +30,19 @@ pub enum RegistryError {
     /// logs. Layout-changing edits must redeploy + re-wire via `bootstrap.sh`, not
     /// `upgrade()`. ADDITIVE.
     VersionMismatch = 203,
+    /// `put` would push a brand-new id past the bounded active set cap
+    /// (`registry::MAX_ACTIVE_GUARANTEES`). The active set is the unbounded `Vec<u32>`
+    /// that `policy.coverage_required` iterates with one cross-contract `get()` per id,
+    /// so its size is the H3 cost driver: capping it bounds that loop's worst-case at a
+    /// known constant (Yearn-v3 — avoid unbounded per-call iteration over a
+    /// growth-unbounded set). ADDITIVE: appended LAST with a new discriminant; codes
+    /// 200–203 are byte-identical, so the `#[contracterror]` ABI stays stable for
+    /// in-place `upgrade()`. NOTE: this is a hard stop on NEW issuance once the active
+    /// set is full — only `sign_guarantee`'s first activating put can hit it, and
+    /// `sign_guarantee` is admin-gated (`policy::sign_guarantee` → `admin.require_auth`),
+    /// which is the compensating control against an issuance-flood DoS. Re-puts of
+    /// already-active ids (pay_premium / cover_default / settle) never trip it.
+    ActiveSetFull = 204,
 }
 
 /// Basis-points denominator (100% = 10_000). Single-sourced here (the

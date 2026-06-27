@@ -8,6 +8,44 @@ use interfaces::{Guarantee, Registry as RegistryTrait, RegistryError};
 /// instance is routed through redeploy + `bootstrap.sh` re-wire instead.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
+// ───────────────────── H3: bound the active set (coverage_required cost) ─────────────────────
+//
+// `ActiveIds` is a `Vec<u32>` in the single instance entry, and
+// `policy.coverage_required` iterates it with one cross-contract `get()` per id, so
+// the loop's cost grows linearly with the number of ACTIVE guarantees. Left
+// unbounded it can exceed the tx resource budget and brick `pay_premium` (which
+// re-checks solvency via coverage_required). This is a MITIGATION, not a true O(1)
+// fix: an exact-equivalent O(1) scalar is provably impossible because
+// coverage_required's `paid_until > now` predicate flips with the passage of time
+// alone (no state-mutating call to hook an increment onto), and a policy-instance
+// aggregate would violate the stateless-policy-swap invariant the system test
+// encodes. Instead we bound N at its source — the active set — so the loop's
+// worst-case cost is a known constant. Centrifuge's epoch/timer is the only
+// mechanism that could make exact-parity coverage genuinely O(1); out of scope for
+// this prototype.
+//
+/// Hard cap on the number of CURRENTLY-ACTIVE guarantees. Sized so
+/// `coverage_required`'s loop of N cross-contract `get()`s stays inside ONE
+/// transaction's resource limits. The binding constraint is the per-tx LEDGER
+/// FOOTPRINT (entries touched), not CPU/mem: each iteration reads one persistent
+/// `Guarantee(id)` entry, plus the loop reads the registry instance entry
+/// (active_ids) and the policy instance entry. The testnet/mainnet per-tx footprint
+/// cap is ~100 read entries; 90 active guarantees + the handful of framing entries
+/// leaves headroom under that ceiling, which the
+/// `coverage_required_at_active_cap_stays_within_budget` system test exercises at
+/// EXACTLY this cap (a measured bound, not an asserted one — an earlier 200 was
+/// rejected by the host's invocation metering at `total footprint entries > 100`).
+/// Enforced only on the put branch that PUSHES a brand-new active id
+/// (sign_guarantee's first activating put); re-puts of existing active ids and
+/// deactivations never grow the set, so pay_premium / cover_default /
+/// settle_guarantee are never blocked. Counts only active entries — settle/cover
+/// free capacity. RESIDUAL: the cap is enforced only on post-upgrade writes; an
+/// instance already holding more than this at upgrade time is not retroactively
+/// trimmed, and once full a brand-new guarantee's first activating put hard-stops
+/// with `ActiveSetFull` (issuance pauses until slots free) — admin-gated
+/// sign_guarantee is the compensating control against an issuance-flood DoS.
+pub const MAX_ACTIVE_GUARANTEES: u32 = 90;
+
 // ───────────────────────────── H6: storage TTL hygiene ─────────────────────────────
 //
 // Persistent Guarantee entries are long-lived (a guarantee's coverage span runs
@@ -184,6 +222,15 @@ impl RegistryTrait for Registry {
         let mut active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
         let present = active.iter().any(|x| x == g.id);
         if g.active && !present {
+            // H3: bound the active set at its source. Only a brand-new id's first
+            // activation grows the Vec, so the cap is enforced HERE, before
+            // push_back. Re-puts of already-present active ids (pay_premium /
+            // cover_default) and deactivations take the other branches and never
+            // hit this — they cannot grow the set. The cap bounds the worst-case
+            // cost of policy.coverage_required's per-id cross-contract get() loop.
+            if active.len() >= MAX_ACTIVE_GUARANTEES {
+                panic_with_error!(&e, RegistryError::ActiveSetFull);
+            }
             active.push_back(g.id);
         } else if !g.active && present {
             let mut next = Vec::<u32>::new(&e);
