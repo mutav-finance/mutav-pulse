@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en" data-front="investidor">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MUTAV · Onchain Rental Guarantee · Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ───────────────────────────────────────────────────────────────────────────
+   MUTAV pitch deck · TGA brand · "Precision Brutalism" · Investidor front
+   v2: lean rebuild. One idea per slide, only what issue #11 asks for.
+   Visual + content to be refined later. Tokens from .design/branding/tga.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --color-canvas:    #0E0F11;
+  --color-surface:   #16181C;
+  --color-surface-2: #1E2126;
+  --color-border:    #2A2D33;
+  --color-text:      #F0F0EE;
+  --color-text-2:    #8A8F99;
+  --color-text-3:    #555B66;
+  --color-accent:    #E8A020;
+  --color-success:   #3DAB72;
+  --color-error:     #C94040;
+
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; background: #000; color: var(--color-text); font-family: var(--font-body); overflow: hidden; }
+
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums; }
+.amber { color: var(--color-accent); }
+.tx2 { color: var(--color-text-2); }
+
+/* ── Stage + slides ──────────────────────────────────────────────────────── */
+#stage { position: fixed; inset: 0; display: grid; place-items: center; }
+
+.slide {
+  position: absolute; width: 1280px; height: 720px;
+  background: var(--color-canvas);
+  background-image:
+    linear-gradient(to right,  rgba(240,240,238,0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(240,240,238,0.022) 1px, transparent 1px);
+  background-size: 32px 32px;
+  transform: scale(var(--scale,1)); transform-origin: center center;
+  opacity: 0; visibility: hidden; transition: opacity 180ms ease-out; overflow: hidden;
+}
+.slide.active { opacity: 1; visibility: visible; }
+
+.pad { position: absolute; inset: 0; padding: 60px 76px; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; justify-content: space-between; height: 26px; flex: 0 0 auto; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { height: 22px; width: auto; display: block; }
+.brand .wm { font-family: var(--font-display); font-weight: 700; letter-spacing: .14em; font-size: 15px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; color: var(--color-text-2); text-transform: uppercase; }
+.eyebrow b { color: var(--color-accent); font-weight: 500; }
+.pageno { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-3); letter-spacing: .1em; }
+
+.body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-height: 0; gap: 4px; }
+
+.kicker { font-family: var(--font-mono); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--color-accent); margin-bottom: 22px; }
+h1.display { font-family: var(--font-display); font-weight: 700; line-height: 1.02; letter-spacing: -.01em; font-size: 66px; text-transform: uppercase; }
+h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06; letter-spacing: -.005em; font-size: 46px; max-width: 20ch; text-transform: uppercase; }
+.lead { font-size: 20px; line-height: 1.5; color: var(--color-text-2); max-width: 56ch; margin-top: 20px; }
+
+/* ── Minimal point list (one idea, few points) ───────────────────────────── */
+.points { display: flex; flex-direction: column; gap: 0; margin-top: 36px; max-width: 70ch; }
+.point { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--color-border); padding: 16px 0; }
+.point:last-child { border-bottom: 1px solid var(--color-border); }
+.point .pk { font-family: var(--font-mono); font-size: 13px; color: var(--color-accent); width: 26px; flex: 0 0 auto; }
+.point .pt { font-family: var(--font-display); font-weight: 600; font-size: 19px; text-transform: uppercase; }
+.point .pd { font-size: 14px; color: var(--color-text-2); margin-left: auto; text-align: right; max-width: 34ch; }
+
+/* ── Two minimal pillars ─────────────────────────────────────────────────── */
+.pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+.pillar { border: 1px solid var(--color-border); background: var(--color-surface); padding: 24px; }
+.pillar h4 { font-family: var(--font-display); font-weight: 700; font-size: 20px; }
+.pillar p { font-size: 13.5px; color: var(--color-text-2); line-height: 1.5; margin-top: 10px; }
+.pillar ul { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+.pillar li { position: relative; padding-left: 16px; font-size: 13.5px; color: var(--color-text-2); line-height: 1.4; }
+.pillar li::before { content: ""; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; background: var(--color-accent); }
+
+/* ── Traction (signing-on stats) ─────────────────────────────────────────── */
+.traction-h { font-family: var(--font-display); font-weight: 700; font-size: 42px; color: var(--color-accent); text-transform: uppercase; letter-spacing: .015em; text-align: center; }
+.traction-stats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 920px; margin-top: 64px; }
+.tstat { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 22px; padding: 0 28px; border-right: 1px solid var(--color-border); text-align: center; }
+.tstat:last-child { border-right: 0; }
+.tstat .tval { font-family: var(--font-mono); font-weight: 500; font-size: 58px; line-height: 1; color: var(--color-text); }
+.tstat .tval svg { display: block; }
+.tstat .tlbl { font-family: var(--font-body); font-size: 15px; color: var(--color-text-2); }
+
+/* ── Live badge ──────────────────────────────────────────────────────────── */
+.live-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-success); margin-top: 28px; }
+.live-tag::before { content:""; width: 6px; height: 6px; background: var(--color-success); animation: pulse 2s linear infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* ── Stellar slide: embedded vault-flow diagram ──────────────────────────── */
+.slide.stellar .pad { padding: 50px 60px; }
+.stellar-head { margin-top: 38px; }
+.stellar-head .title { margin-top: 6px; }
+.stellar-sub { font-size: 20px; line-height: 1.5; color: var(--color-text-2); margin-top: 10px; max-width: 70ch; }
+.vault-flow { position: relative; width: 1160px; height: 380px; margin: -8px auto 0; }
+.slide.stellar .vault-flow { margin: 34px auto 0; }
+.vwires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.vnode { position: absolute; border: 1px solid var(--color-border); background: var(--color-surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.vnode .nt { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
+.vnode .ns { font-size: 12px; color: var(--color-text-2); line-height: 1.4; }
+.vnode .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; }
+.vnode .tag.amber { color: var(--color-accent); }
+.vnode .tag.green { color: var(--color-success); }
+.vnode .tag.green::before { content: ""; width: 6px; height: 6px; background: var(--color-success); }
+.vnode .tag.amber::before { content: ""; width: 6px; height: 6px; background: var(--color-accent); }
+.vnode.vault { border-color: var(--color-accent); background: var(--color-surface-2); padding: 20px 22px; }
+.vnode.vault .nt { color: var(--color-accent); font-size: 28px; }
+.vnode.vault .ns { font-size: 13px; }
+.vchip { position: absolute; transform: translate(-50%,-50%); background: var(--color-canvas); border: 1px solid var(--color-border); padding: 2px 8px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .03em; color: var(--color-text-2); white-space: nowrap; }
+.vchip .gm { color: var(--color-accent); font-weight: 600; margin-left: 4px; }
+.vchip.green { color: var(--color-success); }
+.vchip.grey { color: var(--color-text-3); }
+.vlegend { display: flex; align-items: center; gap: 22px; margin-top: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--color-text-3); letter-spacing: .04em; }
+.vlegend span { display: inline-flex; align-items: center; gap: 8px; }
+.vlegend i { width: 18px; border-top: 1px solid currentColor; display: inline-block; }
+.vlegend .cap { color: var(--color-text-2); }
+.vlegend .yld { color: var(--color-success); }
+.vlegend .live-tag { margin-left: auto; margin-top: 0; }
+
+/* ── Demo slide: text (1/3) + 16:9 video drop-zone (2/3, 1920×1080) ───────── */
+.demo-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; align-items: center; width: 100%; }
+.demo-text { text-align: right; }
+.demo-text .kicker { margin-top: 18px; margin-bottom: 0; }
+.slide.demo .title { font-size: 34px; line-height: 1.08; }
+.demo-frame {
+  position: relative; aspect-ratio: 16 / 9; width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2); overflow: hidden;
+}
+.demo-frame video, .demo-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.demo-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.demo-play { width: 64px; height: 64px; border: 1px solid var(--color-text-3); border-radius: 50%; display: grid; place-items: center; color: var(--color-text-2); font-size: 20px; padding-left: 4px; }
+.demo-cap { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-text-3); }
+
+/* ── DeFindex slide: allocation bar ──────────────────────────────────────── */
+.alloc-bar { display: flex; height: 46px; margin-top: 28px; border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 13px; letter-spacing: .04em; }
+.alloc-seg { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--color-border); }
+.alloc-seg:last-child { border-right: 0; }
+.alloc-seg.live { flex: 6; color: var(--color-accent); background: rgba(232,160,32,.12); }
+.alloc-seg.planned { flex: 2; color: var(--color-text-3); background: var(--color-surface); font-size: 13px; line-height: 1.2; text-align: center; padding: 0 6px; }
+
+/* ── Architecture slide: protocol money-cycle + gates ────────────────────── */
+.vnode.leaf { align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 0 12px; }
+.vnode.leaf .nt { font-size: 15px; letter-spacing: .02em; }
+.vnode.leaf .ns { font-size: 12px; color: var(--color-text-3); }
+.rsv { position: absolute; border: 1px solid var(--color-accent); background: var(--color-surface); display: flex; flex-direction: column; }
+.rsv-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--color-border); }
+.rsv-htop { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rsv-title { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .02em; color: var(--color-text); }
+.rsv-badge { font-family: var(--font-mono); font-size: 13px; color: var(--color-accent); letter-spacing: .04em; }
+.rsv-sub { font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-3); margin-top: 4px; display: block; line-height: 1.35; }
+.rsv-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: center; }
+.rsv-lbl { font-family: var(--font-body); font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--color-text-3); }
+.rsv-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.spill { font-family: var(--font-mono); font-size: 14px; color: var(--color-text-2); border: 1px solid var(--color-border); padding: 3px 8px; }
+.spill.live { color: var(--color-accent); border-color: var(--color-accent); }
+.rsv-yield { font-family: var(--font-mono); font-size: 13.5px; color: var(--color-text-3); }
+.rsv-yield b { color: var(--color-accent); font-weight: 600; }
+.glegend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--color-border); border: 1px solid var(--color-border); margin-top: 14px; }
+.gcard { background: var(--color-surface); padding: 13px 16px; display: flex; gap: 11px; align-items: flex-start; }
+.gdia { flex-shrink: 0; width: 19px; height: 19px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-accent); color: var(--color-accent); font-family: var(--font-mono); font-size: 10px; font-weight: 600; transform: rotate(45deg); }
+.gdia span { transform: rotate(-45deg); }
+.gcard h5 { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text); margin-bottom: 5px; }
+.gcard p { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.45; color: var(--color-text-2); }
+
+/* ── Cover ───────────────────────────────────────────────────────────────── */
+#cover .content { position: absolute; inset: 0; padding: 60px 76px; display: flex; flex-direction: column; justify-content: space-between; }
+#cover .cover-top { display: flex; align-items: center; justify-content: space-between; }
+#cover h1 { font-size: 62px; max-width: 17ch; }
+#cover .tagline { margin-top: 22px; font-size: 21px; color: var(--color-text); max-width: 42ch; line-height: 1.45; }
+#cover .tagline b { color: var(--color-accent); font-weight: 600; }
+
+/* ── Team (minimal) ──────────────────────────────────────────────────────── */
+.team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 36px; }
+.member .photo { width: 90%; aspect-ratio: 5/4; object-fit: cover; filter: grayscale(1) contrast(1.05); border: 1px solid var(--color-border); display: block; }
+.member .role { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); margin-top: 14px; }
+.member .name { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin-top: 4px; }
+.member .bio { font-size: 13px; color: var(--color-text-2); line-height: 1.45; margin-top: 8px; }
+.member.advisor { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; border: 1px solid var(--color-accent); padding: 20px 26px; margin-block: 30px; }
+.member.advisor .role { margin-top: 0; }
+.member.advisor .name { margin-top: 4px; }
+.member.advisor .adv-num { font-family: var(--font-display); font-weight: 700; font-size: 132px; line-height: .85; color: var(--color-accent); margin-top: 18px; }
+.member.advisor .adv-lbl { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-2); line-height: 1.4; margin-top: 10px; }
+
+/* ── Thank you ───────────────────────────────────────────────────────────── */
+#thanks h1 { font-size: 92px; line-height: .98; }
+#thanks .contact { margin-top: 28px; font-family: var(--font-mono); font-size: 16px; color: var(--color-text-2); }
+#thanks .contact b { color: var(--color-accent); font-weight: 500; }
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+#progress { position: fixed; left: 0; bottom: 0; height: 2px; background: var(--color-accent); width: 0; transition: width 180ms ease-out; z-index: 30; }
+#nav { position: fixed; right: 18px; bottom: 16px; z-index: 30; display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-3); opacity: .55; transition: opacity 150ms ease-out; }
+#nav:hover { opacity: 1; }
+#nav button { font: inherit; color: var(--color-text-2); background: transparent; border: 1px solid var(--color-border); width: 30px; height: 30px; cursor: pointer; }
+#nav button:hover { border-color: var(--color-accent); color: var(--color-text); }
+#counter b { color: var(--color-text); font-weight: 500; }
+
+@media print { #nav, #progress { display: none; } }
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- COVER ──────────────────────────────────────────────────────────────── -->
+  <section class="slide active" id="cover">
+    <div class="content">
+      <div class="cover-top">
+        <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
+        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · 2026</span>
+      </div>
+      <div>
+        <h1 class="display">Rental agencies finally have a rent guarantor <span class="amber">on their side</span></h1>
+        <p class="tagline">Onchain Rental Guarantee to take over Brazil.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- a · PROBLEM ────────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="01 · PROBLEM">
+    <div class="pad"><div class="body">
+      <div class="kicker">The problem</div>
+      <h2 class="title">Rental agencies are <span class="amber">absorbing the risk</span>.</h2>
+      <p class="lead">Every existing guarantee modality is <b style="color:var(--color-text);font-weight:600">hard to approve, bureaucratic or opaque</b>, leaving agencies and landlords exposed.</p>
+      <p class="lead" style="font-family:var(--font-display);font-weight:600;max-width:none;margin-top:18px">The modality we'll provide: the Institutional Guarantor.</p>
+    </div></div>
+  </section>
+
+  <!-- b · SOLUTION ───────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="02 · SOLUTION">
+    <div class="pad"><div class="body">
+      <div class="kicker">The solution</div>
+      <h2 class="title">An institutional guarantor, backed onchain.</h2>
+      <div class="pillars">
+        <div class="pillar"><h4 class="amber">Institutional guarantor</h4><ul>
+          <li>We become the rent guarantor</li>
+          <li>Tenant defaults, we cover</li>
+          <li>Agency-first approach</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><ul>
+          <li>Transparent technical reserve on Stellar</li>
+          <li>Auditable in real time</li>
+          <li>Not an opaque promise</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">Open to crypto investors</h4><ul>
+          <li>Tokenized vault</li>
+          <li>Yield backed by real assets (guarantee contracts)</li>
+          <li>Self-custodial &amp; uncorrelated to crypto</li>
+        </ul></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- c · SOLVENCY & TRANSPARENCY ─────────────────────────────────────────── -->
+  <section class="slide demo" data-eyebrow="03 · SOLVENCY">
+    <div class="pad"><div class="body">
+      <div class="demo-grid">
+        <div class="demo-text">
+          <h2 class="title">Full solvency<br>reserve access<br>for our&nbsp;partners</h2>
+          <div class="kicker">Transparent where they are opaque</div>
+        </div>
+
+        <!-- Demo video drop-zone · 16:9 (1920×1080). To embed, replace the
+             .demo-ph block with:
+             <video src="assets/demo.mp4" autoplay muted loop playsinline></video> -->
+        <div class="demo-frame">
+          <div class="demo-ph">
+            <span class="demo-play mono">▶</span>
+            <span class="demo-cap">App demo · 1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- d · ARCHITECTURE — SECURE & MODULAR ─────────────────────────────────── -->
+  <section class="slide stellar" data-eyebrow="04 · ARCHITECTURE">
+    <div class="pad">
+      <div class="stellar-head">
+        <div class="kicker">Built on Stellar</div>
+        <h2 class="title">Modular Architecture</h2>
+        <p class="stellar-sub">One immutable vault. Swappable policy, pluggable yield adapters. Money moves only through the vault.</p>
+      </div>
+
+      <div class="vault-flow" style="height:352px">
+        <svg class="vwires" viewBox="0 0 1160 352" preserveAspectRatio="none">
+          <defs>
+            <marker id="aArr" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#6b6b6b"/></marker>
+          </defs>
+          <!-- deposit: investor -> reserve -->
+          <path d="M180,90 H380" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <!-- redeem: reserve -> investor (gate 1) -->
+          <path d="M380,110 H180" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <!-- premium: guarantees -> reserve (gate 2) -->
+          <path d="M980,104 H780" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+          <!-- cover: reserve -> partner agencies (gate 2) -->
+          <path d="M580,224 V292" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
+        </svg>
+
+        <div class="vnode leaf" style="left:0;top:56px;width:180px;height:84px;">
+          <span class="nt">INVESTOR</span>
+          <span class="ns mono">MTVR · SEP-0041</span>
+        </div>
+
+        <div class="rsv" style="left:380px;top:30px;width:400px;height:194px;">
+          <div class="rsv-head">
+            <div class="rsv-htop">
+              <span class="rsv-title">RESERVE</span>
+              <span class="rsv-badge">SEP-0056</span>
+            </div>
+            <span class="rsv-sub">OZ FungibleVault · NAV · async redeem (7540)</span>
+          </div>
+          <div class="rsv-body">
+            <span class="rsv-lbl">Strategy adapters</span>
+            <div class="rsv-pills">
+              <span class="spill live">DeFindex</span>
+              <span class="spill">Soroswap</span>
+              <span class="spill">Blend</span>
+            </div>
+            <span class="rsv-yield">idle float → yield</span>
+          </div>
+        </div>
+
+        <div class="vnode leaf" style="left:980px;top:56px;width:180px;height:84px;">
+          <span class="nt">GUARANTEES</span>
+          <span class="ns mono">tenant fee · policy</span>
+        </div>
+
+        <div class="vnode leaf" style="left:480px;top:292px;width:200px;height:60px;">
+          <span class="nt">PARTNER AGENCIES</span>
+          <span class="ns mono">default payout</span>
+        </div>
+
+        <div class="vchip" style="left:280px;top:70px;">deposit USDC</div>
+        <div class="vchip" style="left:280px;top:130px;">async redeem</div>
+        <div class="vchip" style="left:880px;top:84px;">premium → NAV</div>
+        <div class="vchip" style="left:580px;top:258px;">cover_default</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- e · YIELD via DEFINDEX ──────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="05 · INTEGRATIONS">
+    <div class="pad"><div class="body">
+      <div class="kicker">DeFindex integration · yield engine</div>
+      <h2 class="title" style="max-width:28ch">The reserve is a modular<br>yield&nbsp;generator</h2>
+
+      <div class="alloc-bar">
+        <div class="alloc-seg live">DeFindex · 100%</div>
+        <div class="alloc-seg planned">Future integrations</div>
+        <div class="alloc-seg planned">Future integrations</div>
+      </div>
+
+      <div class="pillars" style="margin-top:22px">
+        <div class="pillar"><h4 class="amber">DeFindex Adapter</h4><p>Reserve capital earns yield through the DeFindex adapter wired to the MUTAV vault.</p></div>
+        <div class="pillar"><h4 class="amber">Diversified by design</h4><p>Capital is spread across strategies by target weights and auto-rebalanced. Never concentrated in one venue.</p></div>
+        <div class="pillar"><h4 class="amber">Multi-strategy vault allocator</h4><p>Room to plug in more yield adapters as new venues go live.</p></div>
+      </div>
+
+      <div class="live-tag" style="margin-top:24px">Live on Stellar testnet</div>
+    </div></div>
+  </section>
+
+  <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="06 · Ecosystem">
+    <div class="pad"><div class="body" style="align-items:center;text-align:center">
+      <div class="kicker">Real Asset · Real Yield</div>
+      <h2 class="title">Real-world cashflows <span class="amber">on Stellar</span></h2>
+      <div class="points">
+        <div class="point"><span class="pk mono">→</span><span class="pt">Real world yield</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, premiums accruing to NAV.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Energizing Stellar's ecosystem</span><span class="pd">Real RWA value and liquidity into Stellar, deployed across native yield protocols.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated to crypto</span><span class="pd">Reserve value tracks rents and real cashflows.</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="07 · TRACTION">
+    <div class="pad"><div class="body" style="align-items:center;justify-content:center">
+      <h2 class="traction-h">Agencies are signing on!</h2>
+      <div class="traction-stats">
+        <div class="tstat">
+          <span class="tval mono">+10</span>
+          <span class="tlbl">Agencies in contact</span>
+        </div>
+        <div class="tstat">
+          <span class="tval mono" style="color:var(--color-accent)">4 LOIs</span>
+          <span class="tlbl">Agencies LOIs Secured</span>
+        </div>
+        <div class="tstat">
+          <span class="tval"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" stroke-linejoin="miter"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="8 6 18 6 18 16"/></svg></span>
+          <span class="tlbl">More LOIs in progress</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- g · TEAM ───────────────────────────────────────────────────────────── -->
+  <section class="slide" data-eyebrow="08 · TEAM">
+    <div class="pad"><div class="body">
+      <h2 class="title" style="max-width:28ch;margin-top:36px">The team behind it.</h2>
+      <div class="team">
+        <div class="member">
+          <img class="photo" src="assets/team-draau.png" alt="Matheus de Pauli" />
+          <div class="role">Cofounder · CEO</div>
+          <div class="name">Matheus "Draau" de Pauli</div>
+          <div class="bio">5 years building brands &amp; blockchain products. Direct line into the Southern-Brazil real-estate network.</div>
+        </div>
+        <div class="member">
+          <img class="photo" src="assets/team-julia.png" alt="Julia Hoffmann Buratto" />
+          <div class="role">Cofounder · CTO</div>
+          <div class="name">Julia Hoffmann Buratto</div>
+          <div class="bio">Built Brazilian onchain financial infra (RWA / CVM-88). Chainless 0 → 30k users.</div>
+        </div>
+        <div class="member advisor">
+          <div class="role">Strategic Advisor</div>
+          <div class="name">Cinara Bigóis</div>
+          <span class="adv-num mono">+30</span>
+          <span class="adv-lbl">years at the rental market</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- THANK YOU ──────────────────────────────────────────────────────────── -->
+  <section class="slide" id="thanks">
+    <div class="pad">
+      <div class="topbar">
+        <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
+        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · BRAZIL · 2026</span>
+      </div>
+      <div class="body">
+        <h1 class="display amber">Thank you!</h1>
+        <div class="contact">CONTACT US · <b>mutav.finance@gmail.com</b> · www.mutav.finance</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="progress"></div>
+<div id="nav">
+  <span id="counter" class="mono"><b>01</b> / 9</span>
+  <button id="prev" aria-label="Previous">‹</button>
+  <button id="next" aria-label="Next">›</button>
+</div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let i = 0;
+
+  slides.forEach((s, idx) => {
+    if (s.id === 'cover' || s.id === 'thanks') return;
+    const pad = s.querySelector('.pad'); if (!pad) return;
+    const eb = s.dataset.eyebrow || '';
+    const sec = eb.split('·');
+    const ebHTML = sec.length === 2 ? `<b>${sec[0].trim()}</b> · ${sec[1].trim()}` : eb;
+    const bar = document.createElement('div');
+    bar.className = 'topbar';
+    bar.innerHTML =
+      `<div class="brand"><img src="assets/logo-mark.png" alt="MUTAV"/><span class="wm">MUTAV</span></div>` +
+      `<span class="eyebrow">${ebHTML}</span>` +
+      `<span class="pageno">${String(idx + 1).padStart(2,'0')} / ${total}</span>`;
+    pad.insertBefore(bar, pad.firstChild);
+  });
+
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+
+  function render() {
+    slides.forEach((s, n) => s.classList.toggle('active', n === i));
+    counter.innerHTML = `<b>${String(i + 1).padStart(2, '0')}</b> / ${total}`;
+    progress.style.width = ((i + 1) / total * 100) + '%';
+    location.hash = i + 1;
+  }
+  function go(n) { i = Math.max(0, Math.min(total - 1, n)); render(); }
+  const next = () => go(i + 1), prev = () => go(i - 1);
+
+  function fit() {
+    const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    document.documentElement.style.setProperty('--scale', scale);
+  }
+  window.addEventListener('resize', fit); fit();
+
+  document.getElementById('next').addEventListener('click', next);
+  document.getElementById('prev').addEventListener('click', prev);
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(total - 1);
+    else if (/^[1-9]$/.test(e.key)) go(parseInt(e.key, 10) - 1);
+  });
+  document.getElementById('stage').addEventListener('click', (e) => {
+    (e.clientX > window.innerWidth / 2) ? next() : prev();
+  });
+
+  const start = parseInt((location.hash || '').replace('#', ''), 10);
+  if (start >= 1 && start <= total) i = start - 1;
+  render();
+})();
+</script>
+</body>
+</html>
