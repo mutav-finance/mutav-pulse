@@ -117,12 +117,21 @@ export function ReserveCard({
       {/* Footer: live AUM, or market for planned */}
       <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: "8px", marginTop: "2px" }}>
         {live ? (
-          <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-2)", margin: 0 }}>
-            AUM{" "}
-            <span style={{ color: "var(--color-text)" }}>
-              {aum ?? "—"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+            <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-2)", margin: 0 }}>
+              AUM{" "}
+              <span style={{ color: "var(--color-text)" }}>
+                {aum ?? "—"}
+              </span>
+            </p>
+            <span
+              className="font-mono"
+              aria-hidden="true"
+              style={{ fontSize: "11px", color: "var(--color-text-2)", letterSpacing: "0.02em", flexShrink: 0 }}
+            >
+              view ↗
             </span>
-          </p>
+          </div>
         ) : (
           <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", margin: 0 }}>
             {reserve.market}

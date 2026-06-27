@@ -31,21 +31,51 @@ import { ConnectButton } from "@/components/ConnectButton";
 const MAX_W = "1280px";
 
 /** Section label — Inter, ALL CAPS (Explanation layer). */
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({
+  children,
+  size = 13,
+  color = "var(--color-text-2)",
+  subtitle,
+  as: Tag = "p",
+  display = false,
+}: {
+  children: React.ReactNode;
+  size?: number;
+  color?: string;
+  subtitle?: React.ReactNode;
+  as?: React.ElementType;
+  display?: boolean;
+}) {
   return (
-    <p
-      className="font-body"
-      style={{
-        fontSize: "13px",
-        fontWeight: 500,
-        letterSpacing: "0.12em",
-        textTransform: "uppercase",
-        color: "var(--color-text-2)",
-        margin: "0 0 20px",
-      }}
-    >
-      {children}
-    </p>
+    <div style={{ margin: "0 0 20px" }}>
+      <Tag
+        className={display ? "font-display" : "font-body"}
+        style={{
+          fontSize: `${size}px`,
+          fontWeight: display ? 700 : 500,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color,
+          margin: subtitle ? "0 0 7px" : 0,
+        }}
+      >
+        {children}
+      </Tag>
+      {subtitle && (
+        <p
+          className="font-body"
+          style={{
+            fontSize: "15px",
+            lineHeight: 1.45,
+            letterSpacing: "0.01em",
+            color: "var(--color-text-2)",
+            margin: 0,
+          }}
+        >
+          {subtitle}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -68,30 +98,15 @@ export default function Home() {
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        {/* Pulse / hackathon identity badge */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-          <span
-            className="font-mono"
-            style={{
-              fontSize: "10px",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--color-accent)",
-              border: "1px solid var(--color-accent)",
-              padding: "3px 9px",
-            }}
-          >
-            Stellar Pulso Hackathon · Proof of Concept
-          </span>
-        </div>
-        <SectionLabel>Mutav Pulse Protocol — onchain rental guarantees</SectionLabel>
+        <SectionLabel>Mutav Pulse Protocol</SectionLabel>
 
         <h1
           className="font-display"
           style={{
             fontSize: "clamp(40px, 6vw, 66px)",
-            lineHeight: 1.03,
-            letterSpacing: "-0.03em",
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+            textTransform: "uppercase",
             margin: "0 0 24px",
             maxWidth: "17ch",
             color: "var(--color-text)",
@@ -102,28 +117,10 @@ export default function Home() {
 
         <p
           className="font-body"
-          style={{ fontSize: "18px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 18px", maxWidth: "58ch" }}
+          style={{ fontSize: "18px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 36px", maxWidth: "54ch" }}
         >
-          A testnet proof-of-concept of{" "}
-          <strong style={{ color: "var(--color-text)", fontWeight: 600 }}>Mutav&apos;s Pulse Protocol</strong>{" "}
-          — an on-chain, solvency-gated reserve that backs rental guarantees.
-        </p>
-
-        <p
-          className="font-mono"
-          style={{ fontSize: "12.5px", lineHeight: 1.6, color: "var(--color-text-2)", margin: "0 0 22px", maxWidth: "62ch" }}
-        >
-          <span style={{ color: "var(--color-text)" }}>No black box</span> — every value on this page reads
-          directly from the contracts.
-        </p>
-
-        <p
-          className="font-mono"
-          style={{ fontSize: "12.5px", lineHeight: 1.6, color: "var(--color-text-3)", margin: "0 0 36px", maxWidth: "62ch" }}
-        >
-          A Stellar testnet demonstration — <span style={{ color: "var(--color-text-2)" }}>not investable</span>,
-          no real funds. The production pilot opens <span style={{ color: "var(--color-accent)" }}>Q3 2026</span>{" "}
-          with a BRL vault. APYs below are modeled, not live returns.
+          A solvency-gated on-chain reserve that backs real rental guarantees and turns
+          their premiums into yield.
         </p>
 
         {/* CTAs — exactly one amber */}
@@ -169,6 +166,92 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── WHAT THIS IS (testnet / PoC) ─────────────────────────────────── */}
+      <section
+        style={{
+          maxWidth: MAX_W,
+          margin: "0 auto",
+          padding: "72px 32px",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
+        {/* Centered header */}
+        <div style={{ maxWidth: "62ch", margin: "0 auto 44px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <span
+            className="font-mono"
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--color-accent)",
+              border: "1px solid var(--color-accent)",
+              padding: "3px 9px",
+              marginBottom: "20px",
+            }}
+          >
+            Stellar Pulso Hackathon · Proof of Concept
+          </span>
+          <h2
+            className="font-display"
+            style={{ fontSize: "clamp(26px, 3.6vw, 38px)", lineHeight: 1.1, letterSpacing: "-0.01em", textTransform: "uppercase", margin: "0 0 16px", color: "var(--color-text)", maxWidth: "18ch" }}
+          >
+            A working demo on Stellar testnet
+          </h2>
+          <p className="font-body" style={{ fontSize: "17px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
+            A proof-of-concept of{" "}
+            <strong style={{ color: "var(--color-text)", fontWeight: 600 }}>Mutav Pulse Protocol</strong>, built for the Stellar Pulso Hackathon
+            and running end-to-end on Stellar testnet.
+          </p>
+        </div>
+
+        {/* Detail cards */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1px",
+            backgroundColor: "var(--color-border)",
+            border: "1px solid var(--color-border)",
+            maxWidth: "800px",
+            margin: "0 auto",
+          }}
+        >
+          {[
+            {
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="square" aria-hidden="true">
+                  <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              ),
+              title: "No black box",
+              body: "Every value on the site reads directly from the deployed contracts.",
+            },
+            {
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
+                  <path d="M9 3h6" />
+                  <path d="M10 3v5L5.5 18A1.5 1.5 0 0 0 7 20.2h10A1.5 1.5 0 0 0 18.5 18L14 8V3" />
+                  <path d="M7.5 14h9" />
+                </svg>
+              ),
+              title: "Testnet today, pilot Q3 2026",
+              body: "Testnet only, no real funds, not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
+            },
+          ].map((c) => (
+            <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "26px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {c.icon}
+              <h3 className="font-body" style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text)", margin: 0 }}>
+                {c.title}
+              </h3>
+              <p className="font-mono" style={{ fontSize: "12px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
+                {c.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── RESERVES showcase (section #2 — fast access) ─────────────────── */}
       <section
         id="reserves"
@@ -180,7 +263,7 @@ export default function Home() {
           scrollMarginTop: "72px",
         }}
       >
-        <SectionLabel>Reserves — one protocol, one vault per currency (PoC)</SectionLabel>
+        <SectionLabel as="h2" display size={17} color="var(--color-text)" subtitle="One protocol, one vault per currency (PoC)">Reserves</SectionLabel>
         <p
           className="font-mono"
           style={{
@@ -218,7 +301,7 @@ export default function Home() {
           scrollMarginTop: "72px",
         }}
       >
-        <SectionLabel>How it works</SectionLabel>
+        <SectionLabel as="h2" display size={17} color="var(--color-text)">How it works</SectionLabel>
         <div
           style={{
             display: "grid",
@@ -274,7 +357,7 @@ export default function Home() {
           scrollMarginTop: "72px",
         }}
       >
-        <SectionLabel>Protocol flow</SectionLabel>
+        <SectionLabel as="h2" display size={17} color="var(--color-text)">Protocol flow</SectionLabel>
         <p
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 14px", maxWidth: "60ch" }}
@@ -297,7 +380,7 @@ export default function Home() {
         <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
-          style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", margin: "0 0 16px", color: "var(--color-text)", maxWidth: "20ch" }}
+          style={{ fontSize: "clamp(28px, 4vw, 40px)", lineHeight: 1.08, letterSpacing: "-0.01em", textTransform: "uppercase", margin: "0 0 16px", color: "var(--color-text)", maxWidth: "26ch" }}
         >
           Connect a wallet and watch the protocol move
         </h2>
@@ -305,12 +388,11 @@ export default function Home() {
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Claim demo USDC from the on-ramp inside the live reserve, deposit, and drive premiums,
-          defaults, and redemptions on Stellar testnet. It&apos;s a demonstration — no real funds, no
-          earnings. Every value reads directly from the contracts.
+          Connect a wallet to deposit and drive the full cycle yourself — or explore an active
+          reserve first.
         </p>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center", marginBottom: "40px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center", marginBottom: "14px" }}>
           <ConnectButton />
           <Link
             href={`/earn/${PRIMARY_RESERVE.address}`}
@@ -332,37 +414,72 @@ export default function Home() {
             Explore the live reserve →
           </Link>
         </div>
+        <p
+          className="font-mono"
+          style={{ fontSize: "12px", letterSpacing: "0.04em", color: "var(--color-text-3)", margin: "0 0 40px" }}
+        >
+          Testnet demo · no real funds
+        </p>
 
-        {/* Verification footer */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", paddingTop: "24px", borderTop: "1px solid var(--color-border)" }}>
-          {[
-            { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address), ext: true },
-            { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
-            { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
-          ].map((l) =>
-            l.ext ? (
-              <a
-                key={l.label}
-                href={l.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono"
-                style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
-              >
-                {l.label}
-              </a>
-            ) : (
-              <Link
-                key={l.label}
-                href={l.href}
-                className="font-mono"
-                style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
-              >
-                {l.label}
-              </Link>
-            ),
-          )}
-        </div>
+        {/* ── Footer ── */}
+        <footer
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "32px",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            paddingTop: "32px",
+            borderTop: "1px solid var(--color-border)",
+          }}
+        >
+          {/* Brand block */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "12px" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/logo-mutav.svg"
+              alt="MUTAV"
+              style={{ display: "block", height: "26px", width: "auto", alignSelf: "flex-start" }}
+            />
+            <p className="font-display" style={{ fontSize: "16px", letterSpacing: "-0.01em", color: "var(--color-text)", margin: 0 }}>
+              Real asset. Real yield.
+            </p>
+            <p className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.02em", color: "var(--color-text-3)", margin: 0 }}>
+              On-chain rental guarantees.
+            </p>
+          </div>
+
+          {/* Verify / transparency / source links — right-aligned */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "center" }}>
+            {[
+              { label: "Verify vault ↗", href: contractUrl(PRIMARY_RESERVE.address), ext: true },
+              { label: "Transparency ↗", href: `/earn/${PRIMARY_RESERVE.address}?tab=transparency`, ext: false },
+              { label: "GitHub ↗", href: "https://github.com/mutav-finance", ext: true },
+            ].map((l) =>
+              l.ext ? (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono"
+                  style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.label}
+                  href={l.href}
+                  className="font-mono"
+                  style={{ fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)", textDecoration: "none" }}
+                >
+                  {l.label}
+                </Link>
+              ),
+            )}
+          </div>
+        </footer>
       </section>
     </main>
   );

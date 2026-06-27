@@ -81,7 +81,7 @@ function LeafNode({ data }: NodeProps<Node<LeafData>>) {
       <span className="font-display" style={{ fontSize: "14px", letterSpacing: "0.02em", color: "var(--color-text)", lineHeight: 1 }}>
         {data.title}
       </span>
-      <span className="font-mono" style={{ fontSize: "9px", color: "var(--color-text-3)", lineHeight: 1, textAlign: "center" }}>
+      <span className="font-mono" style={{ fontSize: "9px", color: "var(--color-text-3)", lineHeight: 1.35, textAlign: "center", whiteSpace: "pre-line" }}>
         {data.sub}
       </span>
       {data.handles.map((h) => (
@@ -144,15 +144,14 @@ function ReserveNode({ data }: NodeProps<Node<{ w: number; h: number }>>) {
       {/* Handles */}
       <Handle id="dep" type="target" position={Position.Left} style={sideStyle(Position.Left, "42%")} />
       <Handle id="red" type="source" position={Position.Left} style={sideStyle(Position.Left, "58%")} />
-      <Handle id="backs" type="source" position={Position.Right} style={sideStyle(Position.Right, "42%")} />
-      <Handle id="prem" type="target" position={Position.Right} style={sideStyle(Position.Right, "58%")} />
+      <Handle id="prem" type="target" position={Position.Right} style={sideStyle(Position.Right, "50%")} />
       <Handle id="cover" type="source" position={Position.Bottom} style={sideStyle(Position.Bottom, "50%")} />
     </div>
   );
 }
 
 // ── Custom edge: routed path + bordered mono label with amber gate mark ───────
-type GateData = { label: string; gate?: string };
+type GateData = { label: string; gate?: string; dy?: number };
 
 function GateEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data }: EdgeProps<Edge<GateData>>) {
   const [path, labelX, labelY] = getSmoothStepPath({
@@ -172,7 +171,7 @@ function GateEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targ
           className="nodrag nopan"
           style={{
             position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + (data?.dy ?? 0)}px)`,
             backgroundColor: "var(--color-canvas)",
             border: "1px solid var(--color-border)",
             padding: "2px 8px",
@@ -203,7 +202,7 @@ const NODES: Node[] = [
     position: { x: 70, y: 137 },
     data: {
       title: "INVESTOR",
-      sub: "reserve shares · SEP-0041",
+      sub: "reserve shares\nSEP-0041",
       w: 152,
       h: 66,
       handles: [
@@ -223,8 +222,7 @@ const NODES: Node[] = [
       w: 156,
       h: 66,
       handles: [
-        { id: "backs", type: "target", pos: Position.Left, off: "29%" },
-        { id: "prem", type: "source", pos: Position.Left, off: "71%" },
+        { id: "prem", type: "source", pos: Position.Left, off: "50%" },
       ],
     },
   },
@@ -243,10 +241,9 @@ const NODES: Node[] = [
 ];
 
 const EDGES: Edge<GateData>[] = [
-  { id: "deposit", type: "gate", source: "investor", sourceHandle: "dep", target: "reserve", targetHandle: "dep", markerEnd: arrow, data: { label: "deposit USDC" } },
-  { id: "redeem", type: "gate", source: "reserve", sourceHandle: "red", target: "investor", targetHandle: "red", markerEnd: arrow, data: { label: "async redeem", gate: "1" } },
-  { id: "backs", type: "gate", source: "reserve", sourceHandle: "backs", target: "guarantees", targetHandle: "backs", markerEnd: arrow, data: { label: "backs" } },
-  { id: "premium", type: "gate", source: "guarantees", sourceHandle: "prem", target: "reserve", targetHandle: "prem", markerEnd: arrow, data: { label: "premium → NAV", gate: "2" } },
+  { id: "deposit", type: "gate", source: "investor", sourceHandle: "dep", target: "reserve", targetHandle: "dep", markerEnd: arrow, data: { label: "deposit USDC", dy: -20 } },
+  { id: "redeem", type: "gate", source: "reserve", sourceHandle: "red", target: "investor", targetHandle: "red", markerEnd: arrow, data: { label: "async redeem", gate: "1", dy: 20 } },
+  { id: "premium", type: "gate", source: "guarantees", sourceHandle: "prem", target: "reserve", targetHandle: "prem", markerEnd: arrow, data: { label: "premium → NAV", gate: "2", dy: -20 } },
   { id: "cover", type: "gate", source: "reserve", sourceHandle: "cover", target: "landlord", targetHandle: "cover", markerEnd: arrow, data: { label: "cover_default", gate: "2" } },
 ];
 
