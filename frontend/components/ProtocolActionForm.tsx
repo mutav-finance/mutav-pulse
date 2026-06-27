@@ -19,6 +19,8 @@ import { Mono } from "@/components/Mono";
 
 interface ProtocolActionFormProps {
   title: string;
+  /** Reserve currency shown in amber next to the title — reinforces which fund. */
+  currency?: string;
   description?: string;
   /** Label for the submit button (e.g. "Sign Guarantee", "Rebalance") */
   actionLabel: string;
@@ -38,6 +40,7 @@ interface ProtocolActionFormProps {
 
 export function ProtocolActionForm({
   title,
+  currency,
   description,
   actionLabel,
   onSubmit,
@@ -107,17 +110,33 @@ export function ProtocolActionForm({
           gap: "12px",
         }}
       >
-        <h3
-          className="font-display"
-          style={{
-            fontSize: "14px",
-            color: "var(--color-text)",
-            margin: 0,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {title}
-        </h3>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0 }}>
+          <h3
+            className="font-display"
+            style={{
+              fontSize: "14px",
+              color: "var(--color-text)",
+              margin: 0,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {title}
+          </h3>
+          {currency && (
+            <span
+              className="font-mono"
+              style={{
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "0.06em",
+                color: "var(--color-accent)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currency}
+            </span>
+          )}
+        </div>
         {description && (
           <p
             className="font-body"

@@ -85,32 +85,21 @@ const INITIAL: ProtocolData = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Section label — uppercase, terminal-dim, hairline top border */
-function SectionLabel({ children, id, topBorder = true }: { children: React.ReactNode; id?: string; topBorder?: boolean }) {
+/** One-line "bio" describing the active section, shown above its cards. */
+function SectionBio({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      id={id}
+    <p
+      className="font-body"
       style={{
-        paddingTop: "24px",
-        marginBottom: "8px",
-        borderTop: topBorder ? "1px solid var(--color-border)" : "none",
-        scrollMarginTop: "112px",
+        fontSize: "12px",
+        color: "var(--color-text-3)",
+        lineHeight: 1.5,
+        margin: "0 0 14px",
+        maxWidth: "760px",
       }}
     >
-      <p
-        className="font-body"
-        style={{
-          fontSize: "10px",
-          fontWeight: 500,
-          letterSpacing: "0.12em",
-          color: "var(--color-text-3)",
-          textTransform: "uppercase",
-          margin: 0,
-        }}
-      >
-        {children}
-      </p>
-    </div>
+      {children}
+    </p>
   );
 }
 
@@ -611,7 +600,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 flexWrap: "wrap",
                 alignItems: "center",
                 gap: "2px",
-                marginBottom: "20px",
+                marginBottom: "16px",
                 borderBottom: "1px solid var(--color-border)",
               }}
             >
@@ -671,10 +660,11 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Underwriting ─────────────────────────────────────────── */}
             {activeSection === "underwriting" && (
             <>
-            <SectionLabel id="underwriting" topBorder={false}>Underwriting</SectionLabel>
+            <SectionBio>Open and close rental guarantees. Sign to start coverage and begin premium accrual; settle to close one out.</SectionBio>
             <ActionGrid>
               {/* Sign Guarantee */}
               <ProtocolActionForm
+                currency={currency}
                 title="Sign Guarantee"
                 description="policy.sign_guarantee"
                 actionLabel="Sign"
@@ -786,6 +776,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
               {/* Settle Guarantee */}
               <ProtocolActionForm
+                currency={currency}
                 title="Settle Guarantee"
                 description="policy.settle_guarantee"
                 actionLabel="Settle"
@@ -827,9 +818,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Premiums ─────────────────────────────────────────────── */}
             {activeSection === "premiums" && (
             <>
-            <SectionLabel id="premiums" topBorder={false}>Premiums</SectionLabel>
+            <SectionBio>Keep guarantees covered. Paying a premium advances its paid-until date; coverage lapses if it falls behind.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
+                currency={currency}
                 title="Pay Premium"
                 description="policy.pay_premium"
                 actionLabel="Pay"
@@ -896,9 +888,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Claims ───────────────────────────────────────────────── */}
             {activeSection === "claims" && (
             <>
-            <SectionLabel id="claims" topBorder={false}>Claims</SectionLabel>
+            <SectionBio>Pay out a defaulted guarantee. The covered amount is disbursed to the landlord, only while premiums are current.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
+                currency={currency}
                 title="Cover Default"
                 description="policy.cover_default"
                 actionLabel="Cover Default"
@@ -1046,10 +1039,11 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Liquidity ────────────────────────────────────────────── */}
             {activeSection === "liquidity" && (
             <>
-            <SectionLabel id="liquidity" topBorder={false}>Liquidity</SectionLabel>
+            <SectionBio>Move reserve capital. Rebalance redeploys idle float across strategies; process redemptions fulfills queued exits from surplus.</SectionBio>
             <ActionGrid>
               {/* Rebalance */}
               <ProtocolActionForm
+                currency={currency}
                 title="Rebalance"
                 description="vault.rebalance"
                 actionLabel="Rebalance"
@@ -1077,6 +1071,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
               {/* Process Redemptions */}
               <ProtocolActionForm
+                currency={currency}
                 title="Process Redemptions"
                 description="vault.process_redemptions"
                 actionLabel="Process"
@@ -1110,7 +1105,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Strategies ───────────────────────────────────────────── */}
             {activeSection === "strategies" && (
             <>
-            <SectionLabel id="strategies" topBorder={false}>Strategies</SectionLabel>
+            <SectionBio>Manage where idle float earns yield. Add or remove strategy adapters; their weights must total 100%.</SectionBio>
 
             {/* Live strategy list */}
             {!data.loading && data.strategies.length > 0 && (
@@ -1118,7 +1113,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 style={{
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
-                  marginBottom: "1px",
+                  marginBottom: "24px",
                 }}
               >
                 <table
@@ -1200,6 +1195,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             <ActionGrid>
               {/* Add Strategy */}
               <ProtocolActionForm
+                currency={currency}
                 title="Add Strategy"
                 description="vault.add_strategy"
                 actionLabel="Add"
@@ -1255,6 +1251,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
               {/* Remove Strategy */}
               <ProtocolActionForm
+                currency={currency}
                 title="Remove Strategy"
                 description="vault.remove_strategy"
                 actionLabel="Remove"
