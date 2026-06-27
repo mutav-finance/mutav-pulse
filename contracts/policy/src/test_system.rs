@@ -3,7 +3,7 @@ use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{token, Address, Env, String};
 use vault::{Vault, VaultClient};
 use registry::{Registry, RegistryClient};
-use mock_strategy::MockStrategy;
+use mock_strategy::{MockStrategy, MockStrategyClient};
 use crate::{Policy, PolicyClient};
 
 struct Sys {
@@ -52,6 +52,8 @@ fn full_demo_flow_holds_solvency_invariant() {
 
     s.vault.deposit(&20_000, &alice, &alice, &alice);
     let sid = s.e.register(MockStrategy, (s.underlying.clone(),));
+    // Wire controller to the reserve vault so rebalance/divest authorize. (audit H1/H4 gate)
+    MockStrategyClient::new(&s.e, &sid).set_controller(&s.vault_id);
     s.vault.add_strategy(&sid, &10_000, &false);
     s.vault.rebalance();
     assert_eq!(s.policy.coverage_required(), 0); // no guarantees signed yet — coverage is vacuously zero
@@ -115,6 +117,33 @@ fn coverage_required_scales_above_one_x() {
 
     s.policy.set_coverage_ratio_bps(&15_000);
     assert_eq!(s.policy.coverage_required(), 6_000 * 15_000 / 10_000);
+}
+
+/// Activation under Ceil coverage rounding: with a non-evenly-dividing ratio the
+/// pre-activation solvency gate (`stable_assets >= coverage_required`) uses the
+/// ceil'd (tighter) coverage. Seeding stable_assets to exactly the ceil value
+/// must still activate — Ceil composes safely with the gate (boundary, not an
+/// off-by-one revert).
+#[test]
+fn pay_premium_activation_with_ceil_coverage() {
+    let s = wire();
+    let agency = Address::generate(&s.e);
+    let landlord = Address::generate(&s.e);
+    let alice = Address::generate(&s.e);
+    s.token_admin.mint(&agency, &10_000);
+    s.token_admin.mint(&alice, &10_000);
+
+    // raw = 100 * 6 = 600. Ratio 7_511 → ceil(600*7_511/10_000) = 451.
+    // Premium = 100 * 1_000bps / 10_000 = 10. Deposit 441 so post-premium
+    // stable_assets = 441 + 10 = 451 == ceil(coverage). Boundary must succeed.
+    s.vault.deposit(&441, &alice, &alice, &alice);
+    s.policy.set_coverage_ratio_bps(&7_511);
+
+    let gid = s.policy.sign_guarantee(&landlord, &100, &6, &1_000, &2_592_000);
+    s.policy.pay_premium(&agency, &gid); // must not revert at the exact ceil boundary
+    assert!(s.policy.is_current(&gid));
+    assert_eq!(s.policy.coverage_required(), 451);
+    assert!(s.vault.stable_assets() >= s.policy.coverage_required());
 }
 
 #[test]

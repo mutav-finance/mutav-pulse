@@ -1,15 +1,33 @@
 #![no_std]
 // MuxedAddress is required by the FungibleToken macro even though it is not used directly.
-use soroban_sdk::{contract, contractevent, contractimpl, token, Address, BytesN, Env, MuxedAddress, String, Vec};
+use soroban_sdk::{contract, contracterror, contractevent, contractimpl, panic_with_error, token, Address, BytesN, Env, MuxedAddress, String, Vec};
 use stellar_tokens::fungible::{Base, FungibleToken};
 use stellar_contract_utils::math::{i128_fixed_point::mul_div_with_rounding, Rounding};
 use strategy::StrategyClient;
 use interfaces::{PolicyClient, Vault as VaultTrait};
 
-mod types;
-use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, NAV_SCALE, VIRTUAL_OFFSET};
+pub mod types;
+use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, MAX_ENTRY_TTL, NAV_SCALE, REQUEST_TTL_LEDGERS, VIRTUAL_OFFSET};
 
 mod test;
+
+/// Vault-side errors surfaced as stable `#[contracterror]` codes. Numbered in the
+/// `6xx` band to stay clear of the interfaces `2xx`, policy `3xx`, strategy `4xx`,
+/// and adapter `5xx` codes. Mirrors the adapter-defindex `AdapterError` pattern:
+/// a money-path revert that carries a diagnosable code instead of an opaque host
+/// trap. Code-only (not a storage entry) so it is layout-safe for in-place
+/// `upgrade()`.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VaultError {
+    /// #34 / code-review H1: a money path (`disburse` / `process_redemptions`)
+    /// asked `ensure_liquidity` for more underlying than the strategies could
+    /// realize (e.g. a lossy/slippage adapter that reports `balance()` above what
+    /// `divest()` actually delivers). Yearn-v3 stance: revert rather than realize
+    /// an incorrect loss — the whole tx rolls back atomically.
+    InsufficientLiquidity = 600,
+}
 
 /// SEP-0056 `Deposit` event — topics `["deposit", operator, from, receiver]`,
 /// data `[assets, shares]`. Emitted by `deposit` and `mint`. (The SEP `Withdraw`
@@ -82,7 +100,17 @@ impl Vault {
     /// Target idle cash retained as the liquid buffer: `total_assets × bps`.
     /// The surplus above this is what `rebalance` deploys across strategies.
     pub fn target_idle(e: &Env) -> i128 {
-        Self::total_assets(e) * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM
+        // Floor keeps the retained buffer from over-reserving (Yearn-v3
+        // total-anchored idle). BPS_DENOM (10_000) is a non-zero constant.
+        // Value-identical to the prior truncating `/` for non-negative operands;
+        // routed through the audited primitive for i128 overflow-safety.
+        mul_div_with_rounding(
+            e,
+            Self::total_assets(e),
+            Self::min_liquid_buffer_bps(e) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        )
     }
 
     /// Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
@@ -111,12 +139,22 @@ impl Vault {
         deployable_total: i128,
         total_weight: i128,
     ) -> i128 {
+        // Floor on both the weighted target and the concentration cap guarantees
+        // neither is exceeded by rounding (Yearn-v3 target-to-balance / max_debt).
+        // Routed through the audited primitive for i128 overflow-safety;
+        // value-identical to the prior truncating `/` for non-negative operands.
         let mut target = if total_weight > 0 {
-            deployable_total * (s.weight_bps as i128) / total_weight
+            mul_div_with_rounding(e, deployable_total, s.weight_bps as i128, total_weight, Rounding::Floor)
         } else {
             0
         };
-        let cap = total * (Self::strategy_max_debt_bps_inner(e, &s.address) as i128) / BPS_DENOM;
+        let cap = mul_div_with_rounding(
+            e,
+            total,
+            Self::strategy_max_debt_bps_inner(e, &s.address) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        );
         if target > cap {
             target = cap;
         }
@@ -125,6 +163,15 @@ impl Vault {
 
     fn reserved_for_claims(e: &Env) -> i128 {
         e.storage().instance().get(&DataKey::ReservedForClaims).unwrap_or(0)
+    }
+
+    /// H6: keep the instance entry alive (Strategies / ReservedForClaims /
+    /// PremiumIncome / Policy / NextRequestId / PendingRequests live here). Bumped
+    /// on hot/lifecycle write paths so it never archives.
+    fn bump_instance(e: &Env) {
+        e.storage()
+            .instance()
+            .extend_ttl(MAX_ENTRY_TTL / 2, MAX_ENTRY_TTL);
     }
     fn token_client(e: &Env) -> token::TokenClient<'_> {
         token::TokenClient::new(e, &Self::query_asset(e))
@@ -163,6 +210,12 @@ impl Vault {
     /// the `free_capital` redemption gate + disburse ordering). Capped overflow
     /// simply remains idle above `target_idle`. Divest pass runs before invest so
     /// pulled-back funds are available to fund the deploys.
+    ///
+    /// Under a LOSSY divest (a slippage/fee adapter that delivers less underlying
+    /// than its reported balance implies), the invest pass is clamped to the
+    /// realized live idle, so full convergence to target may take an ADDITIONAL
+    /// rebalance call off the fresh post-loss snapshot — at-target-in-one-call is
+    /// not guaranteed under loss (Yearn-v3 bidirectional rebalance-under-loss).
     pub fn rebalance(e: &Env) {
         Self::admin(e).require_auth();
         // Reentrancy guard (M2): divest calls out to adapters; shared with process_redemptions.
@@ -174,31 +227,67 @@ impl Vault {
 
         // Snapshot once → idempotent. total/target_idle exclude reserved_for_claims.
         let total = Self::total_assets(e);
-        let target_idle = total * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
+        // Off the single `total` snapshot (NOT Self::target_idle, which re-reads
+        // total_assets) to preserve the idempotency contract above. Same Floor /
+        // overflow-safe primitive as target_idle.
+        let target_idle = mul_div_with_rounding(
+            e,
+            total,
+            Self::min_liquid_buffer_bps(e) as i128,
+            BPS_DENOM,
+            Rounding::Floor,
+        );
         let deployable_total = if total > target_idle { total - target_idle } else { 0 };
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
         let tok = Self::token_client(e);
         let here = e.current_contract_address();
 
-        // Divest pass: pull every over-target strategy back down (raises idle).
+        // Precompute each strategy's target ONCE off the single snapshot above.
+        // `target_debt_for` re-reads StrategyMaxDebtBps per call, so computing it
+        // once per strategy (instead of once per pass) halves those instance
+        // reads. The Strategies Vec has stable insertion order, so index `i` is the
+        // same strategy in both the divest and invest passes — and the result is
+        // mathematically identical to the prior double-compute (deterministic from
+        // the frozen total / deployable_total / total_weight snapshot).
+        let mut targets = Vec::<i128>::new(e);
         for s in list.iter() {
-            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+            targets.push_back(Self::target_debt_for(e, &s, total, deployable_total, total_weight));
+        }
+
+        // Divest pass: pull every over-target strategy back down (raises idle).
+        for (i, s) in list.iter().enumerate() {
+            let target = targets.get(i as u32).unwrap();
             let client = StrategyClient::new(e, &s.address);
             let cur = client.balance();
             if cur > target {
                 client.divest(&(cur - target), &here);
             }
         }
-        // Invest pass: top up every under-target strategy (funds now available).
-        for s in list.iter() {
-            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+        // Invest pass: top up every under-target strategy, clamped to LIVE idle.
+        // Targets are still computed off the pre-divest `total` snapshot (keeps
+        // rebalance a policy, not cash-chasing / idempotency), but the deploy is
+        // clamped to the spendable idle ON HAND right now — a lossy divest pass
+        // delivers less underlying than the snapshot implied, so `target - cur`
+        // could exceed the balance and trap the token transfer. Yearn-v3
+        // `_freeFunds`: use the balance, not a stale accounted figure. Overflow
+        // simply stays idle above target_idle (as the doc-comment promises).
+        // `available_held` nets reserved_for_claims, so the clamp never deploys
+        // claim escrow. Re-read live each iteration: strategy ORDER (the existing
+        // Strategies Vec order) deterministically tie-breaks who is funded first
+        // under a shortfall.
+        for (i, s) in list.iter().enumerate() {
+            let target = targets.get(i as u32).unwrap();
             let client = StrategyClient::new(e, &s.address);
             let cur = client.balance();
             if target > cur {
-                let amount = target - cur;
-                tok.transfer(&here, &s.address, &amount);
-                client.invest(&amount);
+                let want = target - cur;
+                let spendable = Self::available_held(e);
+                let amount = if want < spendable { want } else { spendable };
+                if amount > 0 {
+                    tok.transfer(&here, &s.address, &amount);
+                    client.invest(&amount);
+                }
             }
         }
 
@@ -215,23 +304,57 @@ impl Vault {
         }
         e.storage().instance().set(&DataKey::Strategies, &next);
     }
+    /// Raise at least `needed` underlying into the vault's spendable balance,
+    /// divesting strategies as required. Infallible-or-revert (whole-tx-atomic):
+    /// the only two callers (`disburse`, `process_redemptions`) are money paths
+    /// that must revert-not-short (Yearn-v3: "better to revert if withdraws are
+    /// simply illiquid so as not to realize incorrect losses"), so the signature
+    /// stays `(&Env, i128)` and a shortfall is a typed revert.
     pub(crate) fn ensure_liquidity(e: &Env, needed: i128) {
-        if Self::available_held(e) >= needed { return; }
+        // Hoist `available_held` into a local `held` to collapse the ~4 redundant
+        // token-balance reads per logical step (entry guard, loop guard, `short`
+        // calc, terminal assert) the prior code performed. `held` MUTATES as each
+        // divest transfers underlying back, so it is NOT a frozen snapshot: it is
+        // RE-READ once after every divest (not `held += pull`) to stay exact under
+        // a real-adapter haircut where received < requested.
+        let mut held = Self::available_held(e);
+        if held >= needed { return; }
+        // Single pass over strategies (each visited at most once → terminating).
+        // The post-divest re-read of `held` is the LIVE token balance, so the
+        // realized (post-loss) amount of each divest is what counts toward
+        // progress — a lossy adapter that returns < requested simply leaves the
+        // shortfall, the next strategy (if any) is tried, and the terminal guard
+        // catches any residual shortfall. `client.divest` returns the realized
+        // amount but we deliberately rely on the live re-read rather than the
+        // return value, which is the source of truth for what actually landed.
         for s in Self::strategies(e).iter() {
-            if Self::available_held(e) >= needed { break; }
-            let short = needed - Self::available_held(e);
+            if held >= needed { break; }
+            let short = needed - held;
             let client = StrategyClient::new(e, &s.address);
             let avail = client.balance();
             let pull = if short < avail { short } else { avail };
-            if pull > 0 { client.divest(&pull, &e.current_contract_address()); }
+            if pull > 0 {
+                client.divest(&pull, &e.current_contract_address());
+                held = Self::available_held(e);
+            }
         }
-        assert!(Self::available_held(e) >= needed, "insufficient liquidity");
+        if held < needed {
+            // Typed revert (code 600) instead of an opaque host trap. Both roll
+            // back the whole tx; this gives a stable diagnosable code.
+            panic_with_error!(e, VaultError::InsufficientLiquidity);
+        }
     }
 
     pub fn nav_per_share(e: &Env) -> i128 {
         let supply = Base::total_supply(e);
+        // Guard is load-bearing: this denominator has NO virtual offset, so a
+        // zero `supply` would be a native divide-by-zero host panic in
+        // mul_div_with_rounding (not a typed error). Floor matches a per-share
+        // price quote and equals the prior truncating `/` for non-negative
+        // operands — overflow-safety on the total_assets*NAV_SCALE product is
+        // the only change.
         if supply == 0 { return NAV_SCALE; }
-        Self::total_assets(e) * NAV_SCALE / supply
+        mul_div_with_rounding(e, Self::total_assets(e), NAV_SCALE, supply, Rounding::Floor)
     }
 
     // ───────────────────────── SEP-0056 (Tokenized Vault Standard) ─────────────────────────
@@ -298,6 +421,7 @@ impl Vault {
     /// shares, `operator` authorizes (allowance-delegated when `operator != from`).
     pub fn deposit(e: &Env, assets: i128, receiver: Address, from: Address, operator: Address) -> i128 {
         operator.require_auth();
+        Self::bump_instance(e);
         assert!(assets > 0, "amount must be positive");
         assert!(assets <= Self::max_deposit(e, receiver.clone()), "exceeds max deposit");
         // Shares priced off pre-transfer NAV (ERC-4626 semantics).
@@ -313,6 +437,7 @@ impl Vault {
     /// (ceil-rounded) assets from `from`. Returns assets consumed.
     pub fn mint(e: &Env, shares: i128, receiver: Address, from: Address, operator: Address) -> i128 {
         operator.require_auth();
+        Self::bump_instance(e);
         assert!(shares > 0, "shares must be positive");
         assert!(shares <= Self::max_mint(e, receiver.clone()), "exceeds max mint");
         let assets = Self::preview_mint(e, shares);
@@ -340,7 +465,17 @@ impl Vault {
     }
 
     pub fn request(e: &Env, id: u32) -> RedeemRequest {
-        e.storage().persistent().get(&DataKey::Request(id)).unwrap()
+        // H6 analog: the lifecycle read behind cancel_redeem / process_redemptions
+        // / claim and the public getter. Re-extend on the loaded entry (only on
+        // Some — a missing id keeps the prior unwrap panic semantics, never a
+        // write) so a request queued many ledgers between request_redeem and
+        // process_redemptions does not archive. (Side effect: turns this getter
+        // into a read-WRITE in simulation; flagged to the SDK/frontend team.)
+        let req: RedeemRequest = e.storage().persistent().get(&DataKey::Request(id)).unwrap();
+        e.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
+        req
     }
 
     pub fn pending_requests(e: &Env) -> Vec<u32> {
@@ -349,12 +484,16 @@ impl Vault {
 
     pub fn request_redeem(e: &Env, owner: Address, shares: i128) -> u32 {
         owner.require_auth();
+        Self::bump_instance(e);
         assert!(shares > 0, "shares must be positive");
         // Escrow the shares into the contract (internal move; owner already authed).
         Base::update(e, Some(&owner), Some(&e.current_contract_address()), shares);
 
         let id: u32 = e.storage().instance().get(&DataKey::NextRequestId).unwrap();
-        e.storage().instance().set(&DataKey::NextRequestId, &(id + 1));
+        e.storage().instance().set(
+            &DataKey::NextRequestId,
+            &id.checked_add(1).expect("request id space exhausted"),
+        );
         let req = RedeemRequest {
             id,
             owner,
@@ -364,6 +503,11 @@ impl Vault {
             claimable: 0,
         };
         e.storage().persistent().set(&DataKey::Request(id), &req);
+        // H6 analog: size the request obligation to the network max — the queue
+        // wait between request_redeem and process_redemptions/claim is unbounded.
+        e.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
         let mut pending = Self::pending_requests(e);
         pending.push_back(id);
         e.storage().instance().set(&DataKey::PendingRequests, &pending);
@@ -399,6 +543,7 @@ impl Vault {
             "reentrant call"
         );
         e.storage().instance().set(&DataKey::Locked, &true);
+        Self::bump_instance(e);
 
         let pending = Self::pending_requests(e);
         let mut still_pending = Vec::<u32>::new(e);
@@ -415,13 +560,36 @@ impl Vault {
             }
             processed += 1;
 
-            let supply = Base::total_supply(e);
-            let claimable = if supply == 0 {
-                0
-            } else {
-                req.shares * (Self::total_assets(e) + VIRTUAL_OFFSET) / (supply + VIRTUAL_OFFSET)
-            };
-            // Gate on stable surplus only (H2).
+            // H2: settle through the identical audited primitive used by
+            // preview_redeem (to_assets Floor) — restoring ERC-4626
+            // rounding-favors-the-vault on payout, preview/settlement parity, and
+            // i128 overflow-safety (I256 promotion) vs. the prior raw
+            // multiply-before-divide that traps. The old `supply == 0` branch is
+            // unreachable here: request_redeem escrowed `req.shares` into the
+            // contract, so live total_supply >= req.shares > 0; to_assets'
+            // denominator `total_supply + VIRTUAL_OFFSET` (>= 2) can never be zero
+            // and it already short-circuits shares == 0.
+            debug_assert!(Base::total_supply(e) > 0);
+            // Hoist total_assets WITHIN this iteration only (NOT across the loop):
+            // total_assets legitimately changes between fulfilled requests
+            // (ensure_liquidity divests, ReservedForClaims bumped, shares burned),
+            // so a per-batch snapshot would misprice later requests. Compute `ta`
+            // once here and reuse it for the claimable pricing, replacing the
+            // second internal total_assets evaluation `to_assets` performed.
+            // Value-identical to `to_assets(req.shares, Floor)`: req.shares > 0 is
+            // guaranteed (escrowed at request_redeem) so the to_assets shares==0
+            // short-circuit never applied.
+            let ta = Self::total_assets(e);
+            let claimable = mul_div_with_rounding(
+                e,
+                req.shares,
+                ta + VIRTUAL_OFFSET,
+                Base::total_supply(e) + VIRTUAL_OFFSET,
+                Rounding::Floor,
+            );
+            // Gate on stable surplus only (H2). `free_capital` is a SEPARATE fresh
+            // read: it derives stable_assets + cross-contract coverage_required and
+            // must reflect current state at the gate — do NOT fold it into `ta`.
             if claimable > 0 && Self::free_capital(e) >= claimable {
                 Self::ensure_liquidity(e, claimable);
                 // Effects before further interactions: burn escrowed shares now.
@@ -431,6 +599,11 @@ impl Vault {
                 req.fulfilled = true;
                 req.claimable = claimable;
                 e.storage().persistent().set(&DataKey::Request(id), &req);
+                // H6 analog: a fulfilled-but-unclaimed request must survive the
+                // gap until claim — re-extend so it does not archive while waiting.
+                e.storage()
+                    .persistent()
+                    .extend_ttl(&DataKey::Request(id), REQUEST_TTL_LEDGERS, REQUEST_TTL_LEDGERS);
             } else {
                 still_pending.push_back(id);
             }
@@ -440,6 +613,11 @@ impl Vault {
     }
 
     pub fn claim(e: &Env, id: u32) {
+        // Terminal write on a dying request: do NOT add a second explicit Request
+        // extend (Self::request already bumps it once on read — acceptable for an
+        // entry about to be consumed). Still bump the instance entry, which this
+        // mutates via ReservedForClaims.
+        Self::bump_instance(e);
         let mut req = Self::request(e, id);
         req.owner.require_auth();
         assert!(req.fulfilled, "not yet fulfilled");
