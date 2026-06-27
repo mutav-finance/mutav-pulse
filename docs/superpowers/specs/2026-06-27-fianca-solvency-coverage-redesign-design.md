@@ -23,13 +23,16 @@ Full briefs live in the conversation; the load-bearing findings are cited inline
 ### The decisive reframe: we are a *fiança*, not insurance
 
 Mutav is a **fiador institucional** (Código Civil art. 818+; art. 37-II of Lei 8.245/91),
-**not a seguradora**. The obligation is: *cover the rent during a tenant default until the
-property is recovered* — i.e. the **eviction window**. The insurance-shaped constructs found
-in `mutav-app` — a **30× rent LMI ceiling** + **5× exit-cost** (`apps/agency/src/lib/pricing/
-tiers.ts`) — are a **seguro-fiança** product framing and are **deferred** (a Draau product
-decision), not adopted here. The pilot floor stays the eviction window the prototype already
-models: **`months_covered = 6`, coverage ratio `c = 1.0`** (hard-solvent). This keeps the
-stable yield already modelled in `model/mutav_model.py` and needs no `c < 1` leverage.
+**not a seguradora**. The obligation has two parts: *cover the rent while the tenant is in
+default* (the short rent-arrears window) **and** *cover the cost of recovering and restoring
+the property* (eviction proceedings, damages, restoration). The insurance-shaped **30× rent
+LMI ceiling** found in `mutav-app` (`apps/agency/src/lib/pricing/tiers.ts`) is a **seguro-fiança**
+framing and is **not** adopted — it stays far above our model and is a Draau product decision.
+
+The pilot floor is **default coverage = 3× monthly rent** (the rent-arrears window) **+ exit
+coverage = 6× monthly rent** (property recovery/restoration), at coverage ratio **`c = 1.0`**
+(hard-solvent). Max executable obligation per guarantee = **9× monthly rent**. This keeps the
+provable-solvency story without `c < 1` leverage and stays well under the seguro LMI.
 
 ### The B2B2C simplification (the semantic flip)
 
@@ -44,7 +47,7 @@ what **authorizes the payout**. Removing the time-gate is what collapses #39, #3
 
 | # | Decision | Choice |
 |---|---|---|
-| Floor basis | what capital must back per guarantee | `monthly × (months_covered − months_used)`, `months_covered = 6`, `c = 1.0`. 30× LMI and 5× exit-cost **deferred to Draau**. |
+| Floor basis | what capital must back per guarantee | **default** `monthly × (months_covered − months_used)`, `months_covered = 3`; **+ exit** `monthly × exit_months − exit_used`, `exit_months = 6`; `c = 1.0`. Max 9× rent. 30× LMI **deferred to Draau**. |
 | Lapse semantics | what a missed fee means | **fee missed → grace window → default**; lapse triggers the claim, never releases coverage. |
 | `cover_default` trigger | who pays out | **admin-gated** (unchanged). The on-chain lapse is provable but the operator stays on the money path for the pilot. |
 | #39 accounting | how `coverage_required` is maintained | **stored running aggregate** in the registry (data layer), maintained incrementally; no time-gate → no lazy expiry needed. |
@@ -57,19 +60,25 @@ what **authorizes the payout**. Removing the time-gate is what collapses #39, #3
 ### Lifecycle
 
 - **`sign_guarantee`** (admin) — the fiador commits, so the obligation exists immediately.
-  Registry activates the guarantee and the **raw coverage aggregate grows by
-  `monthly × months_covered`**. The **capacity/solvency gate lives here**: after the write,
-  assert `vault.stable_assets() ≥ coverage_required()`, else revert (this *is* #40). A fresh
-  guarantee's `paid_until` is set so the first fee is due within the grace window.
+  Registry activates the guarantee and the **raw coverage aggregate grows by `monthly ×
+  (months_covered + exit_months)`** (default + exit = 9× monthly at the pilot params). The
+  **capacity/solvency gate lives here**: after the write, assert `vault.stable_assets() ≥
+  coverage_required()`, else revert (this *is* #40). A fresh guarantee's `paid_until` is set so
+  the first fee is due within the grace window; `months_used = 0`, `exit_used = 0`.
 - **`pay_fee`** (tenant, was `pay_premium`) — pulls the monthly fee into the vault (accrues to
   NAV, mints no shares), extends `paid_until` by one `period_secs`. **Does not change the
   aggregate** (coverage was reserved at signing).
 - **default** — `paid_until + grace < now`. Provable on-chain; admin calls `cover_default`.
-- **`cover_default`** (admin) — assert default condition (`paid_until + grace < now`),
-  `months_used += 1`, aggregate `−= monthly`, persist; if `months_used == months_covered`
-  set `active = false` and release the remainder; **then** `vault.disburse(landlord, monthly,
-  coverage_after)` with `coverage_after = coverage_required()` recomputed *after* the decrement.
-- **`settle_guarantee`** (admin) — `active = false`, aggregate `−= monthly × (covered − used)`.
+- **`cover_default`** (admin, the rent-arrears leg) — assert default condition (`paid_until +
+  grace < now`), `months_used += 1`, aggregate `−= monthly`, persist; **then**
+  `vault.disburse(landlord, monthly, coverage_after)` with `coverage_after = coverage_required()`
+  recomputed *after* the decrement. Caps at `months_used == months_covered` (3 draws).
+- **`cover_exit`** (admin, the property-recovery leg — NEW) — pay an exit cost up to the cap:
+  assert `exit_used + amount ≤ monthly × exit_months`, `exit_used += amount`, aggregate
+  `−= amount`, persist; **then** `vault.disburse(landlord, amount, coverage_after)`. Allows
+  partial/multiple draws against the 6× cap (damages, eviction, restoration).
+- **`settle_guarantee`** (admin) — `active = false`; aggregate `−=` the guarantee's remaining
+  contribution (`monthly × (months_covered − months_used) + (monthly × exit_months − exit_used)`).
 
 ### #39 — `coverage_required` as an O(1) stored aggregate
 
@@ -78,12 +87,15 @@ with the stateless-swappable-policy invariant; a policy-local aggregate would no
 `set_policy` swap). It is maintained **inside `registry::put`** by a uniform delta:
 
 ```
-contribution(g) = (g.active && g.id < next_id) ? g.monthly_amount * (g.months_covered - g.months_used) : 0
-raw_coverage += contribution(new_g) - contribution(old_g)   // old_g contribution = 0 if first put
+default_term(g) = g.monthly_amount * (g.months_covered - g.months_used)
+exit_term(g)    = g.monthly_amount * g.exit_months - g.exit_used        // both ≥ 0 by invariant
+contribution(g) = (g.active && g.id < next_id) ? default_term(g) + exit_term(g) : 0
+raw_coverage   += contribution(new_g) - contribution(old_g)            // old_g contribution = 0 if first put
 ```
 
-This is correct for every path — activation (old=0), `cover_default` (used++), settle/exhaust
-(active→false), with **no time dependence** (the time-gate is gone). `policy::coverage_required`
+This is correct for every path — activation (old=0), `cover_default` (used++), `cover_exit`
+(exit_used+=), settle/exhaust (active→false), with **no time dependence** (the time-gate is
+gone). `policy::coverage_required`
 becomes `mul_div_ceil(registry.raw_coverage(), ratio, BPS_DENOM)` — a single read, O(1), with
 the same Ceil rounding and `c = ratio/10_000` knob as today (so `c < 1` actuarial mode and
 `c > 1` over-collateralization remain available, just no longer the hot path).
@@ -136,15 +148,18 @@ exactly as far as capital backs it.
 
 - **`interfaces`** — `Vault::disburse` add `coverage_after: i128` (+ update the 40-line drift
   guard doc to describe the witness, not the ordering convention); rename `collect_premium →
-  collect_fee`; add `Registry::raw_coverage() -> i128`. `Guarantee` struct **unchanged** (no
-  new fields — exit-cost deferred).
-- **`registry`** — maintain `DataKey::RawCoverage(i128)` via the `put` delta; delete
-  `MAX_ACTIVE_GUARANTEES`, the activation-branch cap check, and `ActiveSetFull`; add
-  `raw_coverage()` getter and an admin `reconcile()`. Storage layout change → redeploy.
+  collect_fee`; add `Registry::raw_coverage() -> i128`. `Guarantee` struct **gains two fields**:
+  `exit_months: u32` (exit coverage as a multiple of monthly rent) and `exit_used: i128` (exit
+  drawn so far). `months_covered` becomes the **default** (rent-arrears) coverage.
+- **`registry`** — maintain `DataKey::RawCoverage(i128)` via the `put` delta (default + exit
+  terms); delete `MAX_ACTIVE_GUARANTEES`, the activation-branch cap check, and `ActiveSetFull`;
+  add `raw_coverage()` getter and an admin `reconcile()`. Storage layout change → redeploy.
 - **`policy`** — `coverage_required` reads `registry.raw_coverage()` × ratio (drop the loop);
-  move/extend the solvency assert into `sign_guarantee`; `cover_default` asserts the default
-  condition (`paid_until + grace < now`), decrements, passes `coverage_after` witness; add a
-  `grace_secs` param (admin-settable, `DataKey::GraceSecs`); fee renames.
+  move/extend the solvency assert into `sign_guarantee` (reserves default + exit); `cover_default`
+  asserts the default condition (`paid_until + grace < now`), decrements, passes `coverage_after`
+  witness; **add `cover_exit(id, amount)`** (admin, capped at `monthly × exit_months`, same
+  witness pattern); add a `grace_secs` param (admin-settable, `DataKey::GraceSecs`); fee renames.
+  `sign_guarantee` takes `exit_months` (pilot = 6) alongside `months_covered` (pilot = 3).
 - **`vault`** — `disburse(.., coverage_after)` asserts the floor; `collect_premium → collect_fee`;
   `PremiumIncome → FeeIncome`. `stable_assets`, NAV, redemption-queue surplus gate unchanged
   (the surplus gate already reads `coverage_required`, now O(1)).
@@ -152,16 +167,18 @@ exactly as far as capital backs it.
 
 ## Testing strategy (TDD)
 
-1. **Property test** — `raw_coverage == Σ contribution` across randomized lifecycles
-   (issue/pay/default/settle/exhaust), including interleavings.
-2. **Solvency-on-disburse** — `disburse` reverts when `stable_pre − amount < coverage_after`;
-   a multi-default sequence cannot drain below the aggregate floor.
+1. **Property test** — `raw_coverage == Σ contribution` (default + exit terms) across randomized
+   lifecycles (issue/pay/default/exit/settle/exhaust), including interleavings.
+2. **Solvency-on-disburse** — both `cover_default` and `cover_exit` revert when `stable_pre −
+   amount < coverage_after`; a multi-default + exit sequence cannot drain below the aggregate floor.
 3. **Lapse-flip** — fee paid within grace ⇒ `cover_default` reverts (not yet in default); fee
    missed past grace ⇒ `cover_default` succeeds and pays the landlord.
-4. **Capacity** — `sign_guarantee` reverts when it would push `coverage_required > stable_assets`;
+4. **Exit cap** — `cover_exit` reverts when `exit_used + amount > monthly × exit_months`; partial
+   draws accumulate to the 6× cap; releasing on settle subtracts the unused exit remainder.
+5. **Capacity** — `sign_guarantee` reverts when it would push `coverage_required > stable_assets`;
    no count ceiling otherwise (issue well past 90).
-5. **`reconcile()`** — after a forced drift, recompute corrects the aggregate.
-6. Gates: `cargo test` (workspace) + `stellar contract build` green.
+6. **`reconcile()`** — after a forced drift, recompute corrects the aggregate.
+7. Gates: `cargo test` (workspace) + `stellar contract build` green.
 
 ## Migration / redeploy
 
@@ -171,11 +188,27 @@ redeploy `registry` + `policy` + `vault` and re-wire via `bootstrap.sh` (setters
 `set_policy` / `set_vault` / `set_registry` / `set_writer`, `add_strategy`). The vault's
 immutable `underlying` is unaffected.
 
+## Simulations (`model/mutav_model.py`)
+
+The economic model must reflect the two-leg coverage. Parameter changes:
+
+- **Default coverage** `N = 3` (was 6) — the rent-arrears window; `cover_default` payout leg,
+  driven by the existing `rho` monthly-default regime (expected default payout ≈ `rho · R` /mo,
+  capped at `N` months).
+- **Exit coverage** `E = 6` (new) — `monthly × E` cap drawn at lease end via `cover_exit`.
+- **Capital locked** `= c · R · (N + E) = 9 · R` per guarantee at `c = 1.0` (was `6 · R`).
+- **Exit-cost claim assumption** (the one new modelling input, since exit severity isn't in the
+  current `rho` regime): model an exit-cost draw at lease termination with **frequency `p_exit`
+  and mean severity `s_exit · (E · R)`**. Proposed conservative defaults to start:
+  `p_exit = 1.0` (every lease incurs some exit cost) × `s_exit ≈ 0.15` (≈ 0.9× rent average
+  draw, ~one month of restoration), with the **full 6× reserved** regardless (hard solvency).
+  The Monte Carlo adds this to the payout stream; the deterministic APY/loss-ratio tables and
+  `--selftest` assertions update accordingly. **`p_exit` / `s_exit` are the values to confirm.**
+
 ## Deferred / out of scope (Draau check-in)
 
-- **30× LMI default coverage** and **5× exit-cost** — the seguro-fiança product shape; revisit
-  with Draau. If adopted later, exit-cost is a clean additive field on `Guarantee` + the
-  aggregate, and 30× likely forces a `c < 1` calibration to stay capital-efficient.
+- **30× LMI default coverage** — the seguro-fiança ceiling; our pilot uses 3× default + 6× exit
+  (9× total). Revisit 30× with Draau; it would likely force a `c < 1` calibration.
 - **Per-agency billing / correlated lapse / agency & tenant fields** — the real B2B2C billing
   unit is the agency; modelled here as independent per-guarantee fees (the pilot simplification).
-- **Permissionless / landlord-triggered `cover_default`** — stays admin-gated for the pilot.
+- **Permissionless / landlord-triggered `cover_default` / `cover_exit`** — stay admin-gated.
