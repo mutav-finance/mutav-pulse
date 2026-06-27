@@ -36,4 +36,8 @@ pub enum DataKey {
     Request(u32),
     Locked,
     MinLiquidBufferBps,
+    /// Per-strategy concentration cap, in bps of TOTAL assets. Additive key
+    /// (defaults to 100% = uncapped when unset) so adding it preserves the
+    /// storage layout — the buffer fix ships as an in-place `upgrade()`.
+    StrategyMaxDebtBps(Address),
 }

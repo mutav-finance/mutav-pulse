@@ -65,8 +65,11 @@ impl Vault {
         Base::set_metadata(e, 7, name, symbol);
     }
 
-    /// Fraction of idle (in bps) the vault retains as a liquid claim buffer at
-    /// rebalance time. 0 = deploy everything (legacy behavior). Set per reserve.
+    /// Fraction of TOTAL assets (in bps) the vault retains as a liquid cash
+    /// buffer; `rebalance` deploys the surplus above it and divests back into it.
+    /// 0 = deploy everything. Set per reserve. This is a LIQUIDITY optimization
+    /// (avoid on-demand divest costs), NOT a solvency reserve — solvency stays
+    /// enforced by `free_capital` / `coverage_required`.
     pub fn min_liquid_buffer_bps(e: &Env) -> u32 {
         e.storage().instance().get(&DataKey::MinLiquidBufferBps).unwrap_or(0)
     }
@@ -74,6 +77,50 @@ impl Vault {
         Self::admin(e).require_auth();
         assert!(bps <= 10_000, "min_liquid_buffer_bps exceeds 100%");
         e.storage().instance().set(&DataKey::MinLiquidBufferBps, &bps);
+    }
+
+    /// Target idle cash retained as the liquid buffer: `total_assets × bps`.
+    /// The surplus above this is what `rebalance` deploys across strategies.
+    pub fn target_idle(e: &Env) -> i128 {
+        Self::total_assets(e) * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM
+    }
+
+    /// Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
+    /// (uncapped) when unset. `rebalance` will not deploy a strategy above this.
+    pub fn strategy_max_debt_bps(e: &Env, strategy: Address) -> u32 {
+        Self::strategy_max_debt_bps_inner(e, &strategy)
+    }
+    fn strategy_max_debt_bps_inner(e: &Env, strategy: &Address) -> u32 {
+        e.storage()
+            .instance()
+            .get(&DataKey::StrategyMaxDebtBps(strategy.clone()))
+            .unwrap_or(BPS_DENOM as u32)
+    }
+    pub fn set_strategy_max_debt_bps(e: &Env, strategy: Address, bps: u32) {
+        Self::admin(e).require_auth();
+        assert!(bps <= 10_000, "strategy_max_debt_bps exceeds 100%");
+        e.storage().instance().set(&DataKey::StrategyMaxDebtBps(strategy), &bps);
+    }
+
+    /// Per-strategy target debt for `rebalance`: weighted share of the deployable
+    /// surplus, clamped to the strategy's concentration cap.
+    fn target_debt_for(
+        e: &Env,
+        s: &StrategyAlloc,
+        total: i128,
+        deployable_total: i128,
+        total_weight: i128,
+    ) -> i128 {
+        let mut target = if total_weight > 0 {
+            deployable_total * (s.weight_bps as i128) / total_weight
+        } else {
+            0
+        };
+        let cap = total * (Self::strategy_max_debt_bps_inner(e, &s.address) as i128) / BPS_DENOM;
+        if target > cap {
+            target = cap;
+        }
+        target
     }
 
     fn reserved_for_claims(e: &Env) -> i128 {
@@ -103,27 +150,59 @@ impl Vault {
         total
     }
 
+    /// Rebalance strategy allocations toward target — idempotent and bidirectional.
+    ///
+    /// Keeps `target_idle` (a fraction of TOTAL assets, see `min_liquid_buffer_bps`)
+    /// as a liquid cash buffer and spreads the surplus across strategies by weight,
+    /// each clamped to its `strategy_max_debt_bps` cap. Each strategy's on-chain
+    /// balance is moved toward that target: pulled back when over, deployed when
+    /// under. Targets are computed once off a snapshot, so calling at-target is a
+    /// no-op — the buffer holds instead of draining across repeated calls.
+    ///
+    /// LIQUIDITY-only: never reads `coverage_required` (solvency stays enforced by
+    /// the `free_capital` redemption gate + disburse ordering). Capped overflow
+    /// simply remains idle above `target_idle`. Divest pass runs before invest so
+    /// pulled-back funds are available to fund the deploys.
     pub fn rebalance(e: &Env) {
         Self::admin(e).require_auth();
-        let idle = Self::available_held(e);
-        if idle <= 0 { return; }
-        // Retain a liquid claim buffer (min_liquid_buffer_bps of idle); only the
-        // surplus above it is deployed. On-demand shortfalls are still pulled back
-        // from strategies via ensure_liquidity.
-        let buffer = idle * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
-        let deployable = idle - buffer;
-        if deployable <= 0 { return; }
+        // Reentrancy guard (M2): divest calls out to adapters; shared with process_redemptions.
+        assert!(
+            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
+            "reentrant call"
+        );
+        e.storage().instance().set(&DataKey::Locked, &true);
+
+        // Snapshot once → idempotent. total/target_idle exclude reserved_for_claims.
+        let total = Self::total_assets(e);
+        let target_idle = total * (Self::min_liquid_buffer_bps(e) as i128) / BPS_DENOM;
+        let deployable_total = if total > target_idle { total - target_idle } else { 0 };
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
-        if total_weight == 0 { return; }
         let tok = Self::token_client(e);
+        let here = e.current_contract_address();
+
+        // Divest pass: pull every over-target strategy back down (raises idle).
         for s in list.iter() {
-            let portion = deployable * (s.weight_bps as i128) / total_weight;
-            if portion > 0 {
-                tok.transfer(&e.current_contract_address(), &s.address, &portion);
-                StrategyClient::new(e, &s.address).invest(&portion);
+            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+            let client = StrategyClient::new(e, &s.address);
+            let cur = client.balance();
+            if cur > target {
+                client.divest(&(cur - target), &here);
             }
         }
+        // Invest pass: top up every under-target strategy (funds now available).
+        for s in list.iter() {
+            let target = Self::target_debt_for(e, &s, total, deployable_total, total_weight);
+            let client = StrategyClient::new(e, &s.address);
+            let cur = client.balance();
+            if target > cur {
+                let amount = target - cur;
+                tok.transfer(&here, &s.address, &amount);
+                client.invest(&amount);
+            }
+        }
+
+        e.storage().instance().set(&DataKey::Locked, &false);
     }
     pub fn remove_strategy(e: &Env, address: Address) {
         Self::admin(e).require_auth();
