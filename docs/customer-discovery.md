@@ -79,21 +79,21 @@ Use this on the calls you still need. Keep it conversational; the goal is to *le
 5. **Liquidez / lockup:** Como você se sente em manter seu investimento bloqueado por um período (lockup)?
 6. **Faixa de yield:** Qual faixa de APY torna um investimento interessante para cada perfil de risco (baixo, médio e alto)? O que você avalia em um produto antes de investir?
 
-### Interview I1 — Douglas
+### Interview I1
 
-- **Who:** Stellar ambassador, founder of Wallet Now (Web3 abstraction/onboarding infra), multiple projects on the network. DeFi-native — **100% of his income comes from the decentralized market** (liquidity pools, long-term positions, derivatives, puts).
+- **Who:** Investidor **DeFi-native e sofisticado**, ativo no ecossistema Stellar. Opera liquidity pools, posições de longo prazo e derivativos; **audita/verifica contratos por conta própria**. *(identidade anonimizada — perfil de segmento mantido como evidência.)*
 - **Date / format:** <!-- TODO: data --> · entrevista remota, semi-estruturada
 - **Key responses:**
   - **Confiança:** sua confiança vem primeiro do **conhecimento técnico** — audita/verifica contratos ele mesmo. Para o mercado em geral, confiança = **credibilidade + autoridade + TVL**. Só opera em pools com **TVL alto**; evita baixa liquidez por princípio.
   - **RWA:** já investiu em RWAs e grupos privados tokenizados; vê como **tendência forte** do mercado. Mas a ressalva é dura: **falta de transparência do lado real**. O resultado da empresa do mundo real muitas vezes não era tão transparente quanto o resultado on-chain — "o grande problema era ter noção do *R* do RWA: se o real era 100% real, se tinha números transparentes."
-  - **Lockup:** evita "locked" por padrão, mas **aceita longo prazo quando a estratégia justifica** (tem empréstimos de Bitcoin para 2030/2035). Compara favoravelmente com o Tesouro Direto: travar num contrato inteligente que se beneficia da adoção da Web3 lhe parece **menos arriscado** do que travar 10 anos no Tesouro carregando "risco Brasil".
+  - **Lockup:** evita "locked" por padrão, mas **aceita longo prazo quando a estratégia justifica** (mantém posições de prazo muito longo). Compara favoravelmente com o Tesouro Direto: travar num contrato inteligente que se beneficia da adoção da Web3 lhe parece **menos arriscado** do que travar 10 anos no Tesouro carregando "risco Brasil".
   - **Faixa de yield:** referência é o **yield americano (~4% a.a.)**. Busca APY "dentro da realidade". Yield passivo **acima de 12–13% (2–3x o americano) já é alto risco** para ele; em stablecoin, APY alto é praticamente "impossível" / sinal de alerta. APYs altos só fazem sentido em pools voláteis e **num portfólio separado** dedicado a esse risco.
 - **Reaction to the solvency gate / queue:** não reagiu diretamente à fila de resgate (não foi perguntado nesta rodada), mas o perfil dele valida a tese: prioriza **solvência verificável e TVL** acima de retorno, e aceita lockup quando há racional claro.
 - **Yield expectation:** "dentro da realidade" — ancorado no yield americano (~4%). Considera **>12–13% a.a. passivo = alto risco**, e desconfia de APY alto em stablecoin.
 - **Verbatim quote:** > "O grande problema ao investir ali era ter noção do *R*, do RWA mesmo — se o real era 100% real, se tinha números transparentes."
 - **Verbatim quote 2:** > "Para mim é mais absurdo você trancar no Tesouro por 10 anos, acreditando no risco Brasil, do que trancar num contrato inteligente que depende de volume e movimentação."
 
-#### Insights para o MUTAV Pulse (da entrevista do Douglas)
+#### Insights para o MUTAV Pulse (da entrevista I1)
 
 1. **Transparência do lastro é o ponto de ruptura, não o yield.** A maior dor dele com RWA não é retorno — é não conseguir verificar se o "real" do RWA é real. → Reforça a aposta do MUTAV em **solvência verificável on-chain por número** e expor as **prêmios/fluxo de caixa reais** (não só o NAV on-chain). A camada de prova de transparência (`/earn/transparency`) deve mostrar **o lado real** (garantias ativas, prêmios coletados), não apenas o estado do vault.
 2. **TVL e auditabilidade são proxies de confiança para o investidor DeFi-native.** → Tornar **TVL, contratos verificados e o gate de solvência** visíveis e fáceis de auditar no frontend é tão importante quanto o produto em si.

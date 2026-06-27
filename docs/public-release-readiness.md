@@ -37,21 +37,28 @@ de **privacidade** e **conteúdo**, não vazamentos.
 ## 2. 🔴 Decisões obrigatórias antes de publicar
 
 ### D1 — Dados pessoais de terceiro na entrevista de discovery
-**Arquivo:** `docs/customer-discovery.md` (Interview I1, linhas ~82–94)
+**Arquivo:** `docs/customer-discovery.md` (Interview I1)
 
-A entrevista I1 está **nominal** ("Douglas") e o identifica publicamente: *"Stellar ambassador,
-founder of Wallet Now"*, mais dados pessoais/financeiros sensíveis — *"100% of his income comes from
-the decentralized market"*, posições de investimento, empréstimos de BTC para 2030/2035, e duas
-citações verbatim. O próprio doc instrui *"Anonymize names if needed"* (linha 5).
+**✅ Resolvido no working tree.** A entrevista I1 foi **anonimizada**: removidos o nome, o nome da
+empresa, o título de "ambassador" e os dados financeiros pessoais identificáveis (renda 100% DeFi,
+empréstimos de BTC com datas). Mantido o **perfil de segmento** ("investidor DeFi-native e
+sofisticado, ativo no ecossistema Stellar") + as opiniões e citações — que são a evidência para os
+jurados e **não identificam ninguém**. Conecta com a issue **#8**.
 
-Publicar isso expõe dados de uma pessoa real **sem consentimento explícito documentado**. É o item
-mais sério da lista.
+**⚠️ Pendência — histórico do git.** O nome/empresa ainda existem no commit `57277d5`
+*("add **Douglas** interview")*, **no conteúdo e na mensagem do commit**. Tornar o repo público
+**expõe o histórico** (`git log -p`), então para resolver D1 por completo é preciso decidir:
 
-- **Opção A (recomendada):** anonimizar — trocar por papel + tipo ("Stellar ambassador / founder de
-  infra de onboarding Web3"), remover o nome e a empresa, manter as citações (são a evidência mais
-  forte para os jurados). Conecta com a issue **#8**.
-- **Opção B:** manter nominal **somente com consentimento por escrito** do entrevistado para uso público.
-- **Opção C:** remover a entrevista I1 do doc até a submissão.
+- **Opção A — reescrever o histórico** (`git filter-repo`) antes do flip, removendo nome/empresa do
+  conteúdo e da mensagem. Reescreve SHAs → exige `--force-push` e **quebra PRs abertos** (ex.: #17) e
+  clones dos colaboradores. Mais limpo, mas mais invasivo.
+- **Opção B — squash antes de publicar:** colapsar o histórico em um commit limpo na hora de tornar
+  público (perde a granularidade dos commits, mas elimina a exposição de uma vez).
+- **Opção C — aceitar a exposição histórica:** dado tratar-se de testnet/hackathon e o dado já ter
+  sido compartilhado pelo entrevistado, aceitar o nome no histórico. **Não recomendado** se o
+  objetivo de D1 é privacidade real.
+
+> Decisão de histórico: ___  *(precisa ser decidida antes do Passo 1 do runbook.)*
 
 ### D2 — Carteira pessoal vinculada ao protocolo na doc
 **Arquivo:** `HANDOFF.md` (linha 34)
