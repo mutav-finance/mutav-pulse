@@ -101,10 +101,93 @@ fn rebalance_retains_liquid_buffer() {
 }
 
 #[test]
+fn rebalance_is_idempotent() {
+    // Regression for the buffer-drain bug (#30): the buffer is a fraction of
+    // TOTAL assets and rebalance is idempotent — repeated calls must HOLD the
+    // buffer at target, not decay it toward 0.
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let s1 = add_mock(&c, 10_000);
+    c.vault.set_min_liquid_buffer_bps(&2_000); // 20% of total
+    c.vault.rebalance();
+    assert_eq!(c.vault.available_held(), 200);
+    assert_eq!(s1.balance(), 800);
+    // Second rebalance must be a no-op (NOT deploy another 80% of the 200 idle).
+    c.vault.rebalance();
+    assert_eq!(c.vault.available_held(), 200);
+    assert_eq!(s1.balance(), 800);
+}
+
+#[test]
+fn rebalance_divests_to_target() {
+    // Raising the buffer above current idle must pull funds BACK from strategies.
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let s1 = add_mock(&c, 10_000);
+    c.vault.rebalance(); // 0% buffer → deploy everything
+    assert_eq!(s1.balance(), 1_000);
+    assert_eq!(c.vault.available_held(), 0);
+    // Now require a 30% idle buffer → rebalance must divest 300 back to the vault.
+    c.vault.set_min_liquid_buffer_bps(&3_000);
+    c.vault.rebalance();
+    assert_eq!(c.vault.available_held(), 300);
+    assert_eq!(s1.balance(), 700);
+}
+
+#[test]
+fn target_idle_view_tracks_total_assets() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    c.vault.set_min_liquid_buffer_bps(&2_500); // 25%
+    assert_eq!(c.vault.target_idle(), 250);
+    // Anchored to TOTAL assets (cash + strategies), not just idle.
+    let _s1 = add_mock(&c, 10_000);
+    c.vault.rebalance();
+    assert_eq!(c.vault.total_assets(), 1_000);
+    assert_eq!(c.vault.target_idle(), 250);
+    assert_eq!(c.vault.available_held(), 250);
+}
+
+#[test]
+fn rebalance_respects_max_debt_cap() {
+    // Two equal-weight strategies, 0% buffer → each would target 500. Cap A at
+    // 30% of total (300); the 200 that can't go to A stays idle (uncapped overflow).
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    let s_a = add_mock(&c, 5_000);
+    let s_b = add_mock(&c, 5_000);
+    c.vault.set_strategy_max_debt_bps(&s_a.address, &3_000); // 30% of total = 300
+    c.vault.rebalance();
+    assert_eq!(s_a.balance(), 300); // capped
+    assert_eq!(s_b.balance(), 500); // weighted target
+    assert_eq!(c.vault.available_held(), 200); // capped overflow stays idle
+    assert_eq!(c.vault.total_assets(), 1_000);
+}
+
+#[test]
 fn set_buffer_rejects_above_100pct() {
     let c = setup();
     assert!(c.vault.try_set_min_liquid_buffer_bps(&10_001).is_err());
     assert!(c.vault.try_set_min_liquid_buffer_bps(&10_000).is_ok()); // boundary ok
+}
+
+#[test]
+fn set_strategy_max_debt_bps_rejects_above_100pct() {
+    let c = setup();
+    let s1 = add_mock(&c, 10_000);
+    assert!(c.vault.try_set_strategy_max_debt_bps(&s1.address, &10_001).is_err());
+    assert!(c.vault.try_set_strategy_max_debt_bps(&s1.address, &10_000).is_ok()); // boundary ok
+    // Default (unset) is uncapped (100%).
+    let s2 = add_mock(&c, 10_000);
+    assert_eq!(c.vault.strategy_max_debt_bps(&s2.address), 10_000);
 }
 
 #[test]
