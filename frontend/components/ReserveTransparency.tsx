@@ -204,22 +204,7 @@ export function ReserveTransparency({
   const body = (
     <>
       {/* ── Header: compact (embedded) or full page title (standalone) ─── */}
-      {embedded ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "16px",
-            marginBottom: "20px",
-          }}
-        >
-          <p className="font-body" style={LABEL}>
-            Reserve overview
-          </p>
-          {refreshControl}
-        </div>
-      ) : (
+      {embedded ? null : (
         <div
           style={{
             display: "flex",
@@ -284,22 +269,27 @@ export function ReserveTransparency({
       <div
         style={{
           marginBottom: "16px",
-          paddingTop: "4px",
-          borderTop: "1px solid var(--color-border)",
+          paddingTop: embedded ? undefined : "4px",
+          borderTop: embedded ? undefined : "1px solid var(--color-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "24px",
+          flexWrap: "wrap",
         }}
       >
-        <p className="font-body" style={{ ...LABEL, margin: "16px 0 4px" }}>
-          {reserve.currency}
-          {reserve.tag ? ` (${reserve.tag})` : ""} RESERVE · TESTNET LIVE DETAIL
-        </p>
-        <p
-          className="font-body"
-          style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
-        >
-          On-chain metrics for the deployed {reserve.currency} reserve —{" "}
-          {reserve.underlying}. Other currencies share this contract shape,
-          pegged to their own underlying and default market.
-        </p>
+        <div style={{ maxWidth: embedded ? "50%" : undefined, minWidth: embedded ? "240px" : undefined }}>
+          <p className="font-body" style={{ ...LABEL, margin: embedded ? "0 0 4px" : "16px 0 4px" }}>
+            {reserve.currency} RESERVE OVERVIEW
+          </p>
+          <p
+            className="font-body"
+            style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
+          >
+            On-chain metrics for the deployed {reserve.currency} reserve.
+          </p>
+        </div>
+        {embedded && refreshControl}
       </div>
 
       {/* ── Solvency chip ─────────────────────────────────────────────── */}

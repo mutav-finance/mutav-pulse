@@ -79,15 +79,16 @@ export default function ReserveHub() {
                 margin: "0 0 6px",
               }}
             >
-              {reserve.name}
+              Mutav Pulse Protocol
               {" · "}
-              <span style={{ color: "var(--color-accent)" }}>VERIFIED</span>
+              <span style={{ color: "var(--color-accent)" }}>TESTNET</span>
             </p>
             <h1
               className="font-display"
               style={{
                 fontSize: "28px",
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.01em",
+                textTransform: "uppercase",
                 margin: 0,
                 color: "var(--color-text)",
               }}
@@ -103,7 +104,7 @@ export default function ReserveHub() {
                 lineHeight: 1.5,
               }}
             >
-              {reserve.underlying}
+              {reserve.underlying.replace(" · stablecoin DeFi (DeFindex)", " (Stablecoin DeFi · DeFindex)")}
             </p>
           </div>
 
