@@ -14,9 +14,15 @@ pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 // for period_secs * months_covered). Without an explicit extend_ttl they decay to
 // the default min_persistent_entry_ttl and archive — which traps the lifecycle
 // reads behind policy.coverage_required / cover_default / pay_premium (an archived
-// entry needs a paid RestoreFootprint before it is readable). We size the entry's
-// TTL to its own coverage span on every write AND on the lifecycle read so a
-// guarantee touched by the premium/default cadence never archives mid-coverage.
+// entry needs a paid RestoreFootprint before it is readable). Archival protection
+// is provided by the WRITE paths ONLY: put() sizes the entry's TTL to its own full
+// coverage span on every write, and every policy lifecycle mutation re-put()s the
+// full struct (sign_guarantee / pay_premium / cover_default / settle_guarantee),
+// re-extending the TTL. The premium cadence (~period_secs) is far inside the span
+// TTL, so write-path re-extension covers the whole window; a guarantee that goes a
+// whole span with zero premiums has already lapsed (paid_until <= now → excluded by
+// coverage_required) so its archival is harmless. get() does NOT extend (re-audit
+// H2: it is a pure read — a read-path bump cost O(active) writes per solvency view).
 
 /// Stellar ledgers close on roughly a 5–6s cadence. Dividing the wall-clock span
 /// (seconds) by 5 yields MORE ledgers than a 6s assumption would — i.e. we
@@ -199,22 +205,15 @@ impl RegistryTrait for Registry {
     }
 
     fn get(e: Env, id: u32) -> Result<Guarantee, RegistryError> {
-        // H6: the lifecycle read path (behind policy.coverage_required /
-        // cover_default / pay_premium / is_current). Re-extend on the Some branch,
-        // sized off the loaded guarantee's own span, so a guarantee whose coverage
-        // outruns one window stays live each time a premium/default touches it.
-        // Extend ONLY on Some: a missing id stays a cheap typed error and is never
-        // materialized into a write. (Side effect: this turns get — and the
-        // policy view methods behind it — into a read-WRITE in simulation; flagged
-        // to the SDK/frontend team.)
+        // H2 (re-audit): get() is a PURE read — NO extend_ttl. policy.coverage_required
+        // loops get over active_ids, so a read-path bump cost O(active) storage WRITES
+        // per solvency "view" and turned get / coverage_required / is_current /
+        // guarantee into read-WRITEs under SDK/frontend simulate. Archival protection
+        // is provided by the WRITE paths only: put() re-extends to the full coverage
+        // span on every write, and every policy lifecycle mutation re-put()s the full
+        // struct (see the H6 banner above).
         match e.storage().persistent().get::<_, Guarantee>(&DataKey::Guarantee(id)) {
-            Some(g) => {
-                let ttl = guarantee_ttl_ledgers(g.period_secs, g.months_covered);
-                e.storage()
-                    .persistent()
-                    .extend_ttl(&DataKey::Guarantee(id), ttl, ttl);
-                Ok(g)
-            }
+            Some(g) => Ok(g),
             None => Err(RegistryError::GuaranteeNotFound),
         }
     }
