@@ -1,5 +1,5 @@
 /**
- * lib/onramp.ts — Testnet on-ramp helpers (trustline + faucet)
+ * lib/faucet.ts — Testnet faucet helpers (trustline + faucet)
  *
  * TESTNET ONLY. These exist because our demo USDC is a mock classic-asset SAC
  * that testers can't otherwise acquire. On mainnet users hold real USDC, so the
@@ -37,15 +37,37 @@ export function addTrustline(address: string): Promise<string> {
 }
 
 /**
- * Call the on-chain faucet to drip the fixed demo amount to `address`.
+ * Call an on-chain faucet contract to drip its fixed demo amount to `address`.
  * Requires an existing trustline (reverts otherwise) and the connected wallet
- * authorizing the call.
+ * authorizing the call. Shared by the USDC and cBRL faucets.
  */
-export async function dripFaucet(address: string): Promise<string> {
-  const client = new FaucetClient(makeWriterOpts(address, config.contracts.faucet));
+async function dripFrom(faucetId: string, address: string): Promise<string> {
+  const client = new FaucetClient(makeWriterOpts(address, faucetId));
   const tx = await client.drip({ to: address });
   const sent = await tx.signAndSend();
   const hash = sent.sendTransactionResponse?.hash;
   if (!hash) throw new Error("faucet drip did not return a hash");
   return hash;
+}
+
+/** Drip demo USDC from the USDC faucet. */
+export function dripFaucet(address: string): Promise<string> {
+  return dripFrom(config.contracts.faucet, address);
+}
+
+// ── cBRL faucet (BRL-native MBRL reserve) — same trustline+faucet shape ──────
+
+/** Read the connected account's cBRL trustline + balance from Horizon. */
+export function getCbrlInfo(address: string): Promise<AssetInfo> {
+  return readAssetInfo(address, config.cbrl.code, config.cbrl.issuer);
+}
+
+/** Build + sign a `change_trust` establishing a cBRL trustline. */
+export function addCbrlTrustline(address: string): Promise<string> {
+  return addTrustlineFor(address, new Asset(config.cbrl.code, config.cbrl.issuer));
+}
+
+/** Drip demo cBRL from the cBRL faucet. */
+export function dripCbrlFaucet(address: string): Promise<string> {
+  return dripFrom(config.contracts.cbrlFaucet, address);
 }
