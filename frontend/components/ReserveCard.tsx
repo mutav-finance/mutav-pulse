@@ -11,6 +11,7 @@
  */
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { standardProductEconomics } from "@/lib/economics";
 import { fmtPct } from "@/lib/format";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
@@ -26,7 +27,10 @@ export function ReserveCard({
   aum?: string;
 }) {
   const live = reserve.status === "live";
-  const econ = standardProductEconomics(reserve.assumptions);
+  const econ = useMemo(
+    () => standardProductEconomics(reserve.assumptions),
+    [reserve.assumptions],
+  );
 
   const card = (
     <div

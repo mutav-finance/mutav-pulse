@@ -13,7 +13,7 @@
 import { Asset } from "@stellar/stellar-sdk";
 import { Client as FaucetClient } from "faucet";
 import { config } from "./config";
-import { makeWriterOpts } from "./wallet";
+import { makeWriterOpts, submit } from "./wallet";
 import { readAssetInfo, addTrustlineFor, type AssetInfo } from "./trustline";
 
 /** @deprecated alias kept for existing imports — use AssetInfo from lib/trustline. */
@@ -44,10 +44,7 @@ export function addTrustline(address: string): Promise<string> {
 async function dripFrom(faucetId: string, address: string): Promise<string> {
   const client = new FaucetClient(makeWriterOpts(address, faucetId));
   const tx = await client.drip({ to: address });
-  const sent = await tx.signAndSend();
-  const hash = sent.sendTransactionResponse?.hash;
-  if (!hash) throw new Error("faucet drip did not return a hash");
-  return hash;
+  return submit(tx);
 }
 
 /** Drip demo USDC from the USDC faucet. */

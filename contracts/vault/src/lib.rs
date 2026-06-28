@@ -97,20 +97,20 @@ impl Vault {
         e.storage().instance().set(&DataKey::MinLiquidBufferBps, &bps);
     }
 
+    /// `total × bps / 10_000`, floored — the basis-point primitive behind every
+    /// buffer/cap computation in the vault. Floor keeps the retained buffer from
+    /// over-reserving (Yearn-v3 total-anchored idle); BPS_DENOM (10_000) is a
+    /// non-zero constant. Value-identical to the prior truncating `/` for
+    /// non-negative operands; routed through the audited primitive for i128
+    /// overflow-safety.
+    fn bps_of(e: &Env, total: i128, bps: i128) -> i128 {
+        mul_div_with_rounding(e, total, bps, BPS_DENOM, Rounding::Floor)
+    }
+
     /// Target idle cash retained as the liquid buffer: `total_assets × bps`.
     /// The surplus above this is what `rebalance` deploys across strategies.
     pub fn target_idle(e: &Env) -> i128 {
-        // Floor keeps the retained buffer from over-reserving (Yearn-v3
-        // total-anchored idle). BPS_DENOM (10_000) is a non-zero constant.
-        // Value-identical to the prior truncating `/` for non-negative operands;
-        // routed through the audited primitive for i128 overflow-safety.
-        mul_div_with_rounding(
-            e,
-            Self::total_assets(e),
-            Self::min_liquid_buffer_bps(e) as i128,
-            BPS_DENOM,
-            Rounding::Floor,
-        )
+        Self::bps_of(e, Self::total_assets(e), Self::min_liquid_buffer_bps(e) as i128)
     }
 
     /// Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
@@ -148,13 +148,7 @@ impl Vault {
         } else {
             0
         };
-        let cap = mul_div_with_rounding(
-            e,
-            total,
-            Self::strategy_max_debt_bps_inner(e, &s.address) as i128,
-            BPS_DENOM,
-            Rounding::Floor,
-        );
+        let cap = Self::bps_of(e, total, Self::strategy_max_debt_bps_inner(e, &s.address) as i128);
         if target > cap {
             target = cap;
         }
@@ -172,6 +166,22 @@ impl Vault {
         e.storage()
             .instance()
             .extend_ttl(MAX_ENTRY_TTL / 2, MAX_ENTRY_TTL);
+    }
+
+    /// Reentrancy guard shared by every adapter-callout money path (`rebalance`,
+    /// `process_redemptions`, `disburse`, `collect_fee`). `acquire_lock` traps on
+    /// a re-entrant call; `release_lock` clears the flag. Reuses DataKey::Locked
+    /// (layout-safe in-place upgrade). Centralized so a future money path cannot
+    /// silently omit the guard.
+    fn acquire_lock(e: &Env) {
+        assert!(
+            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
+            "reentrant call"
+        );
+        e.storage().instance().set(&DataKey::Locked, &true);
+    }
+    fn release_lock(e: &Env) {
+        e.storage().instance().set(&DataKey::Locked, &false);
     }
     fn token_client(e: &Env) -> token::TokenClient<'_> {
         token::TokenClient::new(e, &Self::query_asset(e))
@@ -191,11 +201,18 @@ impl Vault {
     pub fn strategies(e: &Env) -> Vec<StrategyAlloc> {
         e.storage().instance().get(&DataKey::Strategies).unwrap()
     }
-    fn strategies_balance(e: &Env) -> i128 {
+    /// Sum of strategy `balance()` across the book. `stable_only` skips volatile
+    /// strategies (the solvency-relevant subset); `false` totals every strategy.
+    fn sum_strategy_balance(e: &Env, stable_only: bool) -> i128 {
         let mut total = 0i128;
-        for s in Self::strategies(e).iter() { total += StrategyClient::new(e, &s.address).balance(); }
+        for s in Self::strategies(e).iter() {
+            if !stable_only || !s.volatile {
+                total += StrategyClient::new(e, &s.address).balance();
+            }
+        }
         total
     }
+    fn strategies_balance(e: &Env) -> i128 { Self::sum_strategy_balance(e, false) }
 
     /// Rebalance strategy allocations toward target — idempotent and bidirectional.
     ///
@@ -219,24 +236,14 @@ impl Vault {
     pub fn rebalance(e: &Env) {
         Self::admin(e).require_auth();
         // Reentrancy guard (M2): divest calls out to adapters; shared with process_redemptions.
-        assert!(
-            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
-            "reentrant call"
-        );
-        e.storage().instance().set(&DataKey::Locked, &true);
+        Self::acquire_lock(e);
 
         // Snapshot once → idempotent. total/target_idle exclude reserved_for_claims.
         let total = Self::total_assets(e);
         // Off the single `total` snapshot (NOT Self::target_idle, which re-reads
-        // total_assets) to preserve the idempotency contract above. Same Floor /
-        // overflow-safe primitive as target_idle.
-        let target_idle = mul_div_with_rounding(
-            e,
-            total,
-            Self::min_liquid_buffer_bps(e) as i128,
-            BPS_DENOM,
-            Rounding::Floor,
-        );
+        // total_assets) to preserve the idempotency contract above. Same floored
+        // `bps_of` primitive as target_idle, fed the frozen snapshot.
+        let target_idle = Self::bps_of(e, total, Self::min_liquid_buffer_bps(e) as i128);
         let deployable_total = if total > target_idle { total - target_idle } else { 0 };
         let list = Self::strategies(e);
         let total_weight: i128 = list.iter().map(|s| s.weight_bps as i128).sum();
@@ -291,7 +298,7 @@ impl Vault {
             }
         }
 
-        e.storage().instance().set(&DataKey::Locked, &false);
+        Self::release_lock(e);
     }
     pub fn remove_strategy(e: &Env, address: Address) {
         Self::admin(e).require_auth();
@@ -538,11 +545,7 @@ impl Vault {
     pub fn process_redemptions(e: &Env, max_batch: u32) {
         Self::admin(e).require_auth();
         // Reentrancy guard (M2): `ensure_liquidity` calls out to adapters.
-        assert!(
-            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
-            "reentrant call"
-        );
-        e.storage().instance().set(&DataKey::Locked, &true);
+        Self::acquire_lock(e);
         Self::bump_instance(e);
 
         let pending = Self::pending_requests(e);
@@ -609,7 +612,7 @@ impl Vault {
             }
         }
         e.storage().instance().set(&DataKey::PendingRequests, &still_pending);
-        e.storage().instance().set(&DataKey::Locked, &false);
+        Self::release_lock(e);
     }
 
     pub fn claim(e: &Env, id: u32) {
@@ -644,11 +647,7 @@ impl Vault {
 
     /// Internal: solvency-relevant assets (cash + stable strategies).
     fn stable_assets_inner(e: &Env) -> i128 {
-        let mut total = Self::available_held(e);
-        for s in Self::strategies(e).iter() {
-            if !s.volatile { total += StrategyClient::new(e, &s.address).balance(); }
-        }
-        total
+        Self::available_held(e) + Self::sum_strategy_balance(e, true)
     }
 }
 
@@ -671,11 +670,7 @@ impl VaultTrait for Vault {
         // paths. `disburse` takes owned `e: Env`, so use `&e` for storage()
         // (matches Vault::stable_assets_inner(&e) below). Additive: reuses the
         // existing DataKey::Locked bool — layout-safe in-place upgrade().
-        assert!(
-            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
-            "reentrant call"
-        );
-        e.storage().instance().set(&DataKey::Locked, &true);
+        Vault::acquire_lock(&e);
         // WITNESS-ASSERTED SOLVENCY (the redesign's #38 structural enforcement,
         // replacing the old `TODO(solvency-oracle)` call-ordering convention):
         // `coverage_after` is the policy-attested post-payout floor — the policy
@@ -702,7 +697,7 @@ impl VaultTrait for Vault {
         assert!(stable_pre - amount >= coverage_after, "disburse breaches solvency");
         Vault::ensure_liquidity(&e, amount);
         Vault::token_client(&e).transfer(&e.current_contract_address(), &to, &amount);
-        e.storage().instance().set(&DataKey::Locked, &false);
+        Vault::release_lock(&e);
     }
 
     fn collect_fee(e: Env, from: Address, amount: i128) {
@@ -718,15 +713,11 @@ impl VaultTrait for Vault {
         // disburse. The guard is added anyway for uniform mutual exclusion across
         // ALL callout paths. Additive (reuses DataKey::Locked); behavior-preserving
         // (no current caller re-enters).
-        assert!(
-            !e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false),
-            "reentrant call"
-        );
-        e.storage().instance().set(&DataKey::Locked, &true);
+        Vault::acquire_lock(&e);
         Vault::token_client(&e).transfer(&from, e.current_contract_address(), &amount);
         let income = Vault::fee_income(&e) + amount;
         e.storage().instance().set(&DataKey::FeeIncome, &income);
-        e.storage().instance().set(&DataKey::Locked, &false);
+        Vault::release_lock(&e);
     }
 
     fn stable_assets(e: Env) -> i128 {

@@ -16,6 +16,7 @@
  */
 
 import { fmtFiat, fmtBps, truncAddr, type Money } from "@/lib/format";
+import { guaranteeExposure } from "@/lib/economics";
 import { Mono } from "@/components/Mono";
 import type { Guarantee } from "policy";
 
@@ -190,14 +191,10 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
               active,
             } = guarantee;
 
-            // Two-leg remaining exposure:
-            //   DEFAULT leg: monthly × (months_covered − months_used)
-            //   EXIT leg:    monthly × exit_months − exit_used (clamped ≥ 0)
-            const monthsRemaining = Math.max(0, months_covered - months_used);
-            const defaultRemaining = BigInt(monthsRemaining) * monthly_amount;
+            // EXIT-leg cap is shown per row; total two-leg remaining exposure
+            // comes from the shared model helper (mirrors registry::contribution).
             const exitCap = BigInt(exit_months) * monthly_amount;
-            const exitRemaining = exitCap > exit_used ? exitCap - exit_used : 0n;
-            const exposureStroops = defaultRemaining + exitRemaining;
+            const exposureStroops = guaranteeExposure(guarantee);
 
             const rowBg =
               i % 2 === 0

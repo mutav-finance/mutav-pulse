@@ -139,6 +139,19 @@ export function extractHash(sent: {
   return hash;
 }
 
+/**
+ * Assemble-tail shared by every binding write helper (lib/tx, lib/admin-tx,
+ * lib/faucet): sign + submit the assembled transaction and return the confirmed
+ * hash. Structural over the binding's AssembledTransaction so vault / policy /
+ * faucet clients all satisfy it.
+ */
+export async function submit(tx: {
+  signAndSend: () => Promise<Parameters<typeof extractHash>[0]>;
+}): Promise<string> {
+  const sent = await tx.signAndSend();
+  return extractHash(sent);
+}
+
 // ─── signTransaction (binding-compatible) ────────────────────────────────────
 
 /**
@@ -170,8 +183,12 @@ export function makeSignTransaction(
 
 let _rpcServer: StellarRpc.Server | undefined;
 
-/** Lazy getter — avoids module-scope instantiation on server-side imports. */
-function rpcServer(): StellarRpc.Server {
+/**
+ * Lazy getter for the shared Soroban RPC Server — avoids module-scope
+ * instantiation on server-side imports. Reused by the classic-op helpers
+ * (lib/trustline, lib/buy-tesouro) so they don't each construct their own.
+ */
+export function rpcServer(): StellarRpc.Server {
   if (!_rpcServer) {
     _rpcServer = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
   }

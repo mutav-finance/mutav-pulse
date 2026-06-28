@@ -16,7 +16,7 @@
 
 import { Client as VaultClient } from "vault";
 import type { ReserveContracts } from "./contracts";
-import { makeWriterOpts, extractHash } from "./wallet";
+import { makeWriterOpts, submit } from "./wallet";
 
 /** Build a vault client bound to the caller's address, sign fn, and vault id. */
 function vaultWriter(address: string, vaultId: string): VaultClient {
@@ -44,8 +44,7 @@ export async function deposit(
     from,
     operator: from,
   });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Request a redemption — escrows `shares` and queues a redemption request. */
@@ -56,8 +55,7 @@ export async function requestRedeem(
 ): Promise<string> {
   const client = vaultWriter(owner, contracts.vault);
   const tx = await client.request_redeem({ owner, shares });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Claim a fulfilled redemption request — releases the underlying to the owner. */
@@ -68,8 +66,7 @@ export async function claim(
 ): Promise<string> {
   const client = vaultWriter(caller, contracts.vault);
   const tx = await client.claim({ id: Number(id) });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Cancel an unfulfilled redemption request — returns escrowed shares. */
@@ -80,6 +77,5 @@ export async function cancelRedeem(
 ): Promise<string> {
   const client = vaultWriter(caller, contracts.vault);
   const tx = await client.cancel_redeem({ id: Number(id) });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }

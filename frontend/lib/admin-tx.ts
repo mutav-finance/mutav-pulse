@@ -14,7 +14,8 @@
 import { Client as PolicyClient } from "policy";
 import { Client as VaultClient } from "vault";
 import type { ReserveContracts } from "./contracts";
-import { makeWriterOpts, extractHash } from "./wallet";
+import { makeWriterOpts, submit } from "./wallet";
+import { STANDARD_PRODUCT } from "./economics";
 
 // ─── Client factories (bound to caller + sign fn + reserve contract id) ───────
 
@@ -41,7 +42,7 @@ export async function signGuarantee(
   monthsCovered: number,
   feeBps: number,
   periodSecs: bigint,
-  exitMonths: number = 6,
+  exitMonths: number = STANDARD_PRODUCT.exitMonths,
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.sign_guarantee({
@@ -52,8 +53,7 @@ export async function signGuarantee(
     fee_bps: feeBps,
     period_secs: periodSecs,
   });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Pay the next fee period for a guarantee (advances `paid_until`). */
@@ -64,8 +64,7 @@ export async function payFee(
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.pay_fee({ payer: caller, id });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /**
@@ -79,8 +78,7 @@ export async function coverDefault(
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.cover_default({ id });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /**
@@ -96,8 +94,7 @@ export async function coverExit(
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.cover_exit({ id, amount });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Settle / close a guarantee. Admin only. */
@@ -108,8 +105,7 @@ export async function settleGuarantee(
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.settle_guarantee({ id });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 // ─── Vault write helpers ─────────────────────────────────────────────────────
@@ -121,8 +117,7 @@ export async function rebalance(
 ): Promise<string> {
   const client = vaultWriter(caller, contracts.vault);
   const tx = await client.rebalance();
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Process the redemption queue (up to max_batch entries). Admin only. */
@@ -133,8 +128,7 @@ export async function processRedemptions(
 ): Promise<string> {
   const client = vaultWriter(caller, contracts.vault);
   const tx = await client.process_redemptions({ max_batch: maxBatch });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Add a yield strategy to the vault's allocator. Admin only. */
@@ -151,8 +145,7 @@ export async function addStrategy(
     weight_bps: weightBps,
     volatile,
   });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }
 
 /** Remove a yield strategy from the vault's allocator. Admin only. */
@@ -163,6 +156,5 @@ export async function removeStrategy(
 ): Promise<string> {
   const client = vaultWriter(caller, contracts.vault);
   const tx = await client.remove_strategy({ address });
-  const sent = await tx.signAndSend();
-  return extractHash(sent);
+  return submit(tx);
 }

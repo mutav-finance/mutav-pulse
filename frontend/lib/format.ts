@@ -2,7 +2,11 @@ export const STROOP_SCALE = 10_000_000n;
 export const STROOP_SCALE_NUM = 1e7;
 
 export function errMsg(e: unknown, fallback = "Transaction failed"): string {
-  return e instanceof Error ? e.message : fallback;
+  if (e instanceof Error) return e.message;
+  // Soroban contracts revert with bare strings (e.g. "invalid guarantee ID"),
+  // so surface those verbatim rather than the generic fallback.
+  if (typeof e === "string") return e;
+  return fallback;
 }
 
 export function fromStroops(v: bigint): number {
@@ -92,6 +96,10 @@ export function fmtSignedPct(v: number): string {
 }
 export function fmtShares(v: bigint): string {
   return (v / STROOP_SCALE).toLocaleString("en-US");
+}
+/** Share balance to 4 dp ("1,234.5678") — the deposit/redeem share readouts. */
+export function fmtShares4(v: bigint): string {
+  return fromStroops(v).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 }
 export function truncAddr(a: string): string {
   return a.length > 10 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a;

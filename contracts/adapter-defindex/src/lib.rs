@@ -200,7 +200,11 @@ impl Strategy for AdapterDefindex {
         // Read df_shares once; derive value inline to avoid a redundant cross-contract read.
         let shares = AdapterDefindex::df_shares(&e);
         if shares <= 0 { return 0; }
-        let value = AdapterDefindex::first_amount(&e, &AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&shares));
+        // Build the DeFindex client once and reuse it across the three preview/
+        // withdraw calls below (mirrors `invest`); each rebuild re-read the Vault
+        // instance key.
+        let dfx = AdapterDefindex::dfx(&e);
+        let value = AdapterDefindex::first_amount(&e, &dfx.get_asset_amounts_per_shares(&shares));
         if value <= 0 { return 0; }
         // amount * shares is i128; overflows only above ~1e19 raw units — unreachable at USDC 7-decimal scale.
         let burn = if amount >= value { shares } else { (amount * shares + value - 1) / value };
@@ -215,9 +219,9 @@ impl Strategy for AdapterDefindex {
         // preview and the settled withdraw are NOT yet characterised — this floor is a
         // conservative SAFETY DEFAULT (0.5% by default), not a mainnet-certified bound.
         // Tune via the admin `set_max_slippage_bps` setter once real behavior is confirmed.
-        let expected_out = AdapterDefindex::first_amount(&e, &AdapterDefindex::dfx(&e).get_asset_amounts_per_shares(&burn));
+        let expected_out = AdapterDefindex::first_amount(&e, &dfx.get_asset_amounts_per_shares(&burn));
         let min_out = AdapterDefindex::slippage_floor(&e, expected_out);
-        let out = AdapterDefindex::dfx(&e).withdraw(&burn, &vec![&e, min_out], &e.current_contract_address());
+        let out = dfx.withdraw(&burn, &vec![&e, min_out], &e.current_contract_address());
         let received = AdapterDefindex::first_amount(&e, &out);
         token::TokenClient::new(&e, &AdapterDefindex::underlying_addr(&e))
             .transfer(&e.current_contract_address(), &to, &received);

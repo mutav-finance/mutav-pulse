@@ -275,13 +275,16 @@ impl RegistryTrait for Registry {
             // re-puts of present active ids and deactivations take the other branches.
             active.push_back(g.id);
         } else if !g.active && present {
-            let mut next = Vec::<u32>::new(&e);
+            // Drop g.id from the active list. Named `remaining` (not `next`) so it
+            // is not confused with the `next` NextId boundary read above, which is
+            // still live below for the RawCoverage delta.
+            let mut remaining = Vec::<u32>::new(&e);
             for x in active.iter() {
                 if x != g.id {
-                    next.push_back(x);
+                    remaining.push_back(x);
                 }
             }
-            active = next;
+            active = remaining;
         }
         e.storage().instance().set(&DataKey::ActiveIds, &active);
         e.storage().persistent().set(&DataKey::Guarantee(g.id), &g);
@@ -319,10 +322,10 @@ impl RegistryTrait for Registry {
         // is provided by the WRITE paths only: put() re-extends to the full coverage
         // span on every write, and every policy lifecycle mutation re-put()s the full
         // struct (see the H6 banner above).
-        match e.storage().persistent().get::<_, Guarantee>(&DataKey::Guarantee(id)) {
-            Some(g) => Ok(g),
-            None => Err(RegistryError::GuaranteeNotFound),
-        }
+        e.storage()
+            .persistent()
+            .get::<_, Guarantee>(&DataKey::Guarantee(id))
+            .ok_or(RegistryError::GuaranteeNotFound)
     }
 
     fn active_ids(e: Env) -> Vec<u32> {

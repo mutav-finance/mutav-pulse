@@ -14,12 +14,7 @@
  */
 
 import { useWallet } from "./WalletProvider";
-
-// Truncate a Stellar G-address to "G1AB…XY4Z"
-function truncateAddress(addr: string): string {
-  if (addr.length <= 8) return addr;
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-}
+import { truncAddr } from "@/lib/format";
 
 export function ConnectButton() {
   const { address, connecting, error, connect, disconnect } = useWallet();
@@ -49,7 +44,7 @@ export function ConnectButton() {
           aria-label={`Connected wallet: ${address}`}
           title={address}
         >
-          {truncateAddress(address)}
+          {truncAddr(address)}
         </span>
 
         {/* Disconnect */}

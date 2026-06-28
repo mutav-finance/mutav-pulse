@@ -10,14 +10,13 @@
  */
 
 import {
-  rpc as StellarRpc,
   TransactionBuilder,
   Operation,
   Asset,
   BASE_FEE,
 } from "@stellar/stellar-sdk";
 import { config } from "./config";
-import { signAndSubmit } from "./wallet";
+import { signAndSubmit, rpcServer } from "./wallet";
 import { parseToStroops, stroopsToInput } from "./format";
 import {
   readAssetInfo,
@@ -113,8 +112,7 @@ export async function buyTesouro(
   if (minStroops < 1n) minStroops = 1n;
   const destMin = stroopsToInput(minStroops);
 
-  const server = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
-  const account = await server.getAccount(address);
+  const account = await rpcServer().getAccount(address);
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: config.networkPassphrase,

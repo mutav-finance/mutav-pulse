@@ -27,7 +27,8 @@ import { Mono } from "@/components/Mono";
 import { faucetEnabled, cbrlFaucetEnabled, config } from "@/lib/config";
 import { getUsdcInfo, getCbrlInfo } from "@/lib/faucet";
 import { getTesouroInfo } from "@/lib/buy-tesouro";
-import { fmtNav, fmtFiat, fmtAmount, fmtUnitPrice, fromStroops, errMsg, STROOP_SCALE } from "@/lib/format";
+import { fmtNav, fmtFiat, fmtAmount, fmtUnitPrice, fmtShares4, errMsg } from "@/lib/format";
+import { assetsFor } from "@/lib/economics";
 import type { RedeemRequest } from "vault";
 
 type Tab = "invest" | "withdraw" | "fund";
@@ -137,9 +138,9 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   }, [address, refreshKey, reads, isTesouro, isUsdc, isCbrl]);
 
   const navStr = data.navPerShare > 0n ? fmtNav(data.navPerShare) : "—";
-  const myShares = fromStroops(data.balance).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  const myShares = fmtShares4(data.balance);
   // Position in deposit-token units (exact), then converted to indicative fiat.
-  const positionTokens = data.navPerShare > 0n ? (data.balance * data.navPerShare) / STROOP_SCALE : 0n;
+  const positionTokens = data.navPerShare > 0n ? assetsFor(data.balance, data.navPerShare) : 0n;
   const value = data.navPerShare > 0n ? fmtFiat(positionTokens, reserve) : "—";
   const valueTokens = data.navPerShare > 0n ? fmtAmount(positionTokens, reserve.depositToken) : "—";
   // Show the indicative unit price only when the deposit token isn't fiat-pegged

@@ -10,14 +10,13 @@
  */
 
 import {
-  rpc as StellarRpc,
   TransactionBuilder,
   Operation,
   Asset,
   BASE_FEE,
 } from "@stellar/stellar-sdk";
 import { config } from "./config";
-import { signAndSubmit } from "./wallet";
+import { signAndSubmit, rpcServer } from "./wallet";
 
 export interface AssetInfo {
   /** True when the account holds a trustline to the asset. */
@@ -63,8 +62,7 @@ export async function addTrustlineFor(
   address: string,
   asset: Asset,
 ): Promise<string> {
-  const server = new StellarRpc.Server(config.rpcUrl, { allowHttp: false });
-  const account = await server.getAccount(address);
+  const account = await rpcServer().getAccount(address);
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: config.networkPassphrase,
