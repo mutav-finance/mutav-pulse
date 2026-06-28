@@ -115,7 +115,7 @@ The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6
 MUTAV is built directly against the two sides of the Brazilian rental market it serves:
 
 - **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt an onchain guarantee. -->
-- **Investors (DeFi / yield)** — interviews in progress. <!-- TODO: add findings on appetite for solvency-verifiable rental-guarantee yield. -->
+- **Investors (DeFi / yield)** — the signal so far is clear: for real-world-backed yield, trust hinges on transparency of the backing, not on the APY. The recurring frustration with RWAs is never being able to confirm whether the "real" is actually real. Investors judge a protocol by what they can check themselves (TVL and verified contracts), expect yield to stay realistic (near the ~4% U.S. benchmark, with double-digit APY on a stablecoin a red flag), and accept a lockup when the rationale is clear. This validates MUTAV's bet on onchain-verifiable solvency, makes the solvency gate and contract addresses something to surface rather than bury, and frames the surplus-gated redemption queue as solvency protection.
 
 Full write-ups, methodology, and the investor interview guide are in [`docs/resources/customer-discovery.md`](docs/resources/customer-discovery.md).
 
