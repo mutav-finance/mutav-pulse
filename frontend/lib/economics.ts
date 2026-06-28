@@ -9,7 +9,7 @@
  *
  * The underwriting spread is the protocol's edge over the local risk-free rate; the
  * base `underlyingYield` pegs to the guarantee currency (BRL Selic ~14% vs USD DeFi
- * ~5.5%). See docs/whitepaper.md.
+ * ~5.5%). See docs/concepts/economic-model.md.
  */
 
 import { fromStroops, STROOP_SCALE } from "./format";

@@ -2,7 +2,7 @@
 
 The complete `vault` contract method surface after SEP-0056 conformance, with each
 method's **standard origin** and **implementation source**. For *why* each choice
-was made, see the [decision log](./sep0056-conformance-decisions.md).
+was made, see the [decision log](../../security/testing-and-audits.md).
 
 **Impl approach:** the SEP-0056 surface is **hand-rolled on OZ `Base`** (the share
 token) reusing OZ's audited `mul_div_with_rounding` for the convert/preview math —
@@ -10,7 +10,7 @@ OZ's `FungibleVault` is not used (its `total_assets` is hardcoded to the idle
 balance, incompatible with our strategy allocator). Formulas match OZ's `Vault`
 (`VIRTUAL_OFFSET = 1`); the only divergences are the `total_assets` source (cash +
 strategies) and the disabled synchronous `withdraw`/`redeem` (D2). See the
-[decision log](./sep0056-conformance-decisions.md) for the full rationale.
+[decision log](../../security/testing-and-audits.md) for the full rationale.
 
 **Impl-source legend:** **OZ `Base`** = share-token layer used as-is; **audited
 math** = our logic, but the arithmetic is OZ's audited `mul_div_with_rounding`;

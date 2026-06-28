@@ -70,7 +70,7 @@ Technical depth worth noting:
 - **Fees mint no shares** — they accrue to NAV instead (test: `contracts/vault/src/test.rs`).
 - **Virtual-offset share token** — an anti-inflation (donation-attack) defense on the `MUSD` share token, with a dedicated test.
 
-See [`docs/specs/`](docs/specs/) for the current design specs (two-leg fiança, BRL-native reserve) and [`docs/history/`](docs/history/) for the full build-evolution record (one spec + one plan per phase).
+Full protocol documentation — concepts, contract reference, the security model, and guides — lives in [`docs/`](docs/README.md). The build-evolution history is preserved in the git log.
 
 **Why this matters for Stellar:** Mutav Pulse is a reusable, solvency-gated **RWA vault primitive** on Soroban — the first onchain *fiança* for Brazil's mandatory-guarantee rental market. It brings a real LATAM cash-flow use case onchain and contributes a SEP-0056-aligned, strategy-pluggable vault pattern other builders can fork.
 
@@ -114,7 +114,7 @@ MUTAV is built directly against the two sides of the Brazilian rental market it 
 - **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt an onchain guarantee. -->
 - **Investors (DeFi / yield)** — interviews in progress. <!-- TODO: add findings on appetite for solvency-verifiable rental-guarantee yield. -->
 
-Full write-ups, methodology, and the investor interview guide are in [`docs/customer-discovery.md`](docs/customer-discovery.md).
+Full write-ups, methodology, and the investor interview guide are in [`docs/resources/customer-discovery.md`](docs/resources/customer-discovery.md).
 
 ---
 
@@ -133,7 +133,16 @@ bun install
 bun dev                       # → http://localhost:3000/earn
 ```
 
-Redeploy + reseed from scratch: `bootstrap.sh` deploys + wires every contract; `seed.sh` restores the demo state.
+Redeploy + reseed from scratch: `bootstrap.sh` deploys + wires every contract; `seed.sh` restores the demo state. See the [Quickstart](docs/guides/quickstart.md) and [Deploying & wiring](docs/guides/deploying-and-wiring.md) guides for detail.
+
+## Documentation
+
+Full protocol docs are in [`docs/`](docs/README.md):
+
+- [Overview](docs/overview.md) · [Concepts](docs/concepts/solvency-and-coverage.md) (solvency, coverage, vault, yield) · [Economic model](docs/concepts/economic-model.md)
+- [Guides](docs/guides/quickstart.md) — quickstart, running locally, deploying & wiring
+- [Contract reference](docs/reference/contracts/vault.md) · [Deployments](docs/reference/deployments.md) · [Errors](docs/reference/errors.md)
+- [Security model](docs/security/security-model.md) · [Threat model](docs/security/threat-model.md) · [Testing & audits](docs/security/testing-and-audits.md)
 
 ## Repository layout
 
@@ -142,8 +151,8 @@ contracts/        Soroban smart contracts (Rust workspace)
   vault/  policy/  registry/  interfaces/  strategy/
   adapter-defindex/   mock-strategy/  mock-policy/  mock-defindex/
 frontend/         Next.js 16 investor app + /protocol operator cockpit
-docs/             whitepaper, current specs, SEP-0056 + method-surface references
-docs/history/     superseded design plans/specs (build-evolution record)
+docs/             protocol documentation (overview, concepts, guides, reference, security)
+model/            economic model (mutav_model.py) backing the docs economic-model page
 PRODUCT.md        product brief: users, purpose, design principles
 ```
 

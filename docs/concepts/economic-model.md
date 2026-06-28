@@ -3,7 +3,7 @@
 **Guarantees · Coverage · Fees · Yield · Risk**
 
 **Date:** 2026-06-23 · **Status:** working model (hackathon)
-**Companion model:** [`model/mutav_model.py`](../model/mutav_model.py) — every number in
+**Companion model:** [`model/mutav_model.py`](../../model/mutav_model.py) — every number in
 this document is produced by that script (`python3 model/mutav_model.py`). Re-run to
 regenerate.
 
