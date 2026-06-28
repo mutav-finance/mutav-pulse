@@ -68,3 +68,13 @@ export function addCbrlTrustline(address: string): Promise<string> {
 export function dripCbrlFaucet(address: string): Promise<string> {
   return dripFrom(config.contracts.cbrlFaucet, address);
 }
+
+// ── cTSR faucet (MTESOURO reserve) — same trustline+faucet shape ─────────────
+// The cTSR trustline + balance helpers live in lib/buy-tesouro.ts
+// (getTesouroInfo / addTesouroTrustline), shared with the on-chain swap; here we
+// add only the faucet drip so the MTESOURO Fund tab can offer instant cTSR.
+
+/** Drip demo cTSR from the cTSR (MTESOURO) faucet. */
+export function dripTesouroFaucet(address: string): Promise<string> {
+  return dripFrom(config.contracts.tesouroFaucet, address);
+}

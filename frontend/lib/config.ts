@@ -70,6 +70,10 @@ export const config = {
     // Testnet-only cTSR faucet (the MTESOURO reserve's demo faucet). Mirrors
     // `cbrlFaucet`/`faucet`. Empty until deployed.
     tesouroFaucet: process.env.NEXT_PUBLIC_TESOURO_FAUCET_ID ?? "",
+    // Soroswap AMM Router — backs the "Buy cTSR" swap on the MTESOURO Fund tab
+    // (cUSD→cTSR via the seeded cUSD↔cTSR pair). OPTIONAL — empty disables the
+    // swap UI (the cTSR faucet still works). See lib/buy-tesouro.ts.
+    soroswapRouter: process.env.NEXT_PUBLIC_SOROSWAP_ROUTER_ID ?? "",
   },
   // Classic asset behind the USDC SAC — needed to build the change_trust op and
   // to read the trustline/balance from Horizon.
@@ -77,8 +81,8 @@ export const config = {
     code: process.env.NEXT_PUBLIC_USDC_CODE ?? "USDC",
     issuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? "",
   },
-  // Classic asset behind the TESOURO SAC — the MBRL reserve's deposit token.
-  // Used to build the trustline + the USDC→TESOURO SDEX path payment ("Buy TESOURO").
+  // Classic asset behind the TESOURO SAC — the MTESOURO reserve's deposit token.
+  // Used to build the cTSR trustline + the cUSD→cTSR Soroswap swap ("Buy cTSR").
   tesouro: {
     code: process.env.NEXT_PUBLIC_TESOURO_CODE ?? "TESOURO",
     issuer: process.env.NEXT_PUBLIC_TESOURO_ISSUER ?? "",
@@ -109,8 +113,8 @@ export const contractUrl = (id: string) => `${config.explorerBase}/contract/${id
 export const isTestnet = config.networkPassphrase === Networks.TESTNET;
 
 /**
- * Whether the TESOURO asset is fully configured (issuer present). The MBRL
- * reserve's Buy/trustline flow builds `new Asset("TESOURO", issuer)`, which
+ * Whether the TESOURO asset is fully configured (issuer present). The MTESOURO
+ * reserve's Buy/trustline flow builds `new Asset("cTSR", issuer)`, which
  * throws when the issuer is empty — so the UI gates that action on this flag
  * instead of letting the swap hard-throw at click time.
  */
@@ -156,3 +160,23 @@ export const faucetEnabled = isTestnet && config.contracts.faucet.length > 0;
  */
 export const cbrlFaucetEnabled =
   isTestnet && config.cbrl.issuer.length > 0 && config.contracts.cbrlFaucet.length > 0;
+
+/**
+ * Whether to surface the cTSR testnet faucet (trustline + faucet) for the
+ * MTESOURO reserve. Needs testnet + a configured TESOURO issuer + a deployed
+ * cTSR faucet. This is the instant way for testers to acquire cTSR; the on-chain
+ * swap (BuyTesouro) is the alternative when AMM liquidity exists. Mirrors
+ * `cbrlFaucetEnabled` — `tesouroConfigured` gates the issuer (trustline) presence.
+ */
+export const tesouroFaucetEnabled =
+  isTestnet && tesouroConfigured && config.contracts.tesouroFaucet.length > 0;
+
+/**
+ * Whether the cTSR AMM swap (BuyTesouro) is available — needs testnet + a
+ * configured TESOURO issuer (for the trustline + path) + a Soroswap Router id.
+ * Testnet-gated like `tesouroFaucetEnabled`: cTSR is a testnet demo asset and the
+ * swap path is hardcoded `[cUSD, cTSR]`, so a copied mainnet env must NOT render a
+ * real-funds swap against it. The MTESOURO Fund tab hides the swap card when false.
+ */
+export const tesouroSwapEnabled =
+  isTestnet && tesouroConfigured && config.contracts.soroswapRouter.length > 0;

@@ -87,3 +87,56 @@ stellar contract invoke --id <adapter-id> --source deployer --network testnet \
 ```
 
 The `0.5%` default is conservative, not characterized against real DeFindex fee/rounding behavior — tune it via `set_max_slippage_bps` once that behavior is known.
+
+## Acquiring the deposit token
+
+The vault only ever sees a `deposit` of its underlying token — getting that token into a tester's wallet is an [access-layer](../concepts/funding-and-access.md) concern, handled with **client-signed** transactions *outside* the contracts. Two rails are wired on testnet.
+
+### Faucet (all reserves)
+
+Each reserve has a demo faucet (one `faucet.wasm` instance per token, deployed by `bootstrap.sh`). After establishing a trustline the user calls `drip` to receive a fixed 1,000 units. The frontend shows the faucet when its env var is set and the network is testnet:
+
+| Token | Faucet env var |
+|---|---|
+| cUSD | `NEXT_PUBLIC_FAUCET_ID` |
+| cTSR | `NEXT_PUBLIC_TESOURO_FAUCET_ID` |
+| cBRL | `NEXT_PUBLIC_CBRL_FAUCET_ID` |
+
+### Soroswap swap (cTSR)
+
+The MTESOURO **Fund** tab also offers a **cUSD→cTSR swap** through the Soroswap AMM, so a tester who already holds cUSD can acquire cTSR directly. It needs a seeded cUSD↔cTSR pool plus the router id in env. The vault never swaps — this is a user-signed exchange at the app layer.
+
+Official Soroswap **testnet** contracts (resolve the current ids from <https://docs.soroswap.finance>):
+
+| Contract | Testnet id |
+|---|---|
+| Router | `CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD` |
+| Factory | `CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY` |
+
+**1. Seed the pool** — one-time, signed by the cUSD/cTSR **issuer** (so the desired amounts are minted straight into the pool). `add_liquidity` creates the pair if it doesn't exist; the amounts set the price, so match your indicative cTSR price (~1.22107 cUSD/cTSR) and seed a deep book to keep tester-swap slippage negligible:
+
+```bash
+ROUTER=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
+stellar contract invoke --id "$ROUTER" --source <issuer> --network testnet --send=yes -- \
+  add_liquidity \
+  --token_a <cUSD_SAC> --token_b <cTSR_SAC> \
+  --amount_a_desired 488428000000 --amount_b_desired 400000000000 \
+  --amount_a_min  488000000000 --amount_b_min  399000000000 \
+  --to <issuer> --deadline $(( $(date +%s) + 3600 ))
+```
+
+The reference deploy seeded **48,842.8 cUSD ↔ 40,000 cTSR**, creating pair `CBXLNFIOY5RLLN334TSZ65KIJ4WD7YYLDLJOB624V3TMOGER62F2V6RI`. Verify the quote:
+
+```bash
+stellar contract invoke --id "$ROUTER" --network testnet --source <any> -- \
+  router_get_amounts_out --amount_in 1000000000 --path '["<cUSD_SAC>","<cTSR_SAC>"]'
+# → ["1000000000","814833733"]   (100 cUSD ≈ 81.48 cTSR)
+```
+
+**2. Point the frontend at the router** — add to the deploy record (repo-root `.env.local`) so `make sync-deploy` carries it into `frontend/.env.example`:
+
+```bash
+SOROSWAP_ROUTER=CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD
+```
+
+which surfaces as `NEXT_PUBLIC_SOROSWAP_ROUTER_ID` in the frontend env. The cUSD and cTSR SAC path is derived at runtime from the configured assets, so no extra env is needed. `frontend/lib/buy-tesouro.ts` quotes with `router_get_amounts_out` and swaps with `swap_exact_tokens_for_tokens` (path `[cUSD, cTSR]`, 1% default slippage, 180 s deadline). Leave the router id blank to hide the swap — the faucet still works.

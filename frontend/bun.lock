@@ -14,6 +14,7 @@
         "react": "19.2.4",
         "react-dom": "19.2.4",
         "registry": "file:./bindings/registry",
+        "soroswap-router": "file:./bindings/soroswap-router",
         "strategy": "file:./bindings/strategy",
         "vault": "file:./bindings/vault",
       },
@@ -1649,6 +1650,8 @@
     "socks-proxy-agent": ["socks-proxy-agent@8.0.5", "", { "dependencies": { "agent-base": "^7.1.2", "debug": "^4.3.4", "socks": "^2.8.3" } }, "sha512-HehCEsotFqbPW9sJ8WVYB6UbmIMv7kUUORIF2Nncq4VQvBfNBLibW9YZR5dlYCSUhwcD628pRllm7n+E+YTzJw=="],
 
     "sonic-boom": ["sonic-boom@4.2.1", "", { "dependencies": { "atomic-sleep": "^1.0.0" } }, "sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q=="],
+
+    "soroswap-router": ["soroswap-router@file:bindings/soroswap-router", { "dependencies": { "@stellar/stellar-sdk": "^14.5.0", "buffer": "6.0.3" }, "devDependencies": { "typescript": "^5.6.2" } }],
 
     "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
 

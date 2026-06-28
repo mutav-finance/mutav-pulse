@@ -10,8 +10,8 @@ export interface ReserveContracts {
   registry: string;
 }
 
-/** Shared client options for any contract on this network — one rpc + passphrase. */
-const clientOpts = (contractId: string) => ({
+/** Shared read-client options for any contract on this network — one rpc + passphrase. */
+export const clientOpts = (contractId: string) => ({
   rpcUrl: config.rpcUrl,
   contractId,
   networkPassphrase: config.networkPassphrase,

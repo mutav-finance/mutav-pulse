@@ -67,6 +67,16 @@ canonical contract deterministically derived from that `CODE:ISSUER`.
 | MTESOURO | `cTSR` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
 | MBRL | `cBRL` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
 
+## Platform integrations
+
+Access-layer integrations — **client-signed, outside the vault's custody** (not
+reserve contracts, not on-chain validated here). These improve how an investor
+funds a position; see [funding & access](../concepts/funding-and-access.md).
+
+| Integration | Address | Env var |
+|---|---|---|
+| Soroswap Router (cUSD→cTSR swap) | [`CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD`](https://stellar.expert/explorer/testnet/contract/CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD) | `NEXT_PUBLIC_SOROSWAP_ROUTER_ID` |
+
 ## Notes
 
 - All addresses are **testnet-only**; a redeploy via `bootstrap.sh` changes every
