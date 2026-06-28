@@ -26,16 +26,18 @@ pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 // Persistent Guarantee entries are long-lived (a guarantee's coverage span runs
 // for period_secs * months_covered). Without an explicit extend_ttl they decay to
 // the default min_persistent_entry_ttl and archive — which traps the lifecycle
-// reads behind policy.coverage_required / cover_default / pay_premium (an archived
+// reads behind policy.coverage_required / cover_default / pay_fee (an archived
 // entry needs a paid RestoreFootprint before it is readable). Archival protection
 // is provided by the WRITE paths ONLY: put() sizes the entry's TTL to its own full
 // coverage span on every write, and every policy lifecycle mutation re-put()s the
-// full struct (sign_guarantee / pay_premium / cover_default / settle_guarantee),
-// re-extending the TTL. The premium cadence (~period_secs) is far inside the span
-// TTL, so write-path re-extension covers the whole window; a guarantee that goes a
-// whole span with zero premiums has already lapsed (paid_until <= now → excluded by
-// coverage_required) so its archival is harmless. get() does NOT extend (re-audit
-// H2: it is a pure read — a read-path bump cost O(active) writes per solvency view).
+// full struct (sign_guarantee / pay_fee / cover_default / cover_exit / settle_guarantee),
+// re-extending the TTL. The fee cadence (~period_secs) is far inside the span TTL,
+// so write-path re-extension covers the whole window. A guarantee that misses its
+// fee is in DEFAULT (the fee stream is the default oracle), so the admin re-put()s it
+// via cover_default/cover_exit (or settle_guarantee) — write paths that re-extend the
+// TTL; coverage stays reserved throughout (no time-gate excludes a lapsed guarantee).
+// get() does NOT extend (re-audit H2: it is a pure read — a read-path bump cost
+// O(active) writes per solvency view).
 
 /// Stellar ledgers close on roughly a 5–6s cadence. Dividing the wall-clock span
 /// (seconds) by 5 yields MORE ledgers than a 6s assumption would — i.e. we
@@ -254,7 +256,7 @@ impl RegistryTrait for Registry {
         // monotonic NextId counter. A writer must never fabricate the primary key,
         // so reject any id at-or-beyond the next-to-issue. `>=` (not `>`) also
         // closes the empty-registry id=0 footgun (NextId==0) while still allowing
-        // re-puts of any previously-issued id (pay_premium / cover_default /
+        // re-puts of any previously-issued id (pay_fee / cover_default / cover_exit /
         // settle_guarantee all re-put existing ids, all of which are id < NextId).
         let next: u32 = e.storage().instance().get(&DataKey::NextId).unwrap_or(0);
         if g.id >= next {

@@ -211,7 +211,7 @@ fn no_count_ceiling_issue_past_90() {
 
 // ─────────────────── lapse-flip: fee stream as default oracle ───────────────────
 
-/// cover_default is gated by the grace window, not by "premiums up to date".
+/// cover_default is gated by the grace window, not by "fees up to date".
 /// While the fee is current (now < paid_until + grace) cover_default reverts
 /// "not in default"; once the fee lapses past grace it succeeds and pays the
 /// landlord, decrementing coverage by exactly one monthly.

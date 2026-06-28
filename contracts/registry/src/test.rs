@@ -165,7 +165,7 @@ fn get_does_not_extend_guarantee_ttl() {
 }
 
 /// The WRITE path (`put`, exercised by every policy lifecycle mutation —
-/// sign_guarantee / pay_premium / cover_default / settle_guarantee re-put the full
+/// sign_guarantee / pay_fee / cover_default / cover_exit / settle_guarantee re-put the full
 /// struct) re-extends the Guarantee TTL. After advancing the ledger so the TTL
 /// decays below target, an in-range re-put bumps it back up. This is the archival
 /// defense after get() became pure.
@@ -295,7 +295,7 @@ fn put_rejects_id_on_empty_registry() {
 }
 
 /// Re-puts of an already-issued id must succeed (the `>=` boundary, not `>`).
-/// pay_premium / cover_default / settle_guarantee all re-put existing ids;
+/// pay_fee / cover_default / cover_exit / settle_guarantee all re-put existing ids;
 /// guards against an over-strict regression that would block legitimate updates.
 #[test]
 fn put_allows_reput_of_issued_id() {

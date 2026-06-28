@@ -530,7 +530,7 @@ fn process_redemptions_prices_identically_to_preview_redeem() {
     c.token_admin.mint(&alice, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice); // 1_000 shares
 
-    // Push NAV to a fractional ratio: collect a 333 premium (no shares minted),
+    // Push NAV to a fractional ratio: collect a 333 fee (no shares minted),
     // total_assets = 1_333, supply = 1_000 → shares*assets/supply is non-integer.
     let agency = Address::generate(&c.e);
     c.token_admin.mint(&agency, &1_000);
@@ -589,7 +589,7 @@ fn nav_per_share_unchanged_after_widening() {
     c.vault.deposit(&1_000, &alice, &alice, &alice);
     assert_eq!(c.vault.nav_per_share(), 10_000_000); // unit NAV at 1:1
 
-    // Non-trivial NAV: collect 333 premium → total 1_333, supply 1_000.
+    // Non-trivial NAV: collect 333 fee → total 1_333, supply 1_000.
     let agency = Address::generate(&c.e);
     c.token_admin.mint(&agency, &1_000);
     c.policy.call_collect(&agency, &333);
@@ -1149,7 +1149,7 @@ fn ensure_liquidity_re_reads_held_after_each_divest() {
 /// Guards the process_redemptions per-iteration `ta` hoist: two requests
 /// processed in one batch must each be priced at the NAV in effect at the moment
 /// that request is settled (later requests see post-fulfillment total_assets, not
-/// a stale batch snapshot). With premium-inflated NAV, both redeemers get strictly
+/// a stale batch snapshot). With fee-inflated NAV, both redeemers get strictly
 /// more than their nominal share count and pricing stays monotone per the
 /// shrinking pool.
 #[test]
@@ -1160,7 +1160,7 @@ fn process_redemptions_per_iteration_pricing_unchanged() {
     c.token_admin.mint(&alice, &1_000);
     c.token_admin.mint(&agency, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice);
-    // Inflate NAV via premium (no new shares): total_assets 1_500, supply 1_000.
+    // Inflate NAV via fee (no new shares): total_assets 1_500, supply 1_000.
     c.policy.call_collect(&agency, &500);
     assert_eq!(c.vault.total_assets(), 1_500);
     c.policy.set_coverage(&0); // ample free capital
@@ -1344,12 +1344,12 @@ fn disburse_succeeds_without_reentry() {
     c.vault.rebalance();
 }
 
-/// collect_premium guard (symmetry): the callout is the immutable Underlying SAC
+/// collect_fee guard (symmetry): the callout is the immutable Underlying SAC
 /// pulling funds IN with the effect applied after — not attacker-reachable, so a
-/// true re-entry is not constructible. Assert release-correctness: collect_premium
+/// true re-entry is not constructible. Assert release-correctness: collect_fee
 /// still succeeds and leaves Locked == false.
 #[test]
-fn collect_premium_releases_lock() {
+fn collect_fee_releases_lock() {
     let c = setup();
     let alice = Address::generate(&c.e);
     let agency = Address::generate(&c.e);
@@ -1368,7 +1368,7 @@ fn collect_premium_releases_lock() {
 
 /// Proves the new in-contract Locked assert is load-bearing INDEPENDENT of the
 /// host's direct-frame re-entry check: with Locked pre-set to true (simulating a
-/// callout path mid-execution), disburse and collect_premium must trap on their
+/// callout path mid-execution), disburse and collect_fee must trap on their
 /// own guard. WITHOUT the added assert in disburse, the call would proceed past a
 /// stale lock — so this is the genuine RED for the fix.
 #[test]
