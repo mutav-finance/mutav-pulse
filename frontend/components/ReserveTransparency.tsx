@@ -1,66 +1,53 @@
 "use client";
 
 /**
- * ReserveTransparency — live-detail body for a single reserve.
+ * ReserveTransparency — the reserve hub's story body (fund-detail layout).
  *
- * Layout (top → bottom):
- *   - Header (standalone page title, or a compact label when `embedded`)
- *   - SolvencyChip (invariant: stable_assets >= coverage_required)
- *   - Metric card grid (7 cards, incl. NAV/APY)
- *   - Underwriting economics panel (4 cards + assumptions caption)
- *   - GuaranteeTable (active guarantees from registry)
- *   - VenueDirectory + caption
- *   - VerificationPanel
- *   - Footer: network indicator
+ * Presentational: data + refresh are owned by the hub page via `useReserveData`,
+ * so the refresh control can live up in the page header. This component just
+ * tells the reserve's story in four anchored sections, Goldfinch-Prime style:
  *
- * `embedded`: when true, render the left column of the 2-column hub — no outer
- * <main>, no big page title (the hub header identifies the reserve), just a
- * compact "RESERVE OVERVIEW" label + refresh control above the body.
+ *   Overview  — what the reserve is + headline KPIs + solvency invariant
+ *   Policy    — underwriting: reserve allocation, economics, guarantee book
+ *   Strategy  — yield deployment: strategy allocation + venues
+ *   Contracts — every on-chain contract, described, with explorer links
  *
- * Design: Precision Brutalism, Investidor front (dark/amber).
+ * A sticky sub-nav (scroll-spy) sits under the global nav and tracks the section
+ * in view. Two donuts split the story: the reserve allocation (committed vs
+ * buffer) lives in Policy; the yield-strategy allocation lives in Strategy.
+ *
+ * Design: Precision Brutalism, Investidor front (dark/amber). Brand tokens only,
+ * no rounded corners, no shadows, amber kept scarce (solvency + live state).
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import type { Reads } from "@/lib/contracts";
+import { useEffect, useMemo, useState } from "react";
 import type { Reserve } from "@/lib/reserves";
+import type { ReserveData } from "@/lib/use-reserve-data";
 import { MetricCard } from "@/components/MetricCard";
 import { AllocationDonut } from "@/components/AllocationDonut";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
-import { VerificationPanel } from "@/components/VerificationPanel";
-import { VenueDirectory } from "@/components/VenueDirectory";
-import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, errMsg } from "@/lib/format";
+import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
-import type { Guarantee } from "policy";
+import { resolveProvider, venueName } from "@/lib/providers";
+import { config, contractUrl } from "@/lib/config";
 
-// ── Data shape ───────────────────────────────────────────────────────────────
+// ── Layout constants ───────────────────────────────────────────────────────────
 
-interface TransparencyData {
-  totalAssets: bigint;
-  navPerShare: bigint;
-  freeCapital: bigint;
-  premiumIncome: bigint;
-  totalSupply: bigint;
-  stableAssets: bigint;
-  coverageRequired: bigint;
-  guarantees: Array<{ id: bigint; guarantee: Guarantee; isCurrent: boolean }>;
-  loading: boolean;
-  error: string | null;
-}
+const NAV_H = 56; // global NavShell height
+const SUBNAV_H = 49; // this section sub-nav
+const ANCHOR_OFFSET = NAV_H + SUBNAV_H + 16; // scrollMarginTop for section anchors
 
-const INITIAL: TransparencyData = {
-  totalAssets: 0n,
-  navPerShare: 0n,
-  freeCapital: 0n,
-  premiumIncome: 0n,
-  totalSupply: 0n,
-  stableAssets: 0n,
-  coverageRequired: 0n,
-  guarantees: [],
-  loading: true,
-  error: null,
-};
+const SECTIONS = [
+  { id: "overview", label: "Overview" },
+  { id: "policy", label: "Policy" },
+  { id: "strategy", label: "Strategy" },
+  { id: "contracts", label: "Contracts" },
+] as const;
+const SECTION_IDS = SECTIONS.map((s) => s.id);
+
+const DONUT_SIZE = 200;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,92 +60,377 @@ const LABEL: React.CSSProperties = {
   margin: 0,
 };
 
-/** Format a multiple ("4.9×") */
+/** Format a multiple ("4.9×"). */
 function fmtMult(v: number): string {
   return Number.isFinite(v) ? v.toFixed(1) + "×" : "∞";
+}
+
+/** Highlight the section currently in view. */
+function useScrollSpy(ids: readonly string[], offset: number): string {
+  const [active, setActive] = useState<string>(ids[0]);
+  useEffect(() => {
+    const els = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (els.length === 0) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActive(visible[0].target.id);
+      },
+      { rootMargin: `-${offset}px 0px -55% 0px`, threshold: 0 },
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [ids, offset]);
+  return active;
+}
+
+// ── Sub-nav ─────────────────────────────────────────────────────────────────
+
+function SubNav({ active }: { active: string }) {
+  return (
+    <nav
+      aria-label="Reserve sections"
+      style={{
+        position: "sticky",
+        top: `${NAV_H}px`,
+        zIndex: 40, // below the global nav (100), above content
+        display: "flex",
+        gap: "4px",
+        alignItems: "stretch",
+        margin: "0 0 32px",
+        backgroundColor: "var(--color-canvas)",
+        borderBottom: "1px solid var(--color-border)",
+        overflowX: "auto",
+      }}
+    >
+      {SECTIONS.map((s) => {
+        const on = active === s.id;
+        return (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className="font-body"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "13px 16px",
+              fontSize: "13px",
+              fontWeight: on ? 600 : 500,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              textDecoration: "none",
+              color: on ? "var(--color-accent)" : "var(--color-text-2)",
+              borderBottom: `2px solid ${on ? "var(--color-accent)" : "transparent"}`,
+              marginBottom: "-1px",
+            }}
+          >
+            {s.label}
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
+// ── Section primitives ─────────────────────────────────────────────────────────
+
+function Section({
+  id,
+  title,
+  intro,
+  aside,
+  children,
+}: {
+  id: string;
+  title: string;
+  intro: React.ReactNode;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      style={{
+        scrollMarginTop: `${ANCHOR_OFFSET}px`,
+        paddingTop: "8px",
+        marginBottom: "56px",
+        borderTop: "1px solid var(--color-border)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "20px",
+          flexWrap: "wrap",
+          margin: "20px 0 24px",
+        }}
+      >
+        <div style={{ maxWidth: "62ch" }}>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: "20px",
+              letterSpacing: "0.01em",
+              textTransform: "uppercase",
+              color: "var(--color-text)",
+              margin: "0 0 10px",
+            }}
+          >
+            {title}
+          </h2>
+          <p
+            className="font-body"
+            style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
+          >
+            {intro}
+          </p>
+        </div>
+        {aside && <div style={{ flexShrink: 0 }}>{aside}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Donut on the left, a metric grid filling the rest — separated, big-screen safe. */
+function ChartRow({ donut, cards }: { donut: React.ReactNode; cards: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "28px",
+        alignItems: "flex-start",
+        marginBottom: "28px",
+      }}
+    >
+      <div style={{ flex: "0 0 auto", paddingTop: "4px" }}>{donut}</div>
+      <div style={{ flex: "1 1 320px", ...hairlineGrid(160) }}>
+        {cards}
+      </div>
+    </div>
+  );
+}
+
+/** Brutalist hairline grid — 1px gaps over the border color, no radius/shadow. */
+const hairlineGrid = (minPx: number): React.CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(auto-fit, minmax(${minPx}px, 1fr))`,
+  gap: "1px",
+  backgroundColor: "var(--color-border)",
+  border: "1px solid var(--color-border)",
+});
+
+const SUBHEAD: React.CSSProperties = {
+  ...LABEL,
+  fontSize: "13px",
+  fontWeight: 700,
+  color: "var(--color-text)",
+};
+
+// ── Allocation bar ──────────────────────────────────────────────────────────────
+
+interface BarSegment {
+  label: string;
+  display: string; // formatted amount
+  fraction: number; // 0..1, segments sum to ~1
+  color: string;
+}
+
+/**
+ * Horizontal stacked bar reading left→right as capital actually sits. Honest
+ * "where is my money" view: the segments are real amounts that sum to the total.
+ */
+function AllocationBar({ segments, loading }: { segments: BarSegment[]; loading: boolean }) {
+  return (
+    <div style={{ marginBottom: "28px" }}>
+      <div
+        style={{
+          display: "flex",
+          height: "44px",
+          gap: "2px",
+          border: "1px solid var(--color-border)",
+          backgroundColor: "var(--color-border)",
+          overflow: "hidden",
+        }}
+      >
+        {loading
+          ? <div style={{ flex: 1, backgroundColor: "var(--color-surface)" }} />
+          : segments.map((s) => (
+              <div
+                key={s.label}
+                title={`${s.label}: ${s.display}`}
+                style={{
+                  flexGrow: Math.max(s.fraction, 0.0001),
+                  flexBasis: 0,
+                  minWidth: s.fraction > 0 ? "2px" : 0,
+                  backgroundColor: s.color,
+                  transition: "flex-grow 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+              />
+            ))}
+      </div>
+      {/* Legend — swatch · label · amount · % */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop: "14px" }}>
+        {segments.map((s) => (
+          <div key={s.label} style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+            <span aria-hidden="true" style={{ width: "9px", height: "9px", flexShrink: 0, backgroundColor: s.color, transform: "translateY(1px)" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span className="font-body" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-2)" }}>
+                {s.label}
+              </span>
+              <span
+                className="font-mono"
+                style={{ fontSize: "13px", color: "var(--color-text)", fontFeatureSettings: '"tnum" 1', fontVariantNumeric: "tabular-nums" }}
+              >
+                {loading ? "—" : s.display}
+                <span style={{ color: "var(--color-text-3)", marginLeft: "8px" }}>
+                  {loading ? "" : `${(s.fraction * 100).toFixed(1)}%`}
+                </span>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Strategy allocation table row ─────────────────────────────────────────────
+
+/** Right-aligned mono numeric cell — repeated across the allocation table. */
+const numCell: React.CSSProperties = {
+  padding: "14px",
+  fontSize: "13px",
+  textAlign: "right",
+  fontFeatureSettings: '"tnum" 1',
+};
+
+/** One row of the allocation table — a strategy venue OR the in-vault asset. */
+interface AllocRow {
+  key: string;
+  name: string;
+  url: string;
+  blurb: string;
+  /** Adapter address to show as an "Adapter … ↗" sub-line (venues only). */
+  adapterAddr?: string;
+  type: string;
+  targetBps: number;
+  /** Live amount; undefined renders "—". */
+  amount?: bigint;
+  yieldPct: number;
+  yieldModeled: boolean;
+  status: "live" | "liquid";
+}
+
+function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
+  return (
+    <tr
+      style={{
+        borderTop: "1px solid var(--color-border)",
+        verticalAlign: "top",
+        backgroundColor: row.status === "liquid" ? "var(--color-surface)" : undefined,
+      }}
+    >
+      <td style={{ padding: "14px", maxWidth: "320px" }}>
+        <a
+          href={row.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-body"
+          style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", textDecoration: "none" }}
+        >
+          {row.name}
+        </a>
+        <p className="font-body" style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--color-text-3)", margin: row.adapterAddr ? "4px 0 6px" : "4px 0 0" }}>
+          {row.blurb}
+        </p>
+        {row.adapterAddr && (
+          <a
+            href={contractUrl(row.adapterAddr)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono"
+            style={{ fontSize: "10px", color: "var(--color-text-3)", textDecoration: "none", letterSpacing: "0.02em" }}
+          >
+            Adapter {truncAddr(row.adapterAddr)} ↗
+          </a>
+        )}
+      </td>
+      <td className="font-body" style={{ padding: "14px", fontSize: "12px", color: "var(--color-text-2)" }}>
+        {row.type}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
+        {fmtBps(row.targetBps)}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)" }}>
+        {row.amount === undefined ? "—" : fmtFiat(row.amount, reserve)}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: row.yieldModeled ? "var(--color-accent)" : "var(--color-text-3)" }}>
+        {fmtPct2(row.yieldPct)}
+        {row.yieldModeled && (
+          <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
+        )}
+      </td>
+      <td style={{ padding: "14px" }}>
+        {row.status === "live" ? (
+          <span className="font-mono" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-accent)" }}>
+            <span className="live-dot" aria-hidden="true" /> Live
+          </span>
+        ) : (
+          <span className="font-mono" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>
+            Liquid
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ── Contract directory data ────────────────────────────────────────────────────
+
+interface ContractRow {
+  role: string;
+  id: string;
+  desc: string;
+}
+
+function contractRows(): ContractRow[] {
+  const rows: ContractRow[] = [
+    { role: "Vault", id: config.contracts.vault, desc: "Custody, tokenized shares & NAV, the redemption queue, and the strategy allocator." },
+    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain — premium-gated coverage and default payouts." },
+    { role: "Registry", id: config.contracts.registry, desc: "Writer-gated store of the active guarantee book." },
+    { role: "USDC", id: config.contracts.usdc, desc: "The reserve's underlying asset (Stellar asset contract)." },
+  ];
+  if (config.contracts.adapter) {
+    rows.push({ role: "DeFindex adapter", id: config.contracts.adapter, desc: "Strategy adapter that deploys reserve capital into DeFindex yield." });
+  }
+  return rows;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ReserveTransparency({
-  reads,
   reserve,
-  embedded = false,
+  data,
+  loading,
+  error,
 }: {
-  reads: Reads;
   reserve: Reserve;
-  embedded?: boolean;
+  data: ReserveData;
+  loading: boolean;
+  error: string | null;
 }) {
-  const [data, setData] = useState<TransparencyData>(INITIAL);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const active = useScrollSpy(SECTION_IDS, ANCHOR_OFFSET);
 
-  const fetchAll = useCallback(async () => {
-    setData((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      // Phase 1: vault reads (parallel)
-      const [
-        totalAssets,
-        navPerShare,
-        freeCapital,
-        premiumIncome,
-        totalSupply,
-        stableAssets,
-        coverageRequired,
-        activeIds,
-      ] = await Promise.all([
-        reads.vaultTotalAssets(),
-        reads.vaultNavPerShare(),
-        reads.vaultFreeCapital(),
-        reads.vaultPremiumIncome(),
-        reads.vaultTotalSupply(),
-        reads.vaultStableAssets(),
-        reads.policyCoverageRequired(),
-        reads.registryActiveIds(),
-      ]);
-
-      // Phase 2: guarantee details (parallel per ID)
-      const guarantees = await Promise.all(
-        activeIds.map(async (id) => {
-          const bid = BigInt(id);
-          const [guarantee, isCurrent] = await Promise.all([
-            reads.policyGuarantee(bid),
-            reads.policyIsCurrent(bid),
-          ]);
-          return { id: bid, guarantee, isCurrent };
-        }),
-      );
-
-      setData({
-        totalAssets,
-        navPerShare,
-        freeCapital,
-        premiumIncome,
-        totalSupply,
-        stableAssets,
-        coverageRequired,
-        guarantees,
-        loading: false,
-        error: null,
-      });
-      setLastRefreshed(new Date());
-    } catch (err) {
-      setData((prev) => ({
-        ...prev,
-        loading: false,
-        error: errMsg(err, "Failed to load reserve data"),
-      }));
-    }
-  }, [reads]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const loading = data.loading;
-  const error = data.error;
-
-  // Model-backed economics derived from the live book, under the live reserve's
-  // currency peg (lib/economics.ts + lib/reserves.ts).
+  // Model-backed economics derived from the live book.
   const econ = useMemo(
     () =>
       computeEconomics(
@@ -173,93 +445,83 @@ export function ReserveTransparency({
   );
   const hasBook = !loading && data.totalAssets > 0n;
 
-  // Reserve allocation (donut): committed (coverage) + buffer (free) = total.
+  // Reserve allocation (Policy donut): committed (coverage) + buffer (free) = total.
   const totalNum = Number(data.totalAssets);
   const committedFrac = totalNum > 0 ? Number(data.coverageRequired) / totalNum : 0;
   const bufferFrac = totalNum > 0 ? Number(data.freeCapital) / totalNum : 0;
-  // Arc geometry must stay within the ring even when the reserve is insolvent
-  // (coverage > total → committedFrac > 1, freeCapital < 0 → bufferFrac < 0),
-  // otherwise the committed arc overruns and overlaps the buffer arc. Clamp the
-  // GEOMETRY only — the pct labels below keep the true ratio so ">100%" still
-  // surfaces the danger.
+  // Clamp geometry only (insolvency can push coverage > total); labels keep truth.
   const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
-  const refreshControl = (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
-      <button
-        onClick={fetchAll}
-        disabled={loading}
-        style={{
-          border: "1px solid var(--color-border)",
-          background: "transparent",
-          color: "var(--color-text-2)",
-          padding: "8px 16px",
-          fontSize: "12px",
-          fontFamily: "var(--font-body)",
-          fontWeight: 500,
-          cursor: loading ? "not-allowed" : "pointer",
-          letterSpacing: "0.04em",
-        }}
-      >
-        {loading ? "LOADING…" : "↻ REFRESH"}
-      </button>
-      {lastRefreshed && (
-        <span
-          className="font-mono"
-          style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-        >
-          {lastRefreshed.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-        </span>
-      )}
-    </div>
-  );
+  // Strategy ALLOCATION — where the reserve's capital actually sits right now,
+  // broken across each venue + idle cash. The vault identity is
+  //   total_assets = availableHeld + Σ strategy balances
+  // so these REAL balances partition the reserve and sum to total. This is the
+  // allocation (live), distinct from the allocator's TARGET weights (weight_bps).
+  const TOTAL_BPS = 10_000;
+  const stratSum = data.strategies.reduce((a, s) => a + s.weight_bps, 0);
+  const idleBps = Math.max(0, TOTAL_BPS - stratSum);
 
-  const body = (
-    <>
-      {/* ── Header: compact (embedded) or full page title (standalone) ─── */}
-      {embedded ? null : (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "16px",
-            marginBottom: "32px",
-          }}
-        >
-          <div>
-            <p className="font-body" style={{ ...LABEL, margin: "0 0 8px" }}>
-              MUTAV PULSE PROTOCOL
-            </p>
-            <h1
-              className="font-display"
-              style={{
-                fontSize: "clamp(1.75rem, 1.278rem + 0.751vw, 2.25rem)",
-                color: "var(--color-text)",
-                letterSpacing: "-0.02em",
-                lineHeight: 1.1,
-                margin: 0,
-              }}
-            >
-              RESERVE TRANSPARENCY
-            </h1>
-            <p
-              className="font-body"
-              style={{
-                fontSize: "14px",
-                color: "var(--color-text-2)",
-                lineHeight: 1.5,
-                marginTop: "8px",
-                maxWidth: "520px",
-              }}
-            >
-              Testnet on-chain reserve metrics, guarantee registry, yield venues, and contract verification — all reads from Soroban testnet. This is a proof-of-concept; values are not from a production reserve.
-            </p>
-          </div>
-          {refreshControl}
-        </div>
-      )}
+  const idleFrac = totalNum > 0 ? Number(data.availableHeld) / totalNum : 0;
+
+  // One allocation slice per strategy (real balance) + the undeployed remainder,
+  // which the vault holds directly as its underlying asset; sums to total.
+  const ALLOC_COLORS = ["var(--color-accent)", "var(--color-text-2)", "var(--color-copper, var(--color-text-2))"];
+  const allocationSegments: BarSegment[] = [
+    ...data.strategies.map((s, i) => {
+      const bal = data.strategyBalances[s.address] ?? 0n;
+      return {
+        label: venueName(s.address),
+        display: fmtFiat(bal, reserve),
+        fraction: totalNum > 0 ? Number(bal) / totalNum : 0,
+        color: ALLOC_COLORS[i % ALLOC_COLORS.length],
+      };
+    }),
+    {
+      label: `${reserve.depositToken} · in vault`,
+      display: fmtFiat(data.availableHeld, reserve),
+      fraction: idleFrac,
+      color: "var(--color-text-3)",
+    },
+  ];
+
+  // Same allocation as table rows: one per strategy venue + the in-vault asset.
+  const heldYieldBearing = reserve.underlyingYieldBearing;
+  const allocRows: AllocRow[] = [
+    ...data.strategies.map((s) => {
+      const provider = resolveProvider(s.address);
+      return {
+        key: s.address,
+        name: provider?.name ?? venueName(s.address),
+        url: provider?.url ?? contractUrl(s.address),
+        blurb: provider?.blurb ?? "On-chain strategy adapter wired to this vault.",
+        adapterAddr: s.address,
+        type: s.volatile ? "Volatile yield" : "Stable yield",
+        targetBps: s.weight_bps,
+        amount: data.strategyBalances[s.address],
+        yieldPct: econ.underlyingYield,
+        yieldModeled: true,
+        status: "live" as const,
+      };
+    }),
+    {
+      key: "in-vault",
+      name: reserve.depositToken,
+      url: contractUrl(config.contracts.usdc),
+      blurb: heldYieldBearing
+        ? `Held directly in the vault. ${reserve.depositToken} is yield-bearing, so it accrues its base yield even when not deployed.`
+        : "Held directly in the vault — not deployed to any venue. Liquid for operations and redemptions.",
+      type: heldYieldBearing ? "Yield-bearing asset" : "Cash · underlying",
+      targetBps: idleBps,
+      amount: data.availableHeld,
+      yieldPct: heldYieldBearing ? reserve.assumptions.underlyingYield : 0,
+      yieldModeled: heldYieldBearing,
+      status: "liquid" as const,
+    },
+  ];
+
+  return (
+    <div style={{ color: "var(--color-text)" }}>
+      <SubNav active={active} />
 
       {/* ── Error banner ──────────────────────────────────────────────── */}
       {error && (
@@ -278,267 +540,302 @@ export function ReserveTransparency({
         </div>
       )}
 
-      {/* ── Live reserve detail header ────────────────────────────────── */}
-      <div
-        style={{
-          marginBottom: "16px",
-          paddingTop: embedded ? undefined : "4px",
-          borderTop: embedded ? undefined : "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ maxWidth: embedded ? "50%" : undefined, minWidth: embedded ? "240px" : undefined }}>
-          <h2 className="font-display" style={{ ...LABEL, fontSize: "15px", fontWeight: 700, color: "var(--color-text)", margin: embedded ? "0 0 4px" : "16px 0 4px" }}>
-            <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> RESERVE OVERVIEW
-          </h2>
-          <p
-            className="font-body"
-            style={{ fontSize: "13px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}
-          >
-            On-chain metrics for the deployed {reserve.currency} reserve.
-          </p>
-        </div>
-        <SolvencyChip
-          stableAssets={data.stableAssets}
-          coverageRequired={data.coverageRequired}
-          money={reserve}
-          loading={loading}
-          error={error ?? undefined}
-        />
-      </div>
-
-      {/* ── Refresh control (swapped with the solvency chip) ──────────── */}
-      <div style={{ marginBottom: "24px", display: "flex", justifyContent: "flex-end" }}>
-        {embedded && refreshControl}
-      </div>
-
-      {/* ── Allocation donut (left) + remaining metrics (right) ───────────
-           Reserve value splits into Committed (coverage) + Buffer (free) →
-           the donut. The metrics that aren't part of that split sit right. */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "28px",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "32px",
-        }}
-      >
-        {/* Reserve allocation donut + legend — left */}
-        <div style={{ flex: "0 0 auto" }}>
-          <AllocationDonut
+      {/* ══ OVERVIEW ════════════════════════════════════════════════════ */}
+      <Section
+        id="overview"
+        title="Overview"
+        intro={
+          <>
+            The <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> reserve is a
+            solvency-gated, tokenized vault that backs Brazilian rental guarantees and turns their
+            premiums into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
+            NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept — values are
+            live on-chain reads, not a production reserve.
+          </>
+        }
+        aside={
+          <SolvencyChip
+            stableAssets={data.stableAssets}
+            coverageRequired={data.coverageRequired}
+            money={reserve}
             loading={loading}
-            centerDisplay={fmtFiat(data.totalAssets, reserve)}
-            centerLabel="Reserve value"
-            segments={[
-              {
-                label: "Committed to guarantees",
-                display: fmtFiat(data.coverageRequired, reserve),
-                pct: `${(committedFrac * 100).toFixed(1)}%`,
-                fraction: clamp01(committedFrac),
-                color: "var(--color-accent)",
-              },
-              {
-                label: "Liquidity buffer",
-                display: fmtFiat(data.freeCapital, reserve),
-                pct: `${(bufferFrac * 100).toFixed(1)}%`,
-                fraction: clamp01(bufferFrac),
-                color: "var(--color-text-3)",
-              },
-            ]}
+            error={error ?? undefined}
           />
-        </div>
-
-        {/* Soft vertical divider between the chart and the metrics */}
-        <div
-          aria-hidden="true"
-          style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--color-border)", margin: "6px 0" }}
-        />
-
-        {/* Right: metrics not encoded in the chart */}
-        <div
-          style={{
-            flex: "1 1 260px",
-            maxWidth: "300px",
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: "20px",
-          }}
-        >
+        }
+      >
+        <div style={hairlineGrid(170)}>
+          <MetricCard
+            label="Reserve Value"
+            value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
+            unit={`total assets · ${reserve.fiatSymbol}`}
+            accentValue
+            loading={loading}
+            error={error ?? undefined}
+          />
           <MetricCard
             label="Modeled APY"
             value={hasBook ? fmtPct2(econ.modeledApy) : "—"}
-            unit={`${fmtPct2(econ.underlyingYield)} yield ${fmtSignedPct(econ.underwritingSpread)} underwriting`}
-            tooltip={`The projected annual return: underlying yield (${fmtPct2(econ.underlyingYield)}, assumed) plus the underwriting spread (premiums minus expected defaults, from the live book). Default risk is modeled at ${fmtPct2(econ.rho)} monthly delinquency (Índice Superlógica, South). See the whitepaper for the method.`}
-            accentValue
-            compact
+            unit="underlying + underwriting"
+            tooltip={`Projected annual return: underlying yield (${fmtPct2(econ.underlyingYield)}, assumed) plus the underwriting spread from the live book. Default risk modeled at ${fmtPct2(econ.rho)} monthly delinquency.`}
             loading={loading}
             error={error ?? undefined}
           />
           <MetricCard
             label={`NAV / ${reserve.currency}`}
             value={loading ? "—" : fmtNav(data.navPerShare)}
-            unit={`${reserve.depositToken} per ${reserve.currency} share`}
-            compact
-            loading={loading}
-            error={error ?? undefined}
-          />
-          <MetricCard
-            label="Premiums Collected"
-            value={loading ? "—" : fmtFiat(data.premiumIncome, reserve)}
-            // Value is an indicative fiat conversion (fmtFiat applies unitPriceFiat),
-            // so the unit must NOT claim the deposit-token ticker — that mislabels
-            // an R$ figure as a TESOURO amount for non-1:1 reserves.
-            unit={`cumulative premium income · indicative ${reserve.fiatSymbol}`}
-            compact
+            unit={`${reserve.depositToken} per share`}
             loading={loading}
             error={error ?? undefined}
           />
           <MetricCard
             label="Shares Outstanding"
             value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit={`${reserve.currency} shares issued`}
-            compact
+            unit={`${reserve.currency} issued`}
             loading={loading}
             error={error ?? undefined}
           />
         </div>
-      </div>
+      </Section>
 
-      {/* ── Section label: underwriting economics ────────────────────── */}
-      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <h2 className="font-display" style={{ ...LABEL, fontSize: "15px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-          UNDERWRITING ECONOMICS
-        </h2>
-        <InfoTooltip label="Underwriting economics assumptions">
-          The model uses two estimates: {fmtPct2(econ.rho)} of rents default each month
-          (Índice Superlógica) and a {fmtPct2(econ.underlyingYield)} base yield. The spread on top
-          is measured from real on-chain guarantees, not assumed. Method in the whitepaper.
-        </InfoTooltip>
-      </div>
-
-      {/* ── Underwriting decomposition: 4 cards ───────────────────────── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "1px",
-          backgroundColor: "var(--color-border)",
-          border: "1px solid var(--color-border)",
-          marginBottom: "32px",
-        }}
+      {/* ══ POLICY ══════════════════════════════════════════════════════ */}
+      <Section
+        id="policy"
+        title="Policy"
+        intro={
+          <>
+            The underwriting brain. The reserve writes premium-gated coverage on rental guarantees and
+            pays tenant defaults — while the solvency invariant keeps committed coverage at or below
+            stable assets, always.
+          </>
+        }
+        aside={
+          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
+            {loading ? "…" : `${data.guarantees.length} active`}
+          </span>
+        }
       >
-        <MetricCard
-          label="Underlying Yield"
-          value={fmtPct2(econ.underlyingYield)}
-          accentValue
-          unit="modeled base rate"
-          tooltip="The base return on the reserve's capital before underwriting, set by the currency's reference rate (USD stablecoin DeFi ≈ 5.5%; a BRL reserve would use Selic ≈ 14%). A stated assumption, not an on-chain reading."
-          loading={loading}
-          error={error ?? undefined}
+        <ChartRow
+          donut={
+            <AllocationDonut
+              loading={loading}
+              size={DONUT_SIZE}
+              ariaLabel="Reserve allocation — committed coverage vs liquidity buffer"
+              centerDisplay={fmtFiat(data.totalAssets, reserve)}
+              centerLabel="Reserve value"
+              segments={[
+                {
+                  label: "Committed to guarantees",
+                  display: fmtFiat(data.coverageRequired, reserve),
+                  pct: `${(committedFrac * 100).toFixed(1)}%`,
+                  fraction: clamp01(committedFrac),
+                  color: "var(--color-accent)",
+                },
+                {
+                  label: "Liquidity buffer",
+                  display: fmtFiat(data.freeCapital, reserve),
+                  pct: `${(bufferFrac * 100).toFixed(1)}%`,
+                  fraction: clamp01(bufferFrac),
+                  color: "var(--color-text-3)",
+                },
+              ]}
+            />
+          }
+          cards={
+            <>
+              <MetricCard
+                label="Underlying Yield"
+                value={fmtPct2(econ.underlyingYield)}
+                accentValue
+                unit="modeled base rate"
+                tooltip="Base return on the reserve's capital before underwriting, set by the currency's reference rate. A stated assumption, not an on-chain reading."
+                loading={loading}
+                error={error ?? undefined}
+              />
+              <MetricCard
+                label="Underwriting Spread"
+                value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
+                accentValue
+                unit="premiums − expected defaults"
+                tooltip="Extra return from underwriting: annual premiums minus expected default payouts, over total assets. From the live book."
+                loading={loading}
+                error={error ?? undefined}
+              />
+              <MetricCard
+                label="Loss Ratio"
+                value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
+                accentValue
+                unit="expected payout ÷ premiums"
+                tooltip="Expected annual default payouts as a share of premium income. Below 100% means premiums cover expected losses."
+                loading={loading}
+                error={error ?? undefined}
+              />
+              <MetricCard
+                label="Cushion"
+                value={hasBook ? fmtMult(econ.cushion) : "—"}
+                accentValue
+                unit="vs break-even delinquency"
+                tooltip={`How far monthly defaults can rise before premiums stop covering payouts. Break-even ${fmtPct2(econ.breakevenRho)} vs ${fmtPct2(econ.rho)} modeled.`}
+                loading={loading}
+                error={error ?? undefined}
+              />
+              <MetricCard
+                label="Fees Collected"
+                value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
+                unit={`cumulative · indicative ${reserve.fiatSymbol}`}
+                loading={loading}
+                error={error ?? undefined}
+              />
+              <MetricCard
+                label="Coverage Required"
+                value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
+                unit="committed to active guarantees"
+                loading={loading}
+                error={error ?? undefined}
+              />
+            </>
+          }
         />
-        <MetricCard
-          label="Underwriting Spread"
-          value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
-          accentValue
-          unit="premiums − expected defaults"
-          tooltip="The additional return earned from underwriting guarantees: annual premiums minus expected default payouts, divided by total reserve assets. Computed from the live guarantee book and added on top of the underlying yield."
-          loading={loading}
-          error={error ?? undefined}
-        />
-        <MetricCard
-          label="Loss Ratio"
-          value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
-          accentValue
-          unit="expected payout ÷ premiums"
-          tooltip="Expected annual default payouts as a share of premium income. Below 100% indicates premiums fully cover expected losses; a healthy insurance book typically runs well under 50%."
-          loading={loading}
-          error={error ?? undefined}
-        />
-        <MetricCard
-          label="Cushion"
-          value={hasBook ? fmtMult(econ.cushion) : "—"}
-          accentValue
-          unit="vs break-even delinquency"
-          tooltip={`The safety margin before underwriting becomes unprofitable: how far the monthly default rate can rise before premiums stop covering payouts. Break-even is ${fmtPct2(econ.breakevenRho)}, against the ${fmtPct2(econ.rho)} currently modeled.`}
-          loading={loading}
-          error={error ?? undefined}
-        />
-      </div>
 
-      {/* ── Section label: guarantee registry ────────────────────────── */}
-      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h2 className="font-display" style={{ ...LABEL, fontSize: "15px", fontWeight: 700, color: "var(--color-text)" }}>
-          GUARANTEE REGISTRY
-        </h2>
-        <span
-          className="font-mono"
-          style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-        >
-          {loading ? "…" : `${data.guarantees.length} active`}
-        </span>
-      </div>
-
-      {/* ── Guarantee table ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
+        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="font-display" style={SUBHEAD}>Guarantee Registry</h3>
+          <InfoTooltip label="Guarantee registry">
+            Active guarantees underwritten by this reserve, read live from the registry contract.
+          </InfoTooltip>
+        </div>
         <GuaranteeTable
           guarantees={data.guarantees}
           money={reserve}
           loading={loading}
           error={error ?? undefined}
         />
-      </div>
+      </Section>
 
-      {/* ── Section label: yield venues ──────────────────────────────── */}
-      <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <h2 className="font-display" style={{ ...LABEL, fontSize: "15px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-            PROTOCOL INTEGRATIONS
-          </h2>
-          <InfoTooltip label="Protocol integrations">
-            On the deployed testnet reserve, capital is routed to on-chain yield venues via strategy adapters. The DeFindex adapter is live on testnet.
-          </InfoTooltip>
+      {/* ══ STRATEGY ════════════════════════════════════════════════════ */}
+      <Section
+        id="strategy"
+        title="Strategy"
+        intro={
+          <>
+            Mutav vaults put reserve capital to work through <strong style={{ color: "var(--color-text-2)" }}>strategies</strong> and{" "}
+            <strong style={{ color: "var(--color-text-2)" }}>adapters</strong>. A strategy is a target
+            allocation — the weight the vault&apos;s allocator aims to hold in a venue. An adapter is the
+            on-chain contract that actually moves capital into that venue (DeFindex, for example) and
+            reports its live balance back. The allocator rebalances toward the targets while keeping the
+            rest liquid in the vault. Everything below is read live on-chain.
+          </>
+        }
+        aside={
+          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
+            {loading ? "…" : `${data.strategies.length} wired`}
+          </span>
+        }
+      >
+        {/* Chart — allocation across each venue + the asset held in-vault, summing to total. */}
+        <AllocationBar loading={loading} segments={allocationSegments} />
+
+        {/* Table — each strategy option: provider, adapter, amount, yield. */}
+        <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "680px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "var(--color-surface-2)" }}>
+                {["Provider", "Type", "Target", "Amount", "Yield", "Status"].map((h, i) => (
+                  <th
+                    key={h}
+                    className="font-body"
+                    style={{
+                      textAlign: i >= 2 && i <= 4 ? "right" : "left",
+                      padding: "10px 14px",
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--color-text-3)",
+                      borderBottom: "1px solid var(--color-border)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="font-mono" style={{ padding: "16px 14px", fontSize: "12px", color: "var(--color-text-3)" }}>
+                    Loading strategies…
+                  </td>
+                </tr>
+              ) : (
+                allocRows.map((row) => <AllocRowView key={row.key} row={row} reserve={reserve} />)
+              )}
+            </tbody>
+          </table>
         </div>
-        <span
-          className="font-mono"
-          style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
-        >
-          1 live · 2 planned
-        </span>
-      </div>
+        <p className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-3)", margin: 0, letterSpacing: "0.02em", lineHeight: 1.5 }}>
+          Target = allocator intent (weight). Amount = live on-chain balance. Yield = modeled annual rate, not realized. Idle {reserve.depositToken} earns no yield on this reserve.
+        </p>
+      </Section>
 
-      {/* ── Venue directory ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: "32px" }}>
-        <VenueDirectory vaultId={reserve.contracts?.vault} />
-      </div>
-
-      {/* ── Verification panel ────────────────────────────────────────── */}
-      <VerificationPanel />
-    </>
-  );
-
-  // Embedded (left column of the 2-col hub): no <main>, no max-width centering.
-  if (embedded) {
-    return <div style={{ color: "var(--color-text)" }}>{body}</div>;
-  }
-
-  // Standalone page.
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--color-canvas)",
-        color: "var(--color-text)",
-      }}
-    >
-      <div style={{ maxWidth: "1440px", margin: "0 auto", padding: "40px 32px 80px" }}>
-        {body}
-      </div>
-    </main>
+      {/* ══ CONTRACTS ═══════════════════════════════════════════════════ */}
+      <Section
+        id="contracts"
+        title="Contracts"
+        intro={
+          <>
+            No black box. Every number above reads from these Soroban contracts — open any of them on
+            the explorer to verify.
+          </>
+        }
+      >
+        <div style={hairlineGrid(280)}>
+          {contractRows().map(({ role, id, desc }) => (
+            <a
+              key={role}
+              href={contractUrl(id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`View ${role} contract on Stellar Explorer`}
+              className="contract-row"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                padding: "18px 18px",
+                backgroundColor: "var(--color-surface)",
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px" }}>
+                <span
+                  className="font-body"
+                  style={{ fontSize: "12px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text)" }}
+                >
+                  {role}
+                </span>
+                <span
+                  data-contract-id
+                  className="font-mono"
+                  style={{ fontSize: "12px", color: "var(--color-text-2)", letterSpacing: "0.01em", fontFeatureSettings: '"tnum" 1' }}
+                >
+                  {truncAddr(id)}
+                </span>
+              </div>
+              <p className="font-body" style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--color-text-3)", margin: 0 }}>
+                {desc}
+              </p>
+              <span
+                aria-hidden="true"
+                className="font-mono"
+                style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+              >
+                → stellar.expert / testnet
+              </span>
+            </a>
+          ))}
+        </div>
+      </Section>
+    </div>
   );
 }

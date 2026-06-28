@@ -25,25 +25,34 @@ export interface DonutSegment {
   color: string;
 }
 
-const SIZE = 262;
-const STROKE = 53;
-const R = (SIZE - STROKE) / 2;
-const C = 2 * Math.PI * R;
 const GAP = 3; // dark gap between segments (circumference units)
-const CENTER = SIZE / 2;
 
 export function AllocationDonut({
   centerDisplay,
   centerLabel,
   segments,
   loading = false,
+  size = 262,
+  ariaLabel = "Reserve allocation",
 }: {
   centerDisplay: string;
   centerLabel: string;
   segments: DonutSegment[];
   loading?: boolean;
+  /** Ring diameter in px. Stroke + center type scale with it. Default 262. */
+  size?: number;
+  /** Accessible name for the chart (distinguish multiple donuts on a page). */
+  ariaLabel?: string;
 }) {
   const [shown, setShown] = useState(false);
+
+  // Geometry derives from `size` so paired donuts can render compactly.
+  const SIZE = size;
+  const STROKE = Math.round(size * 0.202);
+  const R = (SIZE - STROKE) / 2;
+  const C = 2 * Math.PI * R;
+  const CENTER = SIZE / 2;
+  const centerFont = Math.max(18, Math.round(size * 0.099));
 
   // Double rAF so the 0-length initial paint commits before the transition runs.
   useEffect(() => {
@@ -57,19 +66,24 @@ export function AllocationDonut({
     };
   }, []);
 
-  let acc = 0; // cumulative fraction → rotation offset per segment
+  // Cumulative fraction → rotation offset per segment (precomputed, no mutation
+  // during render so the value stays stable across re-renders).
+  const rotations: number[] = [];
+  segments.reduce((acc, s) => {
+    rotations.push(acc * 360);
+    return acc + s.fraction;
+  }, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", gap: "28px" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Reserve allocation">
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={ariaLabel}>
           <g transform={`rotate(-90 ${CENTER} ${CENTER})`}>
             {/* Base track (shows only if segments don't fill the ring) */}
             <circle cx={CENTER} cy={CENTER} r={R} fill="none" stroke="var(--color-surface-2)" strokeWidth={STROKE} />
             {segments.map((s, i) => {
               const len = Math.max(0, s.fraction * C - GAP);
-              const rot = acc * 360;
-              acc += s.fraction;
+              const rot = rotations[i];
               return (
                 <circle
                   key={s.label}
@@ -103,7 +117,7 @@ export function AllocationDonut({
           <span
             className="font-mono"
             style={{
-              fontSize: "26px",
+              fontSize: `${centerFont}px`,
               color: "var(--color-text)",
               letterSpacing: "-0.01em",
               fontFeatureSettings: '"tnum" 1',

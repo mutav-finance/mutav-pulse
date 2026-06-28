@@ -34,10 +34,29 @@ if (typeof window !== "undefined") {
 export const networks = {
   testnet: {
     networkPassphrase: "Test SDF Network ; September 2015",
-    contractId: "CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX",
+    contractId: "CCZATYOP5OCTKI4QA2THW5LACWIMIGGOOMQGVQFVQ2TESOS3ARFSJLIE",
   }
 } as const
 
+
+/**
+ * Vault-side errors surfaced as stable `#[contracterror]` codes. Numbered in the
+ * `6xx` band to stay clear of the interfaces `2xx`, policy `3xx`, strategy `4xx`,
+ * and adapter `5xx` codes. Mirrors the adapter-defindex `AdapterError` pattern:
+ * a money-path revert that carries a diagnosable code instead of an opaque host
+ * trap. Code-only (not a storage entry) so it is layout-safe for in-place
+ * `upgrade()`.
+ */
+export const VaultError = {
+  /**
+   * #34 / code-review H1: a money path (`disburse` / `process_redemptions`)
+   * asked `ensure_liquidity` for more underlying than the strategies could
+   * realize (e.g. a lossy/slippage adapter that reports `balance()` above what
+   * `divest()` actually delivers). Yearn-v3 stance: revert rather than realize
+   * an incorrect loss — the whole tx rolls back atomically.
+   */
+  600: {message:"InsufficientLiquidity"}
+}
 
 
 export interface RedeemRequest {
@@ -257,7 +276,7 @@ export interface Client {
   /**
    * Construct and simulate a disburse transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  disburse: ({to, amount}: {to: string, amount: i128}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  disburse: ({to, amount, coverage_after}: {to: string, amount: i128, coverage_after: i128}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
    * Construct and simulate a max_mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -309,6 +328,23 @@ export interface Client {
 
   /**
    * Construct and simulate a rebalance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Rebalance strategy allocations toward target — idempotent and bidirectional.
+   * 
+   * Keeps `target_idle` (a fraction of TOTAL assets, see `min_liquid_buffer_bps`)
+   * as a liquid cash buffer and spreads the surplus across strategies by weight,
+   * each clamped to its `strategy_max_debt_bps` cap. Each strategy's on-chain
+   * balance is moved toward that target: pulled back when over, deployed when
+   * under. Targets are computed once off a snapshot, so calling at-target is a
+   * no-op — the buffer holds instead of draining across repeated calls.
+   * 
+   * LIQUIDITY-only: never reads `coverage_required` (solvency stays enforced by
+   * the `free_capital` redemption gate + disburse ordering). Capped overflow
+   * simply remains idle above `target_idle`. Divest pass runs before invest so
+   * pulled-back funds are available to fund the deploys.
+   * 
+   * Under a LOSSY divest (a slippage/fee adapter that delivers less underlying
+   * than its reported balance implies), the invest pass is clamped to the
+   * realized live idle, so full convergence to target may take an ADDITIONAL
    */
   rebalance: (options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
@@ -316,6 +352,11 @@ export interface Client {
    * Construct and simulate a set_admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   set_admin: ({new_admin}: {new_admin: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a fee_income transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  fee_income: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>
 
   /**
    * Construct and simulate a max_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -334,6 +375,11 @@ export interface Client {
   strategies: (options?: MethodOptions) => Promise<AssembledTransaction<Array<StrategyAlloc>>>
 
   /**
+   * Construct and simulate a collect_fee transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  collect_fee: ({from, amount}: {from: string, amount: i128}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a max_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   max_deposit: ({receiver}: {receiver: string}, options?: MethodOptions) => Promise<AssembledTransaction<i128>>
@@ -343,6 +389,13 @@ export interface Client {
    * SEP-0056: address of the underlying asset the vault manages.
    */
   query_asset: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
+
+  /**
+   * Construct and simulate a target_idle transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Target idle cash retained as the liquid buffer: `total_assets × bps`.
+   * The surplus above this is what `rebalance` deploys across strategies.
+   */
+  target_idle: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>
 
   /**
    * Construct and simulate a add_strategy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -432,11 +485,6 @@ export interface Client {
   available_held: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>
 
   /**
-   * Construct and simulate a premium_income transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  premium_income: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>
-
-  /**
    * Construct and simulate a preview_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   preview_redeem: ({shares}: {shares: i128}, options?: MethodOptions) => Promise<AssembledTransaction<i128>>
@@ -445,11 +493,6 @@ export interface Client {
    * Construct and simulate a request_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   request_redeem: ({owner, shares}: {owner: string, shares: i128}, options?: MethodOptions) => Promise<AssembledTransaction<u32>>
-
-  /**
-   * Construct and simulate a collect_premium transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  collect_premium: ({from, amount}: {from: string, amount: i128}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
    * Construct and simulate a preview_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -482,15 +525,51 @@ export interface Client {
   convert_to_shares: ({assets}: {assets: i128}, options?: MethodOptions) => Promise<AssembledTransaction<i128>>
 
   /**
+   * Construct and simulate a set_token_metadata transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Admin-gated re-label of the share token (name + symbol). Decimals are
+   * fixed at 7. Lets a deployed reserve adopt its per-currency symbol
+   * (MUSD / MBRL / MARS) via `upgrade()` instead of a destructive redeploy —
+   * balances, NAV, and seeded state are preserved.
+   */
+  set_token_metadata: ({name, symbol}: {name: string, symbol: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a process_redemptions transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   process_redemptions: ({max_batch}: {max_batch: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a min_liquid_buffer_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Fraction of TOTAL assets (in bps) the vault retains as a liquid cash
+   * buffer; `rebalance` deploys the surplus above it and divests back into it.
+   * 0 = deploy everything. Set per reserve. This is a LIQUIDITY optimization
+   * (avoid on-demand divest costs), NOT a solvency reserve — solvency stays
+   * enforced by `free_capital` / `coverage_required`.
+   */
+  min_liquid_buffer_bps: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>
+
+  /**
+   * Construct and simulate a strategy_max_debt_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
+   * (uncapped) when unset. `rebalance` will not deploy a strategy above this.
+   */
+  strategy_max_debt_bps: ({strategy}: {strategy: string}, options?: MethodOptions) => Promise<AssembledTransaction<u32>>
+
+  /**
+   * Construct and simulate a set_min_liquid_buffer_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  set_min_liquid_buffer_bps: ({bps}: {bps: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a set_strategy_max_debt_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  set_strategy_max_debt_bps: ({strategy, bps}: {strategy: string, bps: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
 }
 export class Client extends ContractClient {
   static async deploy<T = Client>(
         /** Constructor/Initialization Args for the contract's `__constructor` method */
-        {admin, underlying}: {admin: string, underlying: string},
+        {admin, underlying, name, symbol}: {admin: string, underlying: string, name: string, symbol: string},
     /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
     options: MethodOptions &
       Omit<ContractClientOptions, "contractId"> & {
@@ -502,7 +581,7 @@ export class Client extends ContractClient {
         format?: "hex" | "base64";
       }
   ): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy({admin, underlying}, options)
+    return ContractClient.deploy({admin, underlying, name, symbol}, options)
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
@@ -519,42 +598,49 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAHcmVxdWVzdAAAAAABAAAAAAAAAAJpZAAAAAAABAAAAAEAAAfQAAAADVJlZGVlbVJlcXVlc3QAAAA=",
         "AAAAAAAAAAAAAAAHdXBncmFkZQAAAAABAAAAAAAAAA1uZXdfd2FzbV9oYXNoAAAAAAAD7gAAACAAAAAA",
         "AAAAAAAAAHxSZXR1cm5zIHRoZSBudW1iZXIgb2YgZGVjaW1hbHMgdXNlZCB0byByZXByZXNlbnQgYW1vdW50cyBvZiB0aGlzIHRva2VuLgoKIyBBcmd1bWVudHMKCiogYGVgIC0gQWNjZXNzIHRvIFNvcm9iYW4gZW52aXJvbm1lbnQuAAAACGRlY2ltYWxzAAAAAAAAAAEAAAAE",
-        "AAAAAAAAAAAAAAAIZGlzYnVyc2UAAAACAAAAAAAAAAJ0bwAAAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAA==",
+        "AAAAAAAAAAAAAAAIZGlzYnVyc2UAAAADAAAAAAAAAAJ0bwAAAAAAEwAAAAAAAAAGYW1vdW50AAAAAAALAAAAAAAAAA5jb3ZlcmFnZV9hZnRlcgAAAAAACwAAAAA=",
         "AAAAAAAAAAAAAAAIbWF4X21pbnQAAAABAAAAAAAAAAhyZWNlaXZlcgAAABMAAAABAAAACw==",
         "AAAAAAAAAi5UcmFuc2ZlcnMgYGFtb3VudGAgb2YgdG9rZW5zIGZyb20gYGZyb21gIHRvIGB0b2AuCgojIEFyZ3VtZW50cwoKKiBgZWAgLSBBY2Nlc3MgdG8gU29yb2JhbiBlbnZpcm9ubWVudC4KKiBgZnJvbWAgLSBUaGUgYWRkcmVzcyBob2xkaW5nIHRoZSB0b2tlbnMuCiogYHRvYCAtIFRoZSBhZGRyZXNzIHJlY2VpdmluZyB0aGUgdHJhbnNmZXJyZWQgdG9rZW5zLgoqIGBhbW91bnRgIC0gVGhlIGFtb3VudCBvZiB0b2tlbnMgdG8gYmUgdHJhbnNmZXJyZWQuCgojIEVycm9ycwoKKiBbYEZ1bmdpYmxlVG9rZW5FcnJvcjo6SW5zdWZmaWNpZW50QmFsYW5jZWBdIC0gV2hlbiBhdHRlbXB0aW5nIHRvCnRyYW5zZmVyIG1vcmUgdG9rZW5zIHRoYW4gYGZyb21gIGN1cnJlbnQgYmFsYW5jZS4KKiBbYEZ1bmdpYmxlVG9rZW5FcnJvcjo6TGVzc1RoYW5aZXJvYF0gLSBXaGVuIGBhbW91bnQgPCAwYC4KCiMgRXZlbnRzCgoqIHRvcGljcyAtIGBbInRyYW5zZmVyIiwgZnJvbTogQWRkcmVzcywgdG86IEFkZHJlc3NdYAoqIGRhdGEgLSBgW3RvX211eGVkX2lkOiBPcHRpb248dTY0PiwgYW1vdW50OiBpMTI4XWAAAAAAAAh0cmFuc2ZlcgAAAAMAAAAAAAAABGZyb20AAAATAAAAAAAAAAJ0bwAAAAAAFAAAAAAAAAAGYW1vdW50AAAAAAALAAAAAA==",
         "AAAAAAAAAEFTRVAtMDA1NiB3aXRoZHJhdyDigJQgRElTQUJMRUQgKEQyKS4gUmVkZWVtIHZpYSBgcmVxdWVzdF9yZWRlZW1gLgAAAAAAAAh3aXRoZHJhdwAAAAQAAAAAAAAABmFzc2V0cwAAAAAACwAAAAAAAAAIcmVjZWl2ZXIAAAATAAAAAAAAAAVvd25lcgAAAAAAABMAAAAAAAAACG9wZXJhdG9yAAAAEwAAAAEAAAAL",
         "AAAABQAAAOpTRVAtMDA1NiBgRGVwb3NpdGAgZXZlbnQg4oCUIHRvcGljcyBgWyJkZXBvc2l0Iiwgb3BlcmF0b3IsIGZyb20sIHJlY2VpdmVyXWAsCmRhdGEgYFthc3NldHMsIHNoYXJlc11gLiBFbWl0dGVkIGJ5IGBkZXBvc2l0YCBhbmQgYG1pbnRgLiAoVGhlIFNFUCBgV2l0aGRyYXdgCmV2ZW50IGhhcyBubyBlbWl0dGVyOiBzeW5jaHJvbm91cyBgd2l0aGRyYXdgL2ByZWRlZW1gIGFyZSBkaXNhYmxlZCDigJQgc2VlIEQyLikAAAAAAAAAAAAHRGVwb3NpdAAAAAABAAAAB2RlcG9zaXQAAAAABQAAAAAAAAAIb3BlcmF0b3IAAAATAAAAAQAAAAAAAAAEZnJvbQAAABMAAAABAAAAAAAAAAhyZWNlaXZlcgAAABMAAAABAAAAAAAAAAZhc3NldHMAAAAAAAsAAAAAAAAAAAAAAAZzaGFyZXMAAAAAAAsAAAAAAAAAAg==",
         "AAAAAAAAAPBSZXR1cm5zIHRoZSBhbW91bnQgb2YgdG9rZW5zIGEgYHNwZW5kZXJgIGlzIGFsbG93ZWQgdG8gc3BlbmQgb24gYmVoYWxmCm9mIGFuIGBvd25lcmAuCgojIEFyZ3VtZW50cwoKKiBgZWAgLSBBY2Nlc3MgdG8gU29yb2JhbiBlbnZpcm9ubWVudC4KKiBgb3duZXJgIC0gVGhlIGFkZHJlc3MgaG9sZGluZyB0aGUgdG9rZW5zLgoqIGBzcGVuZGVyYCAtIFRoZSBhZGRyZXNzIGF1dGhvcml6ZWQgdG8gc3BlbmQgdGhlIHRva2Vucy4AAAAJYWxsb3dhbmNlAAAAAAAAAgAAAAAAAAAFb3duZXIAAAAAAAATAAAAAAAAAAdzcGVuZGVyAAAAABMAAAABAAAACw==",
-        "AAAAAAAAAAAAAAAJcmViYWxhbmNlAAAAAAAAAAAAAAA=",
+        "AAAAAAAABABSZWJhbGFuY2Ugc3RyYXRlZ3kgYWxsb2NhdGlvbnMgdG93YXJkIHRhcmdldCDigJQgaWRlbXBvdGVudCBhbmQgYmlkaXJlY3Rpb25hbC4KCktlZXBzIGB0YXJnZXRfaWRsZWAgKGEgZnJhY3Rpb24gb2YgVE9UQUwgYXNzZXRzLCBzZWUgYG1pbl9saXF1aWRfYnVmZmVyX2Jwc2ApCmFzIGEgbGlxdWlkIGNhc2ggYnVmZmVyIGFuZCBzcHJlYWRzIHRoZSBzdXJwbHVzIGFjcm9zcyBzdHJhdGVnaWVzIGJ5IHdlaWdodCwKZWFjaCBjbGFtcGVkIHRvIGl0cyBgc3RyYXRlZ3lfbWF4X2RlYnRfYnBzYCBjYXAuIEVhY2ggc3RyYXRlZ3kncyBvbi1jaGFpbgpiYWxhbmNlIGlzIG1vdmVkIHRvd2FyZCB0aGF0IHRhcmdldDogcHVsbGVkIGJhY2sgd2hlbiBvdmVyLCBkZXBsb3llZCB3aGVuCnVuZGVyLiBUYXJnZXRzIGFyZSBjb21wdXRlZCBvbmNlIG9mZiBhIHNuYXBzaG90LCBzbyBjYWxsaW5nIGF0LXRhcmdldCBpcyBhCm5vLW9wIOKAlCB0aGUgYnVmZmVyIGhvbGRzIGluc3RlYWQgb2YgZHJhaW5pbmcgYWNyb3NzIHJlcGVhdGVkIGNhbGxzLgoKTElRVUlESVRZLW9ubHk6IG5ldmVyIHJlYWRzIGBjb3ZlcmFnZV9yZXF1aXJlZGAgKHNvbHZlbmN5IHN0YXlzIGVuZm9yY2VkIGJ5CnRoZSBgZnJlZV9jYXBpdGFsYCByZWRlbXB0aW9uIGdhdGUgKyBkaXNidXJzZSBvcmRlcmluZykuIENhcHBlZCBvdmVyZmxvdwpzaW1wbHkgcmVtYWlucyBpZGxlIGFib3ZlIGB0YXJnZXRfaWRsZWAuIERpdmVzdCBwYXNzIHJ1bnMgYmVmb3JlIGludmVzdCBzbwpwdWxsZWQtYmFjayBmdW5kcyBhcmUgYXZhaWxhYmxlIHRvIGZ1bmQgdGhlIGRlcGxveXMuCgpVbmRlciBhIExPU1NZIGRpdmVzdCAoYSBzbGlwcGFnZS9mZWUgYWRhcHRlciB0aGF0IGRlbGl2ZXJzIGxlc3MgdW5kZXJseWluZwp0aGFuIGl0cyByZXBvcnRlZCBiYWxhbmNlIGltcGxpZXMpLCB0aGUgaW52ZXN0IHBhc3MgaXMgY2xhbXBlZCB0byB0aGUKcmVhbGl6ZWQgbGl2ZSBpZGxlLCBzbyBmdWxsIGNvbnZlcmdlbmNlIHRvIHRhcmdldCBtYXkgdGFrZSBhbiBBRERJVElPTkFMAAAACXJlYmFsYW5jZQAAAAAAAAAAAAAA",
         "AAAAAAAAAAAAAAAJc2V0X2FkbWluAAAAAAAAAQAAAAAAAAAJbmV3X2FkbWluAAAAAAAAEwAAAAA=",
+        "AAAAAAAAAAAAAAAKZmVlX2luY29tZQAAAAAAAAAAAAEAAAAL",
         "AAAAAAAAAEYwIOKAlCBzeW5jaHJvbm91cyB3aXRoZHJhd2FscyBhcmUgZGlzYWJsZWQ7IHJlZGVlbSB2aWEgdGhlIHF1ZXVlIChEMikuAAAAAAAKbWF4X3JlZGVlbQAAAAAAAQAAAAAAAAAFb3duZXIAAAAAAAATAAAAAQAAAAs=",
         "AAAAAAAAAAAAAAAKc2V0X3BvbGljeQAAAAAAAQAAAAAAAAAGcG9saWN5AAAAAAATAAAAAA==",
         "AAAAAAAAAAAAAAAKc3RyYXRlZ2llcwAAAAAAAAAAAAEAAAPqAAAH0AAAAA1TdHJhdGVneUFsbG9jAAAA",
+        "AAAABAAAAY9WYXVsdC1zaWRlIGVycm9ycyBzdXJmYWNlZCBhcyBzdGFibGUgYCNbY29udHJhY3RlcnJvcl1gIGNvZGVzLiBOdW1iZXJlZCBpbiB0aGUKYDZ4eGAgYmFuZCB0byBzdGF5IGNsZWFyIG9mIHRoZSBpbnRlcmZhY2VzIGAyeHhgLCBwb2xpY3kgYDN4eGAsIHN0cmF0ZWd5IGA0eHhgLAphbmQgYWRhcHRlciBgNXh4YCBjb2Rlcy4gTWlycm9ycyB0aGUgYWRhcHRlci1kZWZpbmRleCBgQWRhcHRlckVycm9yYCBwYXR0ZXJuOgphIG1vbmV5LXBhdGggcmV2ZXJ0IHRoYXQgY2FycmllcyBhIGRpYWdub3NhYmxlIGNvZGUgaW5zdGVhZCBvZiBhbiBvcGFxdWUgaG9zdAp0cmFwLiBDb2RlLW9ubHkgKG5vdCBhIHN0b3JhZ2UgZW50cnkpIHNvIGl0IGlzIGxheW91dC1zYWZlIGZvciBpbi1wbGFjZQpgdXBncmFkZSgpYC4AAAAAAAAAAApWYXVsdEVycm9yAAAAAAABAAABXiMzNCAvIGNvZGUtcmV2aWV3IEgxOiBhIG1vbmV5IHBhdGggKGBkaXNidXJzZWAgLyBgcHJvY2Vzc19yZWRlbXB0aW9uc2ApCmFza2VkIGBlbnN1cmVfbGlxdWlkaXR5YCBmb3IgbW9yZSB1bmRlcmx5aW5nIHRoYW4gdGhlIHN0cmF0ZWdpZXMgY291bGQKcmVhbGl6ZSAoZS5nLiBhIGxvc3N5L3NsaXBwYWdlIGFkYXB0ZXIgdGhhdCByZXBvcnRzIGBiYWxhbmNlKClgIGFib3ZlIHdoYXQKYGRpdmVzdCgpYCBhY3R1YWxseSBkZWxpdmVycykuIFllYXJuLXYzIHN0YW5jZTogcmV2ZXJ0IHJhdGhlciB0aGFuIHJlYWxpemUKYW4gaW5jb3JyZWN0IGxvc3Mg4oCUIHRoZSB3aG9sZSB0eCByb2xscyBiYWNrIGF0b21pY2FsbHkuAAAAAAAVSW5zdWZmaWNpZW50TGlxdWlkaXR5AAAAAAACWA==",
+        "AAAAAAAAAAAAAAALY29sbGVjdF9mZWUAAAAAAgAAAAAAAAAEZnJvbQAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
         "AAAAAAAAAAAAAAALbWF4X2RlcG9zaXQAAAAAAQAAAAAAAAAIcmVjZWl2ZXIAAAATAAAAAQAAAAs=",
         "AAAAAAAAADxTRVAtMDA1NjogYWRkcmVzcyBvZiB0aGUgdW5kZXJseWluZyBhc3NldCB0aGUgdmF1bHQgbWFuYWdlcy4AAAALcXVlcnlfYXNzZXQAAAAAAAAAAAEAAAAT",
+        "AAAAAAAAAIxUYXJnZXQgaWRsZSBjYXNoIHJldGFpbmVkIGFzIHRoZSBsaXF1aWQgYnVmZmVyOiBgdG90YWxfYXNzZXRzIMOXIGJwc2AuClRoZSBzdXJwbHVzIGFib3ZlIHRoaXMgaXMgd2hhdCBgcmViYWxhbmNlYCBkZXBsb3lzIGFjcm9zcyBzdHJhdGVnaWVzLgAAAAt0YXJnZXRfaWRsZQAAAAAAAAAAAQAAAAs=",
         "AAAAAAAAAAAAAAAMYWRkX3N0cmF0ZWd5AAAAAwAAAAAAAAAHYWRkcmVzcwAAAAATAAAAAAAAAAp3ZWlnaHRfYnBzAAAAAAAEAAAAAAAAAAh2b2xhdGlsZQAAAAEAAAAA",
         "AAAAAAAAAAAAAAAMZnJlZV9jYXBpdGFsAAAAAAAAAAEAAAAL",
         "AAAAAAAAAEYwIOKAlCBzeW5jaHJvbm91cyB3aXRoZHJhd2FscyBhcmUgZGlzYWJsZWQ7IHJlZGVlbSB2aWEgdGhlIHF1ZXVlIChEMikuAAAAAAAMbWF4X3dpdGhkcmF3AAAAAQAAAAAAAAAFb3duZXIAAAAAAAATAAAAAQAAAAs=",
         "AAAAAAAAAAAAAAAMcHJldmlld19taW50AAAAAQAAAAAAAAAGc2hhcmVzAAAAAAALAAAAAQAAAAs=",
         "AAAAAAAAAAAAAAAMdG90YWxfYXNzZXRzAAAAAAAAAAEAAAAL",
         "AAAAAAAAAGtSZXR1cm5zIHRoZSB0b3RhbCBhbW91bnQgb2YgdG9rZW5zIGluIGNpcmN1bGF0aW9uLgoKIyBBcmd1bWVudHMKCiogYGVgIC0gQWNjZXNzIHRvIHRoZSBTb3JvYmFuIGVudmlyb25tZW50LgAAAAAMdG90YWxfc3VwcGx5AAAAAAAAAAEAAAAL",
-        "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAIAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAKdW5kZXJseWluZwAAAAAAEwAAAAA=",
+        "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAQAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAKdW5kZXJseWluZwAAAAAAEwAAAAAAAAAEbmFtZQAAABAAAAAAAAAABnN5bWJvbAAAAAAAEAAAAAA=",
         "AAAAAAAAAEBSZXR1cm5zIGVzY3Jvd2VkIHNoYXJlcyBmb3IgYW4gdW5mdWxmaWxsZWQgcmVxdWVzdCBhbmQgZHJvcHMgaXQuAAAADWNhbmNlbF9yZWRlZW0AAAAAAAABAAAAAAAAAAJpZAAAAAAABAAAAAA=",
         "AAAAAAAAAAAAAAANbmF2X3Blcl9zaGFyZQAAAAAAAAAAAAABAAAACw==",
         "AAAAAAAAAAAAAAANc3RhYmxlX2Fzc2V0cwAAAAAAAAAAAAABAAAACw==",
         "AAAAAAAAA2dUcmFuc2ZlcnMgYGFtb3VudGAgb2YgdG9rZW5zIGZyb20gYGZyb21gIHRvIGB0b2AgdXNpbmcgdGhlCmFsbG93YW5jZSBtZWNoYW5pc20uIGBhbW91bnRgIGlzIHRoZW4gZGVkdWN0ZWQgZnJvbSBgc3BlbmRlcmAKYWxsb3dhbmNlLgoKIyBBcmd1bWVudHMKCiogYGVgIC0gQWNjZXNzIHRvIFNvcm9iYW4gZW52aXJvbm1lbnQuCiogYHNwZW5kZXJgIC0gVGhlIGFkZHJlc3MgYXV0aG9yaXppbmcgdGhlIHRyYW5zZmVyLCBhbmQgaGF2aW5nIGl0cwphbGxvd2FuY2UgY29uc3VtZWQgZHVyaW5nIHRoZSB0cmFuc2Zlci4KKiBgZnJvbWAgLSBUaGUgYWRkcmVzcyBob2xkaW5nIHRoZSB0b2tlbnMgd2hpY2ggd2lsbCBiZSB0cmFuc2ZlcnJlZC4KKiBgdG9gIC0gVGhlIGFkZHJlc3MgcmVjZWl2aW5nIHRoZSB0cmFuc2ZlcnJlZCB0b2tlbnMuCiogYGFtb3VudGAgLSBUaGUgYW1vdW50IG9mIHRva2VucyB0byBiZSB0cmFuc2ZlcnJlZC4KCiMgRXJyb3JzCgoqIFtgRnVuZ2libGVUb2tlbkVycm9yOjpJbnN1ZmZpY2llbnRCYWxhbmNlYF0gLSBXaGVuIGF0dGVtcHRpbmcgdG8KdHJhbnNmZXIgbW9yZSB0b2tlbnMgdGhhbiBgZnJvbWAgY3VycmVudCBiYWxhbmNlLgoqIFtgRnVuZ2libGVUb2tlbkVycm9yOjpMZXNzVGhhblplcm9gXSAtIFdoZW4gYGFtb3VudCA8IDBgLgoqIFtgRnVuZ2libGVUb2tlbkVycm9yOjpJbnN1ZmZpY2llbnRBbGxvd2FuY2VgXSAtIFdoZW4gYXR0ZW1wdGluZyB0bwp0cmFuc2ZlciBtb3JlIHRva2VucyB0aGFuIGBzcGVuZGVyYCBjdXJyZW50IGFsbG93YW5jZS4KCiMgRXZlbnRzCgoqIHRvcGljcyAtIGBbInRyYW5zZmVyIiwgZnJvbTogQWRkcmVzcywgdG86IEFkZHJlc3NdYAoqIGRhdGEgLSBgW2Ftb3VudDogaTEyOF1gAAAAAA10cmFuc2Zlcl9mcm9tAAAAAAAABAAAAAAAAAAHc3BlbmRlcgAAAAATAAAAAAAAAARmcm9tAAAAEwAAAAAAAAACdG8AAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
         "AAAAAAAAAAAAAAAOYXZhaWxhYmxlX2hlbGQAAAAAAAAAAAABAAAACw==",
-        "AAAAAAAAAAAAAAAOcHJlbWl1bV9pbmNvbWUAAAAAAAAAAAABAAAACw==",
         "AAAAAAAAAAAAAAAOcHJldmlld19yZWRlZW0AAAAAAAEAAAAAAAAABnNoYXJlcwAAAAAACwAAAAEAAAAL",
         "AAAAAAAAAAAAAAAOcmVxdWVzdF9yZWRlZW0AAAAAAAIAAAAAAAAABW93bmVyAAAAAAAAEwAAAAAAAAAGc2hhcmVzAAAAAAALAAAAAQAAAAQ=",
-        "AAAAAAAAAAAAAAAPY29sbGVjdF9wcmVtaXVtAAAAAAIAAAAAAAAABGZyb20AAAATAAAAAAAAAAZhbW91bnQAAAAAAAsAAAAA",
         "AAAAAAAAAAAAAAAPcHJldmlld19kZXBvc2l0AAAAAAEAAAAAAAAABmFzc2V0cwAAAAAACwAAAAEAAAAL",
         "AAAAAAAAAAAAAAAPcmVtb3ZlX3N0cmF0ZWd5AAAAAAEAAAAAAAAAB2FkZHJlc3MAAAAAEwAAAAA=",
         "AAAAAAAAAAAAAAAQcGVuZGluZ19yZXF1ZXN0cwAAAAAAAAABAAAD6gAAAAQ=",
         "AAAAAAAAAAAAAAAQcHJldmlld193aXRoZHJhdwAAAAEAAAAAAAAABmFzc2V0cwAAAAAACwAAAAEAAAAL",
         "AAAAAAAAAAAAAAARY29udmVydF90b19hc3NldHMAAAAAAAABAAAAAAAAAAZzaGFyZXMAAAAAAAsAAAABAAAACw==",
         "AAAAAAAAAAAAAAARY29udmVydF90b19zaGFyZXMAAAAAAAABAAAAAAAAAAZhc3NldHMAAAAAAAsAAAABAAAACw==",
+        "AAAAAAAAAQFBZG1pbi1nYXRlZCByZS1sYWJlbCBvZiB0aGUgc2hhcmUgdG9rZW4gKG5hbWUgKyBzeW1ib2wpLiBEZWNpbWFscyBhcmUKZml4ZWQgYXQgNy4gTGV0cyBhIGRlcGxveWVkIHJlc2VydmUgYWRvcHQgaXRzIHBlci1jdXJyZW5jeSBzeW1ib2wKKE1VU0QgLyBNQlJMIC8gTUFSUykgdmlhIGB1cGdyYWRlKClgIGluc3RlYWQgb2YgYSBkZXN0cnVjdGl2ZSByZWRlcGxveSDigJQKYmFsYW5jZXMsIE5BViwgYW5kIHNlZWRlZCBzdGF0ZSBhcmUgcHJlc2VydmVkLgAAAAAAABJzZXRfdG9rZW5fbWV0YWRhdGEAAAAAAAIAAAAAAAAABG5hbWUAAAAQAAAAAAAAAAZzeW1ib2wAAAAAABAAAAAA",
         "AAAAAAAAAAAAAAATcHJvY2Vzc19yZWRlbXB0aW9ucwAAAAABAAAAAAAAAAltYXhfYmF0Y2gAAAAAAAAEAAAAAA==",
+        "AAAAAAAAAVRGcmFjdGlvbiBvZiBUT1RBTCBhc3NldHMgKGluIGJwcykgdGhlIHZhdWx0IHJldGFpbnMgYXMgYSBsaXF1aWQgY2FzaApidWZmZXI7IGByZWJhbGFuY2VgIGRlcGxveXMgdGhlIHN1cnBsdXMgYWJvdmUgaXQgYW5kIGRpdmVzdHMgYmFjayBpbnRvIGl0LgowID0gZGVwbG95IGV2ZXJ5dGhpbmcuIFNldCBwZXIgcmVzZXJ2ZS4gVGhpcyBpcyBhIExJUVVJRElUWSBvcHRpbWl6YXRpb24KKGF2b2lkIG9uLWRlbWFuZCBkaXZlc3QgY29zdHMpLCBOT1QgYSBzb2x2ZW5jeSByZXNlcnZlIOKAlCBzb2x2ZW5jeSBzdGF5cwplbmZvcmNlZCBieSBgZnJlZV9jYXBpdGFsYCAvIGBjb3ZlcmFnZV9yZXF1aXJlZGAuAAAAFW1pbl9saXF1aWRfYnVmZmVyX2JwcwAAAAAAAAAAAAABAAAABA==",
+        "AAAAAAAAAJJQZXItc3RyYXRlZ3kgY29uY2VudHJhdGlvbiBjYXAsIGluIGJwcyBvZiBUT1RBTCBhc3NldHMuIERlZmF1bHRzIHRvIDEwMCUKKHVuY2FwcGVkKSB3aGVuIHVuc2V0LiBgcmViYWxhbmNlYCB3aWxsIG5vdCBkZXBsb3kgYSBzdHJhdGVneSBhYm92ZSB0aGlzLgAAAAAAFXN0cmF0ZWd5X21heF9kZWJ0X2JwcwAAAAAAAAEAAAAAAAAACHN0cmF0ZWd5AAAAEwAAAAEAAAAE",
+        "AAAAAAAAAAAAAAAZc2V0X21pbl9saXF1aWRfYnVmZmVyX2JwcwAAAAAAAAEAAAAAAAAAA2JwcwAAAAAEAAAAAA==",
+        "AAAAAAAAAAAAAAAZc2V0X3N0cmF0ZWd5X21heF9kZWJ0X2JwcwAAAAAAAAIAAAAAAAAACHN0cmF0ZWd5AAAAEwAAAAAAAAADYnBzAAAAAAQAAAAA",
         "AAAAAQAAAAAAAAAAAAAADVJlZGVlbVJlcXVlc3QAAAAAAAAGAAAAAAAAAAljbGFpbWFibGUAAAAAAAALAAAAAAAAAAdjbGFpbWVkAAAAAAEAAAAAAAAACWZ1bGZpbGxlZAAAAAAAAAEAAAAAAAAAAmlkAAAAAAAEAAAAAAAAAAVvd25lcgAAAAAAABMAAAAAAAAABnNoYXJlcwAAAAAACw==",
         "AAAAAQAAAAAAAAAAAAAADVN0cmF0ZWd5QWxsb2MAAAAAAAADAAAAAAAAAAdhZGRyZXNzAAAAABMAAAAAAAAACHZvbGF0aWxlAAAAAQAAAAAAAAAKd2VpZ2h0X2JwcwAAAAAABA==",
         "AAAABAAAAAAAAAAAAAAAFlNvcm9iYW5GaXhlZFBvaW50RXJyb3IAAAAAAAIAAAAcQXJpdGhtZXRpYyBvdmVyZmxvdyBvY2N1cnJlZAAAAAhPdmVyZmxvdwAABdwAAAAQRGl2aXNpb24gYnkgemVybwAAAA5EaXZpc2lvbkJ5WmVybwAAAAAF3Q==",
@@ -587,11 +673,14 @@ export class Client extends ContractClient {
         allowance: this.txFromJSON<i128>,
         rebalance: this.txFromJSON<null>,
         set_admin: this.txFromJSON<null>,
+        fee_income: this.txFromJSON<i128>,
         max_redeem: this.txFromJSON<i128>,
         set_policy: this.txFromJSON<null>,
         strategies: this.txFromJSON<Array<StrategyAlloc>>,
+        collect_fee: this.txFromJSON<null>,
         max_deposit: this.txFromJSON<i128>,
         query_asset: this.txFromJSON<string>,
+        target_idle: this.txFromJSON<i128>,
         add_strategy: this.txFromJSON<null>,
         free_capital: this.txFromJSON<i128>,
         max_withdraw: this.txFromJSON<i128>,
@@ -603,16 +692,19 @@ export class Client extends ContractClient {
         stable_assets: this.txFromJSON<i128>,
         transfer_from: this.txFromJSON<null>,
         available_held: this.txFromJSON<i128>,
-        premium_income: this.txFromJSON<i128>,
         preview_redeem: this.txFromJSON<i128>,
         request_redeem: this.txFromJSON<u32>,
-        collect_premium: this.txFromJSON<null>,
         preview_deposit: this.txFromJSON<i128>,
         remove_strategy: this.txFromJSON<null>,
         pending_requests: this.txFromJSON<Array<u32>>,
         preview_withdraw: this.txFromJSON<i128>,
         convert_to_assets: this.txFromJSON<i128>,
         convert_to_shares: this.txFromJSON<i128>,
-        process_redemptions: this.txFromJSON<null>
+        set_token_metadata: this.txFromJSON<null>,
+        process_redemptions: this.txFromJSON<null>,
+        min_liquid_buffer_bps: this.txFromJSON<u32>,
+        strategy_max_debt_bps: this.txFromJSON<u32>,
+        set_min_liquid_buffer_bps: this.txFromJSON<null>,
+        set_strategy_max_debt_bps: this.txFromJSON<null>
   }
 }

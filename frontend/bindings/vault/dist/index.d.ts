@@ -7,7 +7,27 @@ export * as rpc from "@stellar/stellar-sdk/rpc";
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX";
+        readonly contractId: "CCZATYOP5OCTKI4QA2THW5LACWIMIGGOOMQGVQFVQ2TESOS3ARFSJLIE";
+    };
+};
+/**
+ * Vault-side errors surfaced as stable `#[contracterror]` codes. Numbered in the
+ * `6xx` band to stay clear of the interfaces `2xx`, policy `3xx`, strategy `4xx`,
+ * and adapter `5xx` codes. Mirrors the adapter-defindex `AdapterError` pattern:
+ * a money-path revert that carries a diagnosable code instead of an opaque host
+ * trap. Code-only (not a storage entry) so it is layout-safe for in-place
+ * `upgrade()`.
+ */
+export declare const VaultError: {
+    /**
+     * #34 / code-review H1: a money path (`disburse` / `process_redemptions`)
+     * asked `ensure_liquidity` for more underlying than the strategies could
+     * realize (e.g. a lossy/slippage adapter that reports `balance()` above what
+     * `divest()` actually delivers). Yearn-v3 stance: revert rather than realize
+     * an incorrect loss — the whole tx rolls back atomically.
+     */
+    600: {
+        message: string;
     };
 };
 export interface RedeemRequest {
@@ -267,9 +287,10 @@ export interface Client {
     /**
      * Construct and simulate a disburse transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    disburse: ({ to, amount }: {
+    disburse: ({ to, amount, coverage_after }: {
         to: string;
         amount: i128;
+        coverage_after: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
      * Construct and simulate a max_mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -331,6 +352,23 @@ export interface Client {
     }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a rebalance transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Rebalance strategy allocations toward target — idempotent and bidirectional.
+     *
+     * Keeps `target_idle` (a fraction of TOTAL assets, see `min_liquid_buffer_bps`)
+     * as a liquid cash buffer and spreads the surplus across strategies by weight,
+     * each clamped to its `strategy_max_debt_bps` cap. Each strategy's on-chain
+     * balance is moved toward that target: pulled back when over, deployed when
+     * under. Targets are computed once off a snapshot, so calling at-target is a
+     * no-op — the buffer holds instead of draining across repeated calls.
+     *
+     * LIQUIDITY-only: never reads `coverage_required` (solvency stays enforced by
+     * the `free_capital` redemption gate + disburse ordering). Capped overflow
+     * simply remains idle above `target_idle`. Divest pass runs before invest so
+     * pulled-back funds are available to fund the deploys.
+     *
+     * Under a LOSSY divest (a slippage/fee adapter that delivers less underlying
+     * than its reported balance implies), the invest pass is clamped to the
+     * realized live idle, so full convergence to target may take an ADDITIONAL
      */
     rebalance: (options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
@@ -339,6 +377,10 @@ export interface Client {
     set_admin: ({ new_admin }: {
         new_admin: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
+    /**
+     * Construct and simulate a fee_income transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    fee_income: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a max_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      * 0 — synchronous withdrawals are disabled; redeem via the queue (D2).
@@ -357,6 +399,13 @@ export interface Client {
      */
     strategies: (options?: MethodOptions) => Promise<AssembledTransaction<Array<StrategyAlloc>>>;
     /**
+     * Construct and simulate a collect_fee transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    collect_fee: ({ from, amount }: {
+        from: string;
+        amount: i128;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
+    /**
      * Construct and simulate a max_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     max_deposit: ({ receiver }: {
@@ -367,6 +416,12 @@ export interface Client {
      * SEP-0056: address of the underlying asset the vault manages.
      */
     query_asset: (options?: MethodOptions) => Promise<AssembledTransaction<string>>;
+    /**
+     * Construct and simulate a target_idle transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Target idle cash retained as the liquid buffer: `total_assets × bps`.
+     * The surplus above this is what `rebalance` deploys across strategies.
+     */
+    target_idle: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a add_strategy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -459,10 +514,6 @@ export interface Client {
      */
     available_held: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
-     * Construct and simulate a premium_income transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    premium_income: (options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
-    /**
      * Construct and simulate a preview_redeem transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     preview_redeem: ({ shares }: {
@@ -475,13 +526,6 @@ export interface Client {
         owner: string;
         shares: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
-    /**
-     * Construct and simulate a collect_premium transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    collect_premium: ({ from, amount }: {
-        from: string;
-        amount: i128;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
      * Construct and simulate a preview_deposit transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -517,19 +561,62 @@ export interface Client {
         assets: i128;
     }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
+     * Construct and simulate a set_token_metadata transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Admin-gated re-label of the share token (name + symbol). Decimals are
+     * fixed at 7. Lets a deployed reserve adopt its per-currency symbol
+     * (MUSD / MBRL / MARS) via `upgrade()` instead of a destructive redeploy —
+     * balances, NAV, and seeded state are preserved.
+     */
+    set_token_metadata: ({ name, symbol }: {
+        name: string;
+        symbol: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
+    /**
      * Construct and simulate a process_redemptions transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     process_redemptions: ({ max_batch }: {
         max_batch: u32;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
+    /**
+     * Construct and simulate a min_liquid_buffer_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Fraction of TOTAL assets (in bps) the vault retains as a liquid cash
+     * buffer; `rebalance` deploys the surplus above it and divests back into it.
+     * 0 = deploy everything. Set per reserve. This is a LIQUIDITY optimization
+     * (avoid on-demand divest costs), NOT a solvency reserve — solvency stays
+     * enforced by `free_capital` / `coverage_required`.
+     */
+    min_liquid_buffer_bps: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
+    /**
+     * Construct and simulate a strategy_max_debt_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Per-strategy concentration cap, in bps of TOTAL assets. Defaults to 100%
+     * (uncapped) when unset. `rebalance` will not deploy a strategy above this.
+     */
+    strategy_max_debt_bps: ({ strategy }: {
+        strategy: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
+    /**
+     * Construct and simulate a set_min_liquid_buffer_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    set_min_liquid_buffer_bps: ({ bps }: {
+        bps: u32;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
+    /**
+     * Construct and simulate a set_strategy_max_debt_bps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     */
+    set_strategy_max_debt_bps: ({ strategy, bps }: {
+        strategy: string;
+        bps: u32;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
 }
 export declare class Client extends ContractClient {
     readonly options: ContractClientOptions;
     static deploy<T = Client>(
     /** Constructor/Initialization Args for the contract's `__constructor` method */
-    { admin, underlying }: {
+    { admin, underlying, name, symbol }: {
         admin: string;
         underlying: string;
+        name: string;
+        symbol: string;
     }, 
     /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
     options: MethodOptions & Omit<ContractClientOptions, "contractId"> & {
@@ -562,11 +649,14 @@ export declare class Client extends ContractClient {
         allowance: (json: string) => AssembledTransaction<bigint>;
         rebalance: (json: string) => AssembledTransaction<null>;
         set_admin: (json: string) => AssembledTransaction<null>;
+        fee_income: (json: string) => AssembledTransaction<bigint>;
         max_redeem: (json: string) => AssembledTransaction<bigint>;
         set_policy: (json: string) => AssembledTransaction<null>;
         strategies: (json: string) => AssembledTransaction<StrategyAlloc[]>;
+        collect_fee: (json: string) => AssembledTransaction<null>;
         max_deposit: (json: string) => AssembledTransaction<bigint>;
         query_asset: (json: string) => AssembledTransaction<string>;
+        target_idle: (json: string) => AssembledTransaction<bigint>;
         add_strategy: (json: string) => AssembledTransaction<null>;
         free_capital: (json: string) => AssembledTransaction<bigint>;
         max_withdraw: (json: string) => AssembledTransaction<bigint>;
@@ -578,16 +668,19 @@ export declare class Client extends ContractClient {
         stable_assets: (json: string) => AssembledTransaction<bigint>;
         transfer_from: (json: string) => AssembledTransaction<null>;
         available_held: (json: string) => AssembledTransaction<bigint>;
-        premium_income: (json: string) => AssembledTransaction<bigint>;
         preview_redeem: (json: string) => AssembledTransaction<bigint>;
         request_redeem: (json: string) => AssembledTransaction<number>;
-        collect_premium: (json: string) => AssembledTransaction<null>;
         preview_deposit: (json: string) => AssembledTransaction<bigint>;
         remove_strategy: (json: string) => AssembledTransaction<null>;
         pending_requests: (json: string) => AssembledTransaction<number[]>;
         preview_withdraw: (json: string) => AssembledTransaction<bigint>;
         convert_to_assets: (json: string) => AssembledTransaction<bigint>;
         convert_to_shares: (json: string) => AssembledTransaction<bigint>;
+        set_token_metadata: (json: string) => AssembledTransaction<null>;
         process_redemptions: (json: string) => AssembledTransaction<null>;
+        min_liquid_buffer_bps: (json: string) => AssembledTransaction<number>;
+        strategy_max_debt_bps: (json: string) => AssembledTransaction<number>;
+        set_min_liquid_buffer_bps: (json: string) => AssembledTransaction<null>;
+        set_strategy_max_debt_bps: (json: string) => AssembledTransaction<null>;
     };
 }

@@ -23,9 +23,12 @@ import { useMemo } from "react";
 import { useParams, notFound } from "next/navigation";
 import Link from "next/link";
 import { resolveAddress, getReserve } from "@/lib/discovery";
+import { isLiveReserve, type LiveReserve } from "@/lib/reserves";
 import { reserveReads } from "@/lib/contracts";
+import { useReserveData } from "@/lib/use-reserve-data";
 import { InvestCard } from "@/components/InvestCard";
 import { ReserveTransparency } from "@/components/ReserveTransparency";
+import { RefreshControl } from "@/components/RefreshControl";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -36,17 +39,28 @@ export default function ReserveHub() {
   // Resolution: invalid → 404 | unverified → notice | verified → hub
   const resolution = resolveAddress(vault);
   const reserve = getReserve(vault); // may be undefined (unverified/unknown)
-  const reads = useMemo(
-    () => (reserve?.contracts ? reserveReads(reserve.contracts) : null),
-    [reserve],
-  );
 
   if (resolution === "invalid") notFound();
-  if (resolution === "unverified" || !reserve || !reads) {
+  if (resolution === "unverified" || !reserve || !isLiveReserve(reserve)) {
     return <UnverifiedReserve address={vault} />;
   }
 
-  // Verified path — reserve and reads are narrowed to non-null
+  // Verified path — reserve + contracts are present. The data hook lives in a
+  // child so it's never called conditionally (rules of hooks).
+  return <VerifiedHub reserve={reserve} vault={vault} />;
+}
+
+/** The verified reserve hub. Owns the live read cycle + the page-level refresh. */
+function VerifiedHub({
+  reserve,
+  vault,
+}: {
+  reserve: LiveReserve;
+  vault: string;
+}) {
+  const reads = useMemo(() => reserveReads(reserve.contracts), [reserve.contracts]);
+  const { data, loading, error, lastRefreshed, refresh } = useReserveData(reads);
+
   return (
     <main
       style={{
@@ -109,29 +123,31 @@ export default function ReserveHub() {
             </p>
           </div>
 
-          {/* Cockpit link — each reserve has its own admin cockpit */}
-          <Link
-            href={`/protocol/${vault}`}
-            className="font-mono"
-            style={{
-              flexShrink: 0,
-              fontSize: "13px",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              color: "var(--color-text-3)",
-              textDecoration: "none",
-              border: "1px solid var(--color-border)",
-              padding: "8px 14px",
-            }}
-          >
-            Cockpit ↗
-          </Link>
+          {/* Page actions — refresh (live reads) + cockpit link */}
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <RefreshControl onRefresh={refresh} loading={loading} lastRefreshed={lastRefreshed} />
+            <Link
+              href={`/protocol/${vault}`}
+              className="font-mono"
+              style={{
+                fontSize: "13px",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--color-text-3)",
+                textDecoration: "none",
+                border: "1px solid var(--color-border)",
+                padding: "8px 14px",
+              }}
+            >
+              Cockpit ↗
+            </Link>
+          </div>
         </header>
 
         {/* ── 2-column body: fund info (left) + invest rail (right) ────────── */}
         <div className="reserve-hub-grid">
-          <div className="reserve-hub-info" id="transparency" style={{ scrollMarginTop: "88px" }}>
-            <ReserveTransparency reads={reads} reserve={reserve} embedded />
+          <div className="reserve-hub-info" id="transparency">
+            <ReserveTransparency reserve={reserve} data={data} loading={loading} error={error} />
           </div>
           <div className="reserve-hub-invest">
             <InvestCard reads={reads} reserve={reserve} />

@@ -3,11 +3,13 @@
 /**
  * GuaranteeTable — table of active rental guarantees from the registry.
  *
- * Data shape per guarantee:
- *   { id, landlord, monthly_amount, months_covered, months_used, fee_bps,
- *     period_secs, paid_until, active }
+ * Data shape per guarantee (two-leg fiança):
+ *   { id, landlord, monthly_amount, months_covered, months_used, exit_months,
+ *     exit_used, fee_bps, period_secs, paid_until, active }
  *
- * Columns: ID, Landlord, Monthly, Used/Cap, Status, Exposure
+ * Columns: ID, Landlord, Monthly, Fee, Default (months_used/cap), Exit (drawn/cap),
+ *   Exposure, Status. Exposure surfaces both legs:
+ *     monthly × (months_covered − months_used) + (monthly × exit_months − exit_used)
  * Badge system per STYLE.md §3.5: 6px square + JetBrains Mono label
  *
  * Design: Precision Brutalism / Investidor.
@@ -169,7 +171,8 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
             <th style={HEADER_STYLE} scope="col">LANDLORD</th>
             <th style={{ ...HEADER_STYLE, textAlign: "right" }} scope="col">MONTHLY</th>
             <th style={{ ...HEADER_STYLE, textAlign: "right" }} scope="col">FEE</th>
-            <th style={{ ...HEADER_STYLE, textAlign: "center" }} scope="col">USED / CAP</th>
+            <th style={{ ...HEADER_STYLE, textAlign: "center" }} scope="col">DEFAULT</th>
+            <th style={{ ...HEADER_STYLE, textAlign: "right" }} scope="col">EXIT</th>
             <th style={{ ...HEADER_STYLE, textAlign: "right" }} scope="col">EXPOSURE</th>
             <th style={HEADER_STYLE} scope="col">STATUS</th>
           </tr>
@@ -181,13 +184,20 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
               monthly_amount,
               months_covered,
               months_used,
+              exit_months,
+              exit_used,
               fee_bps,
               active,
             } = guarantee;
 
-            // Remaining exposure = (months_covered - months_used) * monthly_amount
+            // Two-leg remaining exposure:
+            //   DEFAULT leg: monthly × (months_covered − months_used)
+            //   EXIT leg:    monthly × exit_months − exit_used (clamped ≥ 0)
             const monthsRemaining = Math.max(0, months_covered - months_used);
-            const exposureStroops = BigInt(monthsRemaining) * monthly_amount;
+            const defaultRemaining = BigInt(monthsRemaining) * monthly_amount;
+            const exitCap = BigInt(exit_months) * monthly_amount;
+            const exitRemaining = exitCap > exit_used ? exitCap - exit_used : 0n;
+            const exposureStroops = defaultRemaining + exitRemaining;
 
             const rowBg =
               i % 2 === 0
@@ -233,7 +243,7 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
                   <Mono dim>{fmtBps(fee_bps)}</Mono>
                 </td>
 
-                {/* Used / Cap */}
+                {/* DEFAULT leg — months_used / months_covered */}
                 <td style={{ ...COL_STYLE, textAlign: "center" }}>
                   <Mono>
                     <span style={{ color: "var(--color-text-2)" }}>{months_used}</span>
@@ -241,9 +251,17 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
                   </Mono>
                 </td>
 
-                {/* Remaining exposure */}
+                {/* EXIT leg — drawn / cap (in fiat) */}
                 <td style={{ ...COL_STYLE, textAlign: "right" }}>
-                  <Mono dim={monthsRemaining === 0}>{fmtFiat(exposureStroops, money)}</Mono>
+                  <Mono dim={exit_used === 0n}>
+                    <span style={{ color: "var(--color-text-2)" }}>{fmtFiat(exit_used, money)}</span>
+                    <span style={{ color: "var(--color-text-3)" }}> / {fmtFiat(exitCap, money)}</span>
+                  </Mono>
+                </td>
+
+                {/* Remaining exposure (both legs) */}
+                <td style={{ ...COL_STYLE, textAlign: "right" }}>
+                  <Mono dim={exposureStroops === 0n}>{fmtFiat(exposureStroops, money)}</Mono>
                 </td>
 
                 {/* Status */}

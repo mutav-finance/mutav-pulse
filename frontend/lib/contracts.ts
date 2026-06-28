@@ -1,6 +1,7 @@
 import { Client as VaultClient, type RedeemRequest, type StrategyAlloc } from "vault";
 import { Client as PolicyClient, type Guarantee } from "policy";
 import { Client as RegistryClient } from "registry";
+import { Client as StrategyClient } from "strategy";
 import { config } from "./config";
 
 export interface ReserveContracts {
@@ -9,27 +10,17 @@ export interface ReserveContracts {
   registry: string;
 }
 
+/** Shared client options for any contract on this network — one rpc + passphrase. */
+const clientOpts = (contractId: string) => ({
+  rpcUrl: config.rpcUrl,
+  contractId,
+  networkPassphrase: config.networkPassphrase,
+});
+
 export function reserveReads(c: ReserveContracts) {
-  const vaultClient = () =>
-    new VaultClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.vault,
-      networkPassphrase: config.networkPassphrase,
-    });
-
-  const policyClient = () =>
-    new PolicyClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.policy,
-      networkPassphrase: config.networkPassphrase,
-    });
-
-  const registryClient = () =>
-    new RegistryClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.registry,
-      networkPassphrase: config.networkPassphrase,
-    });
+  const vaultClient = () => new VaultClient(clientOpts(c.vault));
+  const policyClient = () => new PolicyClient(clientOpts(c.policy));
+  const registryClient = () => new RegistryClient(clientOpts(c.registry));
 
   return {
     async vaultTotalAssets(): Promise<bigint> {
@@ -52,8 +43,29 @@ export function reserveReads(c: ReserveContracts) {
       return tx.result;
     },
 
-    async vaultPremiumIncome(): Promise<bigint> {
-      const tx = await vaultClient().premium_income();
+    /**
+     * Liquidity held by the vault itself (not deployed to any strategy). The
+     * vault identity is `total_assets = available_held + Σ strategy balances`,
+     * so `deployed = total_assets − available_held`. This is the honest, live
+     * "deployed vs idle" split — distinct from the allocator's TARGET weights.
+     */
+    async vaultAvailableHeld(): Promise<bigint> {
+      const tx = await vaultClient().available_held();
+      return tx.result;
+    },
+
+    /**
+     * Live balance a single strategy adapter holds for this vault (its own
+     * `balance()` view, read via simulation — no signing). Lets the UI show the
+     * real amount deployed per venue instead of the target weight.
+     */
+    async strategyBalance(address: string): Promise<bigint> {
+      const tx = await new StrategyClient(clientOpts(address)).balance();
+      return tx.result;
+    },
+
+    async vaultFeeIncome(): Promise<bigint> {
+      const tx = await vaultClient().fee_income();
       return tx.result;
     },
 

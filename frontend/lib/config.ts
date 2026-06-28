@@ -45,6 +45,9 @@ export const config = {
       process.env.NEXT_PUBLIC_REGISTRY_ID,
     ),
     usdc: requireEnv("NEXT_PUBLIC_USDC_ID", process.env.NEXT_PUBLIC_USDC_ID),
+    // DeFindex strategy adapter. OPTIONAL — empty until wired. The reserve hub
+    // resolves provider identity from this (see lib/providers.ts).
+    adapter: process.env.NEXT_PUBLIC_ADAPTER_ID ?? "",
     // Testnet-only demo faucet. Empty/undefined on mainnet.
     faucet: process.env.NEXT_PUBLIC_FAUCET_ID ?? "",
     // BRL-native MBRL reserve contract set. OPTIONAL — empty until that reserve
@@ -57,6 +60,16 @@ export const config = {
     // Testnet-only cBRL faucet (the BRL-native reserve's demo faucet). Empty
     // until deployed (bootstrap.sh BRL_NATIVE path). Mirrors `faucet` for USDC.
     cbrlFaucet: process.env.NEXT_PUBLIC_CBRL_FAUCET_ID ?? "",
+    // MTESOURO reserve contract set (cTSR-denominated). OPTIONAL — empty until
+    // that reserve is deployed. The MTESOURO reserve entry in lib/reserves.ts
+    // degrades to non-live (status flips off) when these are blank, mirroring
+    // the MBRL pattern, so the build never breaks on a not-yet-deployed reserve.
+    mtesouroVault: process.env.NEXT_PUBLIC_MTESOURO_VAULT_ID ?? "",
+    mtesouroPolicy: process.env.NEXT_PUBLIC_MTESOURO_POLICY_ID ?? "",
+    mtesouroRegistry: process.env.NEXT_PUBLIC_MTESOURO_REGISTRY_ID ?? "",
+    // Testnet-only cTSR faucet (the MTESOURO reserve's demo faucet). Mirrors
+    // `cbrlFaucet`/`faucet`. Empty until deployed.
+    tesouroFaucet: process.env.NEXT_PUBLIC_TESOURO_FAUCET_ID ?? "",
   },
   // Classic asset behind the USDC SAC — needed to build the change_trust op and
   // to read the trustline/balance from Horizon.
@@ -116,6 +129,19 @@ export const mbrlConfigured =
   config.contracts.mbrlVault.length > 0 &&
   config.contracts.mbrlPolicy.length > 0 &&
   config.contracts.mbrlRegistry.length > 0;
+
+/**
+ * Whether the MTESOURO reserve is deployed and configured — true only when the
+ * full contract set (vault/policy/registry) is present in the env. Mirrors
+ * `mbrlConfigured`: the MTESOURO reserve in lib/reserves.ts gates its
+ * `status: "live"` on this so a not-yet-deployed reserve degrades to "planned"
+ * instead of crashing pages that read `.address`/`.contracts`. cTSR asset config
+ * (issuer) is separate and gates only the trustline/Buy UI, via `tesouroConfigured`.
+ */
+export const mtesouroConfigured =
+  config.contracts.mtesouroVault.length > 0 &&
+  config.contracts.mtesouroPolicy.length > 0 &&
+  config.contracts.mtesouroRegistry.length > 0;
 
 /**
  * Whether to surface the testnet faucet (trustline + faucet). Gated to testnet
