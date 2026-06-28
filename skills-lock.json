@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "defindex-api": {
+      "source": "defindex-io/defindex-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "0e9ae380efd3a41e62b0142abfbf589a3c67d0cdbccab60a4f6f4b463d3f1463"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
