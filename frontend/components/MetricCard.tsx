@@ -49,6 +49,11 @@ export function MetricCard({
         display: "flex",
         flexDirection: "column",
         gap: "8px",
+        // Become a sizing container + allow the grid item to shrink, so the
+        // value below can scale to the card width (long R$ figures overflowed).
+        containerType: "inline-size",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {/* Label row — Inter Medium, ALL CAPS, with optional tooltip trigger */}
@@ -108,11 +113,17 @@ export function MetricCard({
         <p
           className="font-display"
           style={{
-            fontSize: compact ? "22px" : "28px",
+            // Scale to the card width (cqi) so any value length fits, capped at
+            // the original size; floor keeps it legible on the narrowest card.
+            fontSize: compact
+              ? "clamp(13px, 8cqi, 22px)"
+              : "clamp(14px, 9cqi, 28px)",
             color: accentValue ? "var(--color-accent)" : "var(--color-text)",
             letterSpacing: "-0.02em",
             lineHeight: 1,
             margin: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
           }}
         >
           <Mono>{value}</Mono>

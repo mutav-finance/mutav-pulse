@@ -33,9 +33,12 @@ import { reserveReads, type ReserveContracts } from "@/lib/contracts";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
 import { ReserveHealthHeader } from "@/components/ReserveHealthHeader";
+import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { LockIcon } from "@/components/LockIcon";
+import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { Mono } from "@/components/Mono";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   ProtocolActionForm,
   FormField,
@@ -61,7 +64,7 @@ import {
   setCoverageRatioBps,
   setGraceSecs,
 } from "@/lib/admin-tx";
-import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
+import { fmtFiat, truncAddr, errMsg, parseToStroops, clamp01, type Money } from "@/lib/format";
 import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { venueName, ADAPTER_CATALOG } from "@/lib/providers";
 import type { StrategyAlloc } from "vault";
@@ -480,9 +483,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
       {/* ── Page content ────────────────────────────────────────────────── */}
       <div
         style={{
-          maxWidth: "1400px",
-          margin: "0 auto",
-          padding: "28px 28px 64px",
+          width: "100%",
+          padding: "28px var(--page-pad) 64px",
         }}
       >
         {/* ── Page header ───────────────────────────────────────────────── */}
@@ -493,7 +495,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: "12px",
-            marginBottom: "20px",
+            marginBottom: "24px",
           }}
         >
           <div>
@@ -602,6 +604,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     opacity: 0.55,
                   }}
                 >
+                  <CurrencyLogo currency={r.currency} width={16} muted />
                   {r.currency}
                   <LockIcon size={11} label="Locked" />
                 </span>
@@ -619,6 +622,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   color: active ? "var(--color-canvas)" : "var(--color-text-2)",
                 }}
               >
+                <CurrencyLogo currency={r.currency} width={16} />
                 {r.currency}
               </Link>
             );
@@ -633,7 +637,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
               padding: "10px 16px",
               backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-error)",
-              marginBottom: "20px",
+              marginBottom: "24px",
             }}
           >
             <p
@@ -744,6 +748,19 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             ) : null}
           </ReserveHealthHeader>
         </div>
+
+        {/* ── Read-only operator dashboard (disconnected) ───────────────── */}
+        {/* When no wallet is connected the admin action forms below are hidden.
+            Rather than leave the fold empty, surface the wallet-free reads the
+            page already holds: the coverage gauge + the live guarantee book. */}
+        {!address && (
+          <OperatorOverview
+            data={data}
+            money={money}
+            depositToken={depositToken}
+            currency={currency}
+          />
+        )}
 
         {/* ── Admin action forms ────────────────────────────────────────── */}
         {/* Only shown when wallet is connected (admin or not — forms are
@@ -1310,6 +1327,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* Current vs target table */}
             {!data.loading && data.strategies.length > 0 && (
               <div
+                className="scroll-fade-x"
                 style={{
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
@@ -1323,6 +1341,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                       {["Venue", "Deployed", "Current", "Target", "Drift", "Cap", "Class"].map((h, i) => (
                         <th
                           key={h}
+                          scope="col"
                           className="font-body"
                           style={{
                             padding: "8px 16px",
@@ -1883,6 +1902,147 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         </div>
       </div>
     </main>
+  );
+}
+
+// ─── OperatorOverview (disconnected, read-only) ──────────────────────────────
+
+/**
+ * Read-only operator dashboard rendered when no wallet is connected. Fills the
+ * fold below the ReserveHealthHeader with the reads the page already holds (no
+ * wallet required): a coverage/solvency gauge and the live guarantee registry.
+ *
+ * - Coverage gauge: derived purely from in-scope metrics — committed coverage
+ *   (coverage_required) vs free capital, both as a share of total_assets. Copper
+ *   is the ops accent on the committed (key) figure; the buffer stays neutral.
+ * - Guarantee registry: the same <GuaranteeTable> the investor reserve page
+ *   uses, wired from data.activeGuarantees (registry reads need no wallet).
+ *
+ * Recent-activity / events panel is OMITTED: there is no event/indexer data
+ * source in scope without standing up new infrastructure. Adding it would need
+ * event indexing (e.g. a Soroban event subscription / indexer) — no fake rows.
+ */
+function OperatorOverview({
+  data,
+  money,
+  depositToken,
+  currency,
+}: {
+  data: ProtocolData;
+  money: Money;
+  depositToken: string;
+  currency: string;
+}) {
+  const totalNum = Number(data.totalAssets);
+  const committedFrac = totalNum > 0 ? Number(data.coverageRequired) / totalNum : 0;
+  const bufferFrac = totalNum > 0 ? Number(data.freeCapital) / totalNum : 0;
+  // committedFrac is already 0 when totalNum <= 0, so no extra guard needed.
+  const utilizationPct = committedFrac * 100;
+  // total_assets ≥ coverage_required is the solvency posture we can read without
+  // a wallet; the precise stable-asset invariant lives behind the admin reads.
+  const withinCoverage = data.totalAssets >= data.coverageRequired;
+  const statusColor = withinCoverage ? "var(--color-copper)" : "var(--color-error)";
+
+  // Coverage gauge — committed coverage (copper, the key figure) + free buffer.
+  const coverageSegments: BarSegment[] = [
+    {
+      label: "Committed coverage",
+      display: fmtFiat(data.coverageRequired, money),
+      fraction: clamp01(committedFrac),
+      color: "var(--color-copper)",
+    },
+    {
+      label: `${depositToken} · free capital`,
+      display: fmtFiat(data.freeCapital, money),
+      fraction: clamp01(bufferFrac),
+      color: "var(--color-text-3)",
+    },
+  ];
+
+  // GuaranteeTable wants id:bigint; activeGuarantees carries id:number.
+  const guaranteeRows = data.activeGuarantees.map((g) => ({
+    id: BigInt(g.id),
+    guarantee: g.guarantee,
+    isCurrent: g.isCurrent,
+  }));
+
+  return (
+    <>
+      {/* ── Divider: reserve health (above) → read-only overview (below) ── */}
+      <div
+        style={{
+          marginTop: "28px",
+          paddingTop: "22px",
+          borderTop: "2px solid var(--color-border)",
+          marginBottom: "18px",
+        }}
+      >
+        <p
+          className="font-display"
+          style={{ fontSize: "16px", color: "var(--color-text)", letterSpacing: "-0.01em", textTransform: "uppercase", margin: 0 }}
+        >
+          Reserve Overview
+        </p>
+        <p
+          className="font-body"
+          style={{ fontSize: "12px", color: "var(--color-text-3)", margin: "4px 0 0", lineHeight: 1.4 }}
+        >
+          Read-only view of the {currency} reserve. Connect an admin wallet above to execute protocol actions.
+        </p>
+      </div>
+
+      {/* ── Coverage / solvency gauge ─────────────────────────────────── */}
+      <SubHeading>Coverage</SubHeading>
+      <SectionBio>
+        How much of the reserve is committed to active guarantees versus held free.
+        Solvency holds while committed coverage stays at or below the reserve&apos;s assets.
+      </SectionBio>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "16px",
+        }}
+      >
+        <StatusBadge
+          bordered
+          color={statusColor}
+          label={withinCoverage ? "WITHIN COVERAGE" : "OVER-COMMITTED"}
+          ariaLabel={`Coverage status: ${withinCoverage ? "within coverage" : "over-committed"}`}
+        />
+        <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+          <span
+            className="font-body"
+            style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}
+          >
+            Utilization
+          </span>
+          <Mono copper={utilizationPct >= 80} style={{ fontSize: "15px", fontWeight: 500 }}>
+            {data.loading ? "—" : `${utilizationPct.toFixed(1)}%`}
+          </Mono>
+        </div>
+      </div>
+      <AllocationBar segments={coverageSegments} loading={data.loading} />
+
+      {/* ── Guarantee registry (wallet-free read) ─────────────────────── */}
+      <SubHeading>Guarantee Registry</SubHeading>
+      <SectionBio>
+        Active rental guarantees underwritten by this reserve, read live from the registry contract.
+      </SectionBio>
+      <GuaranteeTable
+        guarantees={guaranteeRows}
+        money={money}
+        loading={data.loading}
+        error={data.error ?? undefined}
+      />
+
+      {/* Recent-activity / events panel intentionally omitted — no event or
+          indexer data source is available without a wallet or new indexing
+          infrastructure. Add a Soroban event subscription / indexer to surface
+          a real activity feed; no placeholder rows are fabricated here. */}
+    </>
   );
 }
 

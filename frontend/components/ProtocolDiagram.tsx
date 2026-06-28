@@ -18,6 +18,7 @@
  * on the gate markers.
  */
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -32,6 +33,7 @@ import {
   type Edge,
   type EdgeProps,
   type NodeProps,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -265,20 +267,79 @@ const TECH = [
   { label: "Blend", href: "https://blend.capital" },
 ];
 
+const DIAGRAM_LABEL =
+  "Protocol money-flow diagram. The Investor deposits USDC into the Reserve vault " +
+  "and redeems shares through an async, solvency-gated queue. Guarantees pay fees " +
+  "into the Reserve (fee to NAV); the Reserve covers defaults to the Partner Agency " +
+  "via cover_default. Idle float earns yield through strategy adapters. The gates are " +
+  "described in the legend below.";
+
+// Shared fit padding — used by the fitView prop (mount) and the resize re-fit.
+const FIT_OPTIONS = { padding: 0.14 };
+
 export function ProtocolDiagram() {
-  // NODES/EDGES are module-level constants — pass them directly (a stable
-  // reference already; no useMemo needed).
+  const boxRef = useRef<HTMLDivElement>(null);
+  const rfRef = useRef<ReactFlowInstance | null>(null);
+
+  // React Flow paints the grid + arrowheads as SVG attributes, where CSS vars
+  // don't resolve — so resolve the brand tokens to concrete values at mount
+  // (lazy initializer; React Flow renders client-side) instead of hardcoding hex.
+  const [tokens] = useState(() => {
+    if (typeof window === "undefined") return { grid: GRID_COLOR, arrow: ARROW_COLOR };
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      grid: cs.getPropertyValue("--color-border").trim() || GRID_COLOR,
+      arrow: cs.getPropertyValue("--color-text-3").trim() || ARROW_COLOR,
+    };
+  });
+
+  const edges = useMemo<Edge[]>(
+    () =>
+      EDGES.map((e) => ({
+        ...e,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: tokens.arrow },
+      })),
+    [tokens.arrow],
+  );
+
+  // Capture the instance for the resize re-fit; the initial fit is handled by
+  // the `fitView` + `fitViewOptions` props below.
+  const onInit = useCallback((inst: ReactFlowInstance) => {
+    rfRef.current = inst;
+  }, []);
+
+  // Re-fit whenever the container resizes — fitView runs once on mount, so
+  // without this the end nodes get clipped when the viewport narrows (mobile).
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => rfRef.current?.fitView(FIT_OPTIONS));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div>
-      <div style={{ height: "clamp(360px, 42vw, 480px)", border: "1px solid var(--color-border)", backgroundColor: "var(--color-canvas)" }}>
+      {/* role="img" collapses the non-interactive canvas to a single labelled
+          node for AT; the readable gate semantics live in the legend below. */}
+      <div
+        ref={boxRef}
+        role="img"
+        aria-label={DIAGRAM_LABEL}
+        style={{ height: "clamp(360px, 42vw, 480px)", border: "1px solid var(--color-border)", backgroundColor: "var(--color-canvas)" }}
+      >
         <ReactFlow
           nodes={NODES}
-          edges={EDGES}
+          edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           colorMode="dark"
           fitView
-          fitViewOptions={{ padding: 0.14 }}
+          fitViewOptions={FIT_OPTIONS}
+          // Allow fitView to zoom out far enough to fit every node on a narrow
+          // viewport (the default minZoom 0.5 clamped and clipped the end nodes).
+          minZoom={0.2}
+          onInit={onInit}
           proOptions={{ hideAttribution: true }}
           nodesDraggable={false}
           nodesConnectable={false}
@@ -292,7 +353,7 @@ export function ProtocolDiagram() {
           style={{ backgroundColor: "var(--color-canvas)" }}
         >
           {/* Blueprint grid — sits behind the nodes/edges, inside the bordered box. 30% opacity → backdrop. */}
-          <Background variant={BackgroundVariant.Lines} gap={28} lineWidth={1} color={GRID_COLOR} style={{ opacity: 0.3 }} />
+          <Background variant={BackgroundVariant.Lines} gap={28} lineWidth={1} color={tokens.grid} style={{ opacity: 0.3 }} />
         </ReactFlow>
       </div>
 

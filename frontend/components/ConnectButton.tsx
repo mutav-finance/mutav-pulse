@@ -75,7 +75,7 @@ export function ConnectButton() {
       <button
         onClick={() => { connect().catch(() => { /* error surfaced via context */ }); }}
         disabled={connecting}
-        className="font-body"
+        className="font-body connect-cta"
         aria-label="Connect Stellar wallet"
         style={{
           display: "inline-flex",
@@ -85,11 +85,12 @@ export function ConnectButton() {
           fontWeight: 500,
           letterSpacing: "0.01em",
 
-          // Amber CTA — scarce, intentional
-          color: connecting ? "var(--color-text-3)" : "var(--color-canvas)",
+          // Amber OUTLINE CTA (STYLE.md) — amber stays scarce at rest; the
+          // `.connect-cta:hover` rule fills amber only on intent.
+          color: connecting ? "var(--color-text-3)" : "var(--color-accent)",
           backgroundColor: connecting
             ? "var(--color-surface)"
-            : "var(--color-accent)",
+            : "transparent",
           border: connecting
             ? "1px solid var(--color-border)"
             : "1px solid var(--color-accent)",

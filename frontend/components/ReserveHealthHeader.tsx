@@ -130,7 +130,9 @@ export function ReserveHealthHeader({
             style={{
               border: "1px solid var(--color-border)",
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              // Collapse from 3 cols to 2/1 on narrow widths so the values don't
+              // overflow on mobile (was a fixed repeat(3, 1fr)).
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
               gap: "1px",
               backgroundColor: "var(--color-border)",
             }}
@@ -219,7 +221,7 @@ export function ReserveHealthHeader({
             >
               Strategy Allocs
             </span>
-            <div className="scroll-dark" style={{ overflow: "auto", maxHeight: "152px" }}>
+            <div className="scroll-dark scroll-fade-y" style={{ overflow: "auto", maxHeight: "152px" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFeatureSettings: '"tnum" 1' }}>
               <thead>
                 <tr>

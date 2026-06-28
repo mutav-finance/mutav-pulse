@@ -364,13 +364,12 @@ export function FormField({
         className="font-mono"
         style={{
           backgroundColor: "var(--color-canvas)",
-          border: "1px solid var(--color-border)",
+          border: "1px solid var(--color-border-input)",
           color: "var(--color-text)",
           fontSize: "13px",
           padding: "7px 10px",
           fontFeatureSettings: '"tnum" 1',
           fontVariantNumeric: "tabular-nums",
-          outline: "none",
           width: "100%",
           // No border-radius — Precision Brutalism
         }}
@@ -489,11 +488,10 @@ export function FormSelect({
         className="font-mono"
         style={{
           backgroundColor: "var(--color-canvas)",
-          border: "1px solid var(--color-border)",
+          border: "1px solid var(--color-border-input)",
           color: value ? "var(--color-text)" : "var(--color-text-3)",
           fontSize: "13px",
           padding: "7px 10px",
-          outline: "none",
           width: "100%",
           cursor: isDisabled ? "not-allowed" : "pointer",
         }}

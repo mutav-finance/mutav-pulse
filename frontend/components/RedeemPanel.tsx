@@ -277,13 +277,12 @@ export function RedeemPanel({
               style={{
                 width: "100%",
                 backgroundColor: "transparent",
-                border: "1px solid var(--color-border)",
+                border: "1px solid var(--color-border-input)",
                 color: "var(--color-text)",
                 fontSize: "14px",
                 padding: "10px 56px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
-                outline: "none",
                 colorScheme: "dark",
               }}
               aria-label={`${shareSymbol} shares to redeem`}
