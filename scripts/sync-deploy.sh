@@ -7,17 +7,23 @@
 # output after each deploy (bootstrap echoes raw IDs; you map them onto the
 # MUSD_/MTESOURO_/MBRL_ prefixed keys here). This script reads those addresses,
 # VALIDATES each vault on-chain (its underlying must match the configured SAC, so
-# a stale id is caught, not laundered), resolves each deposit asset's code +
-# issuer from the SAC's on-chain name(), and regenerates the THREE committed
-# copies so they can't drift:
+# a stale id is caught, not laundered), VERIFIES that configured SAC is the
+# CANONICAL Stellar Asset Contract deterministically derived from its own on-chain
+# CODE:ISSUER (so an impostor that merely lies in name() can't pass), resolves each
+# deposit asset's code + issuer from the SAC's on-chain name(), and regenerates the
+# THREE committed copies so they can't drift:
 #
 #   - frontend/.env.example          (the NEXT_PUBLIC_* the frontend reads)
 #   - docs/reference/deployments.md  (the docs reference table)
 #   - README.md                      (the "Live on testnet" block, between
 #                                      <!-- deploy:start --> / <!-- deploy:end -->)
 #
-# Resolving codes/issuers from the chain — not from the deploy record — is the
-# part that catches a stale/wrong issuer (the class of bug this guards against).
+# Resolving codes/issuers from the chain — not from the deploy record — catches a
+# stale/wrong issuer; re-deriving the canonical SAC from that CODE:ISSUER and
+# requiring it equals the configured *_SAC upgrades the binding from "internally
+# consistent" to "authentic" — an impostor SAC cannot occupy the deterministic
+# canonical address for an asset it does not issue. (Authenticity, not authorization:
+# it does not whitelist which issuer is trusted — that's a separate control.)
 #
 # Usage:
 #   make sync-deploy                       # uses ./.env.local
@@ -57,6 +63,13 @@ get() {
 # Invoke a read-only contract method; empty + non-fatal on failure (set -e safe).
 invoke() { stellar contract invoke --network "$NET" --source-account "$SRC" --id "$1" -- "$2" 2>/dev/null | tr -d '"' || true; }
 
+# Derive the CANONICAL Stellar Asset Contract id for a classic asset (CODE:ISSUER),
+# deterministically from asset + the network's passphrase. Offline (no RPC) and takes
+# NO --source-account (the CLI rejects it for this subcommand). Output is a bare C...
+# id with no quotes; $() strips the trailing newline. Empty + non-fatal on failure
+# (set -e safe) — caller guards with die().
+derive_sac() { stellar contract id asset --asset "$1" --network "$NET" 2>/dev/null || true; }
+
 die() { echo "✗ $*" >&2; exit 1; }
 
 # Read + validate one reserve's contract set. Sets <PFX>_{VAULT,POLICY,REGISTRY,
@@ -84,6 +97,18 @@ load_reserve() {
     *)   die "${pfx}_SAC $sac name() = '$sac_name' is not CODE:ISSUER" ;;
   esac
   eval "${pfx}_CODE=\${sac_name%%:*}; ${pfx}_ISSUER=\${sac_name##*:}"
+  # AUTHENTICITY: the configured *_SAC must BE the canonical SAC deterministically
+  # derived from its own on-chain CODE:ISSUER — not merely a contract that *reports*
+  # a plausible name(). An impostor can return any name() but cannot occupy the
+  # canonical address for an asset it does not issue. (Proves authenticity, not
+  # authorization: it does not whitelist which issuer is trusted — separate concern.)
+  local issuer="${sac_name##*:}" derived
+  # The CLI resolves a non-strkey issuer as a LOCAL KEY ALIAS, which could falsely
+  # match — so require a real 56-char G-strkey before deriving.
+  [[ "$issuer" =~ ^G[A-Z2-7]{55}$ ]] || die "${pfx}_SAC $sac name() issuer '$issuer' is not a 56-char G-strkey — refusing to derive (could resolve a local key alias)"
+  derived="$(derive_sac "$sac_name")"
+  [ -n "$derived" ] || die "could not derive canonical SAC for ${pfx} asset '$sac_name' on $NET (malformed asset or stellar CLI error)"
+  [ "$derived" = "$sac" ] || die "${pfx}_SAC $sac is NOT the canonical SAC for '$sac_name' (canonical = $derived) — impostor or wrong SAC in $DEPLOY_ENV; refusing to publish"
 }
 
 echo "→ reading $DEPLOY_ENV + validating reserves on-chain ($NET)…"
@@ -199,7 +224,8 @@ $(row faucet "$MBRL_FAUCET" '`NEXT_PUBLIC_CBRL_FAUCET_ID`')
 All three deposit tokens are **mock classic assets** on testnet. Each vault's
 \`underlying\` is the asset's Stellar Asset Contract (SAC) above. The codes and
 issuers below are read live from each SAC's on-chain \`name()\` — never copied by
-hand (re-run \`make sync-deploy\` to refresh).
+hand (re-run \`make sync-deploy\` to refresh), and each configured SAC is verified to be the
+canonical contract deterministically derived from that \`CODE:ISSUER\`.
 
 | Reserve | Deposit token | Issuer |
 |---|---|---|
@@ -214,6 +240,10 @@ hand (re-run \`make sync-deploy\` to refresh).
   and the README block.
 - The two-leg fiança policy is live: each reserve's \`policy\` exposes \`cover_default\`,
   \`cover_exit\`, \`grace_secs\`, and \`set_coverage_ratio_bps\`.
+- Each configured SAC is verified at generation time to be the **canonical** Stellar
+  Asset Contract deterministically derived from its on-chain \`CODE:ISSUER\` — a contract
+  that merely reports a plausible \`name()\` from a non-canonical address is rejected, so
+  these addresses are authentic, not just internally consistent.
 - For the per-method contract surface, see [\`./contracts/vault.md\`](./contracts/vault.md);
   for revert codes see [\`./errors.md\`](./errors.md).
 EOF
