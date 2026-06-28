@@ -4,3 +4,7 @@
 .soroban
 **/test_snapshots/
 .design/onre-ref/
+
+# Local secrets / wallet backups — NEVER commit (testnet keys; see secrets-audit #12)
+.env.local
+.env*.local
