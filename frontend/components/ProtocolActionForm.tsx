@@ -15,6 +15,7 @@
  */
 
 import { createContext, useContext, useState } from "react";
+import { errMsg } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 
 /**
@@ -88,14 +89,8 @@ export function ProtocolActionForm({
       setLastHash(hash);
       onSuccess?.(hash);
     } catch (err) {
-      // Surface contract assertion strings verbatim
-      const msg =
-        err instanceof Error
-          ? err.message
-          : typeof err === "string"
-            ? err
-            : "Transaction failed";
-      setErrorMsg(msg);
+      // Surface contract assertion strings verbatim (errMsg handles bare strings).
+      setErrorMsg(errMsg(err));
       setStatus("error");
     }
   }

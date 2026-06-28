@@ -87,6 +87,17 @@ const INITIAL: ProtocolData = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Validate a guarantee-id picker value into a number for an admin action.
+ * Throws the same picker/parse messages the action forms surfaced inline.
+ */
+function parseGuaranteeId(raw: string | null | undefined): number {
+  if (!raw) throw new Error("select a guarantee first");
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) throw new Error("invalid guarantee ID");
+  return id;
+}
+
 /** One-line "bio" describing the active section, shown above its cards. */
 function SectionBio({ children }: { children: React.ReactNode }) {
   return (
@@ -274,6 +285,22 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
       })),
     [data.activeGuarantees, money],
+  );
+
+  // Overdue (non-current) subset — reused by the cover_default picker, its
+  // empty-check, and the overdue list. Memoized once instead of re-filtering
+  // the active book at each of those three sites.
+  const overdueGuarantees = useMemo(
+    () => data.activeGuarantees.filter((g) => !g.isCurrent),
+    [data.activeGuarantees],
+  );
+  const overdueOptions = useMemo(
+    () =>
+      overdueGuarantees.map((g) => ({
+        value: String(g.id),
+        label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
+      })),
+    [overdueGuarantees, money],
   );
 
   const strategyOptions = useMemo(
@@ -784,9 +811,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  if (!settleId) throw new Error("select a guarantee first");
-                  const id = parseInt(settleId, 10);
-                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  const id = parseGuaranteeId(settleId);
                   return settleGuarantee(contracts, address, id);
                 }}
                 onSuccess={() => {
@@ -829,9 +854,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 disabled={!isAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  if (!ppId) throw new Error("select a guarantee first");
-                  const id = parseInt(ppId, 10);
-                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  const id = parseGuaranteeId(ppId);
                   return payFee(contracts, address, id);
                 }}
                 onSuccess={() => {
@@ -900,9 +923,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 requireConfirm
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  if (!cdId) throw new Error("select a guarantee first");
-                  const id = parseInt(cdId, 10);
-                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  const id = parseGuaranteeId(cdId);
                   return coverDefault(contracts, address, id);
                 }}
                 onSuccess={() => {
@@ -915,12 +936,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   label="Defaulted Guarantee"
                   value={cdId}
                   onChange={setCdId}
-                  options={data.activeGuarantees
-                    .filter((g) => !g.isCurrent)
-                    .map((g) => ({
-                      value: String(g.id),
-                      label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
-                    }))}
+                  options={overdueOptions}
                   disabled={!isPolicyAdmin}
                   placeholder="Select overdue guarantee…"
                 />
@@ -955,9 +971,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 requireConfirm
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  if (!ceId) throw new Error("select a guarantee first");
-                  const id = parseInt(ceId, 10);
-                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  const id = parseGuaranteeId(ceId);
                   const amount = parseToStroops(ceAmount);
                   if (amount === null)
                     throw new Error("amount must be a positive number");
@@ -1028,8 +1042,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                       backgroundColor: "var(--color-surface-2)",
                     }}
                   />
-                ) : data.activeGuarantees.filter((g) => !g.isCurrent).length ===
-                  0 ? (
+                ) : overdueGuarantees.length === 0 ? (
                   <p
                     className="font-mono"
                     style={{
@@ -1044,8 +1057,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   <div
                     style={{ display: "flex", flexDirection: "column", gap: "8px" }}
                   >
-                    {data.activeGuarantees
-                      .filter((g) => !g.isCurrent)
+                    {overdueGuarantees
                       .map((g) => (
                         <div
                           key={g.id}

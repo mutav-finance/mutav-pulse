@@ -17,7 +17,8 @@
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
 import type { ReserveContracts } from "@/lib/contracts";
-import { fmtNav, STROOP_SCALE, parseToStroops, errMsg } from "@/lib/format";
+import { fmtNav, parseToStroops, errMsg } from "@/lib/format";
+import { sharesFor } from "@/lib/economics";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
 
@@ -53,10 +54,10 @@ export function DepositWidget({
   // Parse USDC input to stroops (bigint) — exact decimal-string parse, no float.
   const usdcStroops: bigint | null = parseToStroops(rawInput);
 
-  // Estimated shares: amount_stroops * 1e7 / nav_per_share
+  // Estimated shares at current NAV (assets → shares).
   const estimatedShares: bigint | null =
     usdcStroops !== null && navPerShare > 0n
-      ? (usdcStroops * STROOP_SCALE) / navPerShare
+      ? sharesFor(usdcStroops, navPerShare)
       : null;
 
   async function handleDeposit(e: React.FormEvent) {

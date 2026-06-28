@@ -18,7 +18,7 @@ import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import type { ReserveContracts } from "@/lib/contracts";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops, stroopsToInput, parseToStroops, STROOP_SCALE_NUM, errMsg } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput, parseToStroops, fmtShares4, errMsg } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
 import type { RedeemRequest } from "vault";
@@ -104,7 +104,7 @@ export function RedeemPanel({
   // Parse share input to stroops — exact decimal-string parse, no float.
   const sharesStroops: bigint | null = parseToStroops(rawInput);
 
-  const shareBalanceDisplay = fromStroops(balance);
+  const shareBalanceStr = fmtShares4(balance);
   // Requested shares exceed the user's share balance — block submit + hint.
   const exceedsBalance = sharesStroops !== null && sharesStroops > balance;
   const canSubmit =
@@ -255,7 +255,7 @@ export function RedeemPanel({
           {/* Balance hint */}
           <p style={{ fontSize: "11px", color: "var(--color-text-3)", marginBottom: "6px" }}>
             <Mono>
-              Available: {shareBalanceDisplay.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} {shareSymbol}
+              Available: {shareBalanceStr} {shareSymbol}
             </Mono>
           </p>
 
@@ -319,10 +319,7 @@ export function RedeemPanel({
               }}
             >
               Exceeds balance — you hold{" "}
-              {shareBalanceDisplay.toLocaleString("en-US", {
-                minimumFractionDigits: 4,
-                maximumFractionDigits: 4,
-              })}{" "}
+              {shareBalanceStr}{" "}
               {shareSymbol}
             </p>
           )}
@@ -473,7 +470,7 @@ export function RedeemPanel({
                         </Mono>
                         {status === "claimable" && req.claimable > 0n && (
                           <Mono style={{ fontSize: "11px", color: "var(--color-success)" }}>
-                            {(Number(req.claimable) / STROOP_SCALE_NUM).toLocaleString("en-US", {
+                            {fromStroops(req.claimable).toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}{" "}

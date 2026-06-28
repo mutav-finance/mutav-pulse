@@ -12,12 +12,44 @@
  * ~5.5%). See docs/whitepaper.md.
  */
 
-import { fromStroops } from "./format";
+import { fromStroops, STROOP_SCALE } from "./format";
 import type { Guarantee } from "policy";
 
-import { STROOP_SCALE } from "./format";
-
 const SECONDS_PER_YEAR = 365.25 * 86_400;
+
+/**
+ * The STANDARD two-leg fiança product (pilot default): a 3-month DEFAULT
+ * (rent-arrears) leg + a 6-month EXIT (property-recovery) leg. Single source for
+ * the leg counts shared by the modeled-economics reference and the
+ * sign-guarantee default — change here to re-peg the pilot shape.
+ */
+export const STANDARD_PRODUCT = { monthsCovered: 3, exitMonths: 6 } as const;
+
+/**
+ * Remaining two-leg exposure of a single guarantee, in stroops — the capital the
+ * vault still reserves behind it. Mirrors `registry::contribution`:
+ *   DEFAULT leg: monthly × max(0, months_covered − months_used)
+ *   EXIT leg:    monthly × exit_months − exit_used (clamped ≥ 0 for display;
+ *                the contract relies on the exit_used ≤ cap invariant instead).
+ * Keep in lockstep with the contract so the UI's "remaining exposure" never
+ * diverges from what the vault actually locks.
+ */
+export function guaranteeExposure(g: Guarantee): bigint {
+  const monthsRemaining = Math.max(0, g.months_covered - g.months_used);
+  const defaultRemaining = BigInt(monthsRemaining) * g.monthly_amount;
+  const exitCap = BigInt(g.exit_months) * g.monthly_amount;
+  const exitRemaining = exitCap > g.exit_used ? exitCap - g.exit_used : 0n;
+  return defaultRemaining + exitRemaining;
+}
+
+/** assets → shares at a given NAV-per-share (both stroop-scaled). 0 if NAV ≤ 0. */
+export function sharesFor(assets: bigint, navPerShare: bigint): bigint {
+  return navPerShare > 0n ? (assets * STROOP_SCALE) / navPerShare : 0n;
+}
+/** shares → assets at a given NAV-per-share (both stroop-scaled). */
+export function assetsFor(shares: bigint, navPerShare: bigint): bigint {
+  return (shares * navPerShare) / STROOP_SCALE;
+}
 
 /** Stated modeling assumptions. Single source of truth — change here to re-peg. */
 export interface ModelAssumptions {
@@ -113,8 +145,7 @@ export function computeEconomics(
 export function standardProductEconomics(
   assumptions: ModelAssumptions = MODEL_ASSUMPTIONS,
 ): ModeledEconomics {
-  const monthsCovered = 3;
-  const exitMonths = 6;
+  const { monthsCovered, exitMonths } = STANDARD_PRODUCT;
   const guarantee = {
     id: 1,
     landlord: "",
