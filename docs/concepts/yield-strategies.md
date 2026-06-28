@@ -94,3 +94,15 @@ authority to move the vault's money. For method signatures and error codes see t
 [strategy and adapter reference](../reference/contracts/strategy-and-adapter.md);
 for wiring the setters see the [deploying and wiring
 guide](../guides/deploying-and-wiring.md).
+
+## Where strategies end and the access layer begins
+
+A strategy adapter is a **vault integration** — inside the protocol's custody,
+under the vault's authority, working idle capital for yield. That is one of two
+integration surfaces. The other is the **platform access layer** — client-signed
+integrations *outside* custody (the testnet faucet, the Soroswap cUSD→cTSR swap,
+future fiat on-ramps and bridges) that help an investor *acquire the deposit token
+and get into a position* without ever touching the vault's authority model. The
+same external venue can appear on both sides — a Soroswap *adapter* would deploy
+reserve float for yield, while the Soroswap *swap* is a user-signed exchange — so
+keep the trust boundary clear. See [funding & access](./funding-and-access.md).

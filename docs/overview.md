@@ -38,6 +38,6 @@ The **safety spine** — money moves only through the `vault`; guarantee data is
 ## Where to go next
 
 - **Run it** → [Quickstart](./guides/quickstart.md)
-- **Understand it** → [Solvency & coverage](./concepts/solvency-and-coverage.md), [Vault & shares](./concepts/vault-and-shares.md), [Economic model](./concepts/economic-model.md)
+- **Understand it** → [Solvency & coverage](./concepts/solvency-and-coverage.md), [Vault & shares](./concepts/vault-and-shares.md), [Yield strategies](./concepts/yield-strategies.md), [Funding & access](./concepts/funding-and-access.md), [Economic model](./concepts/economic-model.md)
 - **Evaluate it** → [Security model](./security/security-model.md), [Threat model](./security/threat-model.md), [Testing & audits](./security/testing-and-audits.md)
 - **Reference** → [Contract reference](./reference/contracts/vault.md), [Deployments](./reference/deployments.md)

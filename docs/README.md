@@ -17,6 +17,7 @@ New here? Start with the [Overview](./overview.md), then the [Quickstart](./guid
 - [Solvency & coverage](./concepts/solvency-and-coverage.md) — the `stable_assets ≥ coverage_required` invariant and the two-leg *fiança* model
 - [Vault & shares](./concepts/vault-and-shares.md) — SEP-0056 conformance, NAV, virtual offset, per-currency shares, the redemption queue
 - [Yield strategies](./concepts/yield-strategies.md) — the strategy trait, the allocator, the DeFindex adapter
+- [Funding & access](./concepts/funding-and-access.md) — the two integration surfaces (vault adapters vs. platform access), the faucet + Soroswap swap, and the funding-rail roadmap
 - [Economic model](./concepts/economic-model.md) — APY, underwriting spread, the fee-as-oracle model
 
 ## Guides
