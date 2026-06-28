@@ -5,16 +5,21 @@ Decision-making record for making the `vault` contract conform to **SEP-0056**
 (the resulting per-method surface). This file tracks *why* — the options weighed,
 what we chose, and the positions that were superseded along the way.
 
-Status: **design in progress** (brainstorming). No code written yet. Next step
-after decisions settle: write the formal spec → implementation plan.
+Status: **implemented** (testnet, 2026-06-23) — the decisions below shipped; the
+resulting method surface is [`vault-method-surface.md`](./vault-method-surface.md).
+Two changes landed *after* this SEP-0056 work and are reflected in the method
+surface (not rewritten through this log, which is the SEP-0056 record
+specifically): the per-currency share token (`MUSD`/`MBRL`, replacing the generic
+`mtvR`) and the witness-asserted `disburse(coverage_after)` of the two-leg fiança
+redesign.
 
 ---
 
 ## Context
 
-- **Origin:** open TODO in `HANDOFF.md` — "SEP-0056 (Tokenized Vault Standard)
-  conformance for the vault (rename `query_asset`, add convert/preview/max +
-  events; reconcile the async redemption queue via `max_withdraw`/`max_redeem`)."
+- **Origin:** SEP-0056 (Tokenized Vault Standard) conformance for the vault —
+  rename `query_asset`, add convert/preview/max + events, and reconcile the async
+  redemption queue via `max_withdraw`/`max_redeem`.
 - **What SEP-0056 is:** a Soroban port of ERC-4626. Defines a fixed function
   surface — `query_asset`, `total_assets`, `total_supply`, `convert_to_*`,
   `preview_*`, `max_*`, `deposit`/`mint`/`withdraw`/`redeem` — plus `Deposit` and
@@ -173,7 +178,8 @@ build` exports the full standard surface; `underlying()` renamed to `query_asset
   implementation** — same names, signatures, virtual offset, floor/ceil rounding.
   So "conformance" and "use OZ" converge on the same external surface.
 - **Our contract already correctly mixes token + vault.** The single `Vault`
-  contract is both the SEP-41 share token (`mtvR`, via OZ `Base`) and the vault
+  contract is both the SEP-41 share token (the per-currency share, e.g. `MUSD`,
+  via OZ `Base`) and the vault
   (custody/NAV/queue/allocator). This is **by design** — ERC-4626 defines the
   vault as its own share token, and OZ's `FungibleVault` extends `FungibleToken`
   on the same contract. Not a smell.
@@ -203,7 +209,7 @@ build` exports the full standard surface; `underlying()` renamed to `query_asset
 - [x] Contract implementation (vault SEP-0056 surface + tests + wasm build).
 - [x] **Redeploy + reseed + relink (done 2026-06-23).** Redeployed via
       `bootstrap.sh` with `SOURCE=pulse-admin` (admin GBE3); new IDs in
-      `HANDOFF.md` + `frontend/.env.example`. Added reusable `seed.sh` — restored
+      `frontend/.env.example`. Added reusable `seed.sh` — restored
       the demo state exactly (NAV 1.0084, $50.42k reserve, $36k coverage, 4
       guarantees). Regenerated `bindings/vault` from the deployed spec, updated
       `lib/tx.ts` to the 4-arg deposit. Frontend: 10/10 vitest + typecheck green;
@@ -211,28 +217,15 @@ build` exports the full standard surface; `underlying()` renamed to `query_asset
 - [ ] (Optional) formal design spec / implementation-plan docs — largely
       superseded by this log + the shipped implementation.
 
-## 🧪 Test further on this hackathon
+## Follow-ups (provisional)
 
-**The D2 queue-only conformance approach is provisional — validate it during the
-hackathon before treating it as settled.** Specifically:
-
-- [x] ~~Override actually disables cleanly~~ — moot: we don't use OZ
-      `FungibleVault` (infeasible — see D5 verification). `withdraw`/`redeem` are
-      our own functions that revert; `max_*` are our own returning `0`. No OZ
-      default to suppress.
-- [ ] **Integrator behavior with `max_* = 0` + reverting `withdraw`/`redeem`** —
-      test how ERC-4626/SEP-0056 tooling and DeFindex-style consumers react to a
-      "withdrawals disabled" vault (graceful handling vs. hard failure). This is
-      the main thing we traded away by dropping the synchronous path (D2 "cost
-      accepted").
-- [ ] **End-to-end redemption via the queue only** — verify the full investor
-      redeem journey (`request_redeem → process_redemptions → claim`) is the sole
-      money-out path exercised, and that the disabled SEP surface causes no
-      confusion in the frontend/demo.
-- [ ] **Revisit Option A if interop matters more than expected** — if hackathon
-      feedback shows synchronous redeem is needed for integrations, D2 can be
-      flipped back to Option A (instant-up-to-surplus + queue); the surface stays
-      conformant either way.
+The D2 "queue-only" conformance is settled in code; two interop questions remain
+worth checking before mainnet: how ERC-4626/SEP-0056 tooling and DeFindex-style
+consumers handle a `max_* = 0` / reverting-`withdraw` "withdrawals disabled" vault,
+and that the queue (`request_redeem → process_redemptions → claim`) is the sole
+money-out path end-to-end. If synchronous redeem proves necessary for
+integrations, D2 can flip back to instant-up-to-surplus + queue — the surface
+stays conformant either way.
 
 ## References
 
