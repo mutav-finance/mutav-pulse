@@ -82,7 +82,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // connected session if the kit has one persisted — without opening the modal.
   useEffect(() => {
     let cancelled = false;
-    initKit();
+    // initKit is async now (loads wallets-kit via dynamic import) — fire-and-forget;
+    // kitTryRestore below also lazy-loads the kit, so this is just a warm-up.
+    void initKit();
     kitTryRestore()
       .then((addr) => {
         if (!cancelled && addr) setAddress(addr);

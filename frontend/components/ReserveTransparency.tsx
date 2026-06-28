@@ -22,6 +22,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { Reads } from "@/lib/contracts";
+import { solvencyAttestation, type Attestation } from "@/lib/contracts";
+import { config, contractUrl } from "@/lib/config";
+import { ZkSolvencyBadge } from "@/components/ZkSolvencyBadge";
 import type { Reserve } from "@/lib/reserves";
 import { MetricCard } from "@/components/MetricCard";
 import { AllocationDonut } from "@/components/AllocationDonut";
@@ -47,6 +50,10 @@ interface TransparencyData {
   guarantees: Array<{ id: bigint; guarantee: Guarantee; isCurrent: boolean }>;
   loading: boolean;
   error: string | null;
+  // ZK solvency seal (global attestor). Isolated from the dashboard error: a failed
+  // attestation read must not blank the metrics, so it has its own error slot.
+  attestation: Attestation | null;
+  attestationError?: string;
 }
 
 const INITIAL: TransparencyData = {
@@ -60,6 +67,7 @@ const INITIAL: TransparencyData = {
   guarantees: [],
   loading: true,
   error: null,
+  attestation: null,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -128,6 +136,16 @@ export function ReserveTransparency({
         }),
       );
 
+      // ZK solvency seal — isolated read: a failed/unconfigured attestor must not
+      // blank the dashboard, so it gets its own try/catch and error slot.
+      let attestation: Attestation | null = null;
+      let attestationError: string | undefined;
+      try {
+        attestation = await solvencyAttestation();
+      } catch (e) {
+        attestationError = errMsg(e, "Failed to read the ZK proof");
+      }
+
       setData({
         totalAssets,
         navPerShare,
@@ -139,6 +157,8 @@ export function ReserveTransparency({
         guarantees,
         loading: false,
         error: null,
+        attestation,
+        attestationError,
       });
       setLastRefreshed(new Date());
     } catch (err) {
@@ -308,6 +328,19 @@ export function ReserveTransparency({
           money={reserve}
           loading={loading}
           error={error ?? undefined}
+        />
+      </div>
+
+      {/* ── ZK solvency seal — a verifiable layer above the on-chain invariant chip.
+           Reflects the global attestor (the primary reserve's registry + vault). ── */}
+      <div style={{ marginBottom: "24px" }}>
+        <ZkSolvencyBadge
+          attestation={data.attestation}
+          loading={loading}
+          error={data.attestationError}
+          onReverify={fetchAll}
+          explorerUrl={config.contracts.attestor ? contractUrl(config.contracts.attestor) : undefined}
+          nowMs={lastRefreshed?.getTime()}
         />
       </div>
 
