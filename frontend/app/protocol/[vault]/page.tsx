@@ -244,7 +244,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   // ── Form state: Settle Guarantee ─────────────────────────────────────────────
   const [settleId, setSettleId] = useState("");
 
-  // ── Form state: Pay Premium ──────────────────────────────────────────────────
+  // ── Form state: Pay Fee ──────────────────────────────────────────────────
   const [ppId, setPpId] = useState("");
 
   // ── Form state: Cover Default ────────────────────────────────────────────────
@@ -607,7 +607,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             >
               {[
                 { id: "underwriting", label: "Underwriting" },
-                { id: "premiums", label: "Fees" },
+                { id: "fees", label: "Fees" },
                 { id: "claims", label: "Claims" },
                 { id: "liquidity", label: "Liquidity" },
                 { id: "strategies", label: "Strategies" },
@@ -661,7 +661,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Underwriting ─────────────────────────────────────────── */}
             {activeSection === "underwriting" && (
             <>
-            <SectionBio>Open and close rental guarantees. Sign to start coverage and begin premium accrual; settle to close one out.</SectionBio>
+            <SectionBio>Open and close rental guarantees. Sign to start coverage and begin fee accrual; settle to close one out.</SectionBio>
             <ActionGrid>
               {/* Sign Guarantee */}
               <ProtocolActionForm
@@ -758,7 +758,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     value={sgFeeBps}
                     onChange={setSgFeeBps}
                     disabled={!isPolicyAdmin}
-                    hint="Premium per period = rent × bps/10000 (1200 = 12%/period, NOT annual)"
+                    hint="Fee per period = rent × bps/10000 (1200 = 12%/period, NOT annual)"
                   />
                   <FormField
                     id="sg-period"
@@ -770,7 +770,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     value={sgPeriodDays}
                     onChange={setSgPeriodDays}
                     disabled={!isPolicyAdmin}
-                    hint="Premium cadence — fee_bps is charged once per this period"
+                    hint="Fee cadence — fee_bps is charged once per this period"
                   />
                 </div>
               </ProtocolActionForm>
@@ -817,7 +817,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             )}
 
             {/* ── Fees ─────────────────────────────────────────────────── */}
-            {activeSection === "premiums" && (
+            {activeSection === "fees" && (
             <>
             <SectionBio>Keep guarantees covered. Paying a fee advances its paid-until date; coverage lapses if it falls behind.</SectionBio>
             <ActionGrid>
@@ -858,7 +858,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 )}
               </ProtocolActionForm>
 
-              {/* Spacer cell (premium is a 1-wide section) */}
+              {/* Spacer cell (fee is a 1-wide section) */}
               <div
                 style={{
                   backgroundColor: "var(--color-surface)",
@@ -1537,7 +1537,7 @@ function GuaranteeDetail({
               : "var(--color-error)",
           }}
         >
-          {guarantee.isCurrent ? "premiums current" : "OVERDUE"}
+          {guarantee.isCurrent ? "fees current" : "OVERDUE"}
         </Mono>
       </div>
     </div>

@@ -135,7 +135,7 @@ export const RESERVES: Reserve[] = [
   {
     // BRL-native reserve (spec §6): the underlying is cBRL (a BRL stablecoin),
     // with TESOURO held as a yield strategy marked back to BRL — so coverage,
-    // NAV, premiums and disburse are all in one BRL unit (1 cBRL ≈ R$1, hence
+    // NAV, fees and disburse are all in one BRL unit (1 cBRL ≈ R$1, hence
     // unitPriceFiat 1). Contracts are env-driven (NEXT_PUBLIC_MBRL_*), NOT
     // hardcoded, following the MUSD pattern. Until that reserve is deployed the
     // env vars are blank → `mbrlConfigured` is false → this entry degrades to a

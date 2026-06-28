@@ -17,7 +17,7 @@ in `docs/specs/` and `docs/plans/` (one spec + plan per phase).
 ### What changed this session
 - **Multi-reserve refactor** (9-task plan, executed subagent-driven — spec `docs/specs/2026-06-23-mutav-pulse-multi-reserve-ui-design.md`, plan `docs/plans/2026-06-23-mutav-pulse-multi-reserve-ui.md`): a **discovery seam** (`lib/discovery.ts`: `getReserves`/`getReserve`/`isVerified`/`resolveAddress`) + **address-keyed reserve identity**; **reserve-aware reads** (`reserveReads(contracts)` in `lib/contracts.ts`, default `reads` = primary); **per-reserve hub** `/earn/[vault]` (Deposit / Transparency / Cockpit tabs) + **cockpit** `/protocol/[vault]`; honeypot defense (verified / unverified / invalid → `UnverifiedReserve`). Extracted `InvestPanel` + `ReserveTransparency`. **Reads are reserve-parameterized; writes stay config-bound to the primary reserve.**
 - **Mutav Pulse landing**: React Flow protocol-flow diagram (`components/ProtocolDiagram.tsx` — gates, reserve-internal strategy adapters, EIP-7540 async-redeem framing) + fiat flag logos (`components/CurrencyLogo.tsx`); homepage repositioned as the **testnet PoC of Mutav's Pulse Protocol** (not a yield app); a 13-surface **copy review** (38 edits); reserves named **MUSD/MBRL/MARS**; **discoverability** nav (`HOME · RESERVES · PROTOCOL`) + a `/reserves` comparison table with clickable rows.
-- **Economic model + whitepaper** (`model/mutav_model.py`, `docs/whitepaper.md`): guarantees/coverage/premiums/yield/risk grounded in real southern-Brazil delinquency. Key result: **APY = currency risk-free yield + ~19% currency-independent underwriting spread.**
+- **Economic model + whitepaper** (`model/mutav_model.py`, `docs/whitepaper.md`): guarantees/coverage/fees/yield/risk grounded in real southern-Brazil delinquency. Key result: **APY = currency risk-free yield + ~19% currency-independent underwriting spread.**
 
 ### Route map (current)
 - `/` — landing (hero · reserves strip · how-it-works · protocol diagram · onboard)
@@ -47,7 +47,7 @@ A high-effort `/code-review` ran on the landing diff. **No critical bugs.** To-d
 
 ### Open follow-ups (backlog / issues)
 - GH **#19** — review redemption-queue contracts vs EIP-7540 (request → surplus-gated process → claim). #18 (testnet onramp/faucet) is **merged to main**; #17 is this branch.
-- Realized-loss-ratio **event indexing** (`pay_premium`/`cover_default` — no events/counters today) + a **solvency/risk panel** on `/protocol`; **on-chain reserve factory** + **AUM service** (multi-reserve, cross-currency); **govern the `coverage_ratio` dial**; **DeFindex slippage floor** (`min_amounts_out=[0]`); add **set_admin/upgrade** lifecycle UI to the cockpit.
+- Realized-loss-ratio **event indexing** (`pay_fee`/`cover_default` — no events/counters today) + a **solvency/risk panel** on `/protocol`; **on-chain reserve factory** + **AUM service** (multi-reserve, cross-currency); **govern the `coverage_ratio` dial**; **DeFindex slippage floor** (`min_amounts_out=[0]`); add **set_admin/upgrade** lifecycle UI to the cockpit.
 
 ---
 
@@ -57,7 +57,7 @@ A high-effort `/code-review` ran on the landing diff. **No critical bugs.** To-d
    `Guarantee` + cross-contract client traits), `registry` (writer-gated store),
    `vault` (custody: OZ-fungible shares, NAV w/ virtual-offset anti-inflation,
    surplus-gated redemption queue, strategy allocator, policy-gated
-   `disburse`/`collect_premium`), `policy` (swappable premium-gated underwriting
+   `disburse`/`collect_fee`), `policy` (swappable fee-gated underwriting
    brain), `strategy` trait + `adapter-defindex` (real DeFindex yield) +
    `mock-strategy`/`mock-policy`/`mock-defindex` test doubles. 23 unit tests pass.
 2. **Frontend** (`frontend/`, Next.js 16) — investor app (`/earn`,
@@ -78,7 +78,7 @@ A high-effort `/code-review` ran on the landing diff. **No critical bugs.** To-d
   registry BEFORE disbursing; invariant `stable_assets ≥ coverage_required` holds
   at `coverage_ratio_bps ≥ 10000`. The vault keeps only a pre-transfer overdraft
   guard. See the `// TODO(solvency-oracle)` in `vault/src/lib.rs`.
-- **Premiums mint no shares** (accrue to NAV). Premium-gated coverage: only
+- **Fees mint no shares** (accrue to NAV). Fee-gated coverage: only
   paid-up (current) guarantees lock capital; `cover_default` halts when not
   current.
 - **Money is i128 in 7-decimal units** — frontend divides by 1e7 for display;
@@ -107,7 +107,7 @@ These are in `frontend/.env.example` (copy to `.env.local`). Admin wallet
 (`/protocol` actions): `GBE3QZQSNKZQU7ESFUXFYT5ECZYRM5QM72QW2VKTPHH7TAHFEEPTWED3`
 (local key alias `pulse-admin` — keys live in the local `stellar keys` keychain,
 not in the repo). Seeded state: ~$50.4k reserve, NAV 1.0084, 4 guarantees
-(3 active, 1 lapsed), $420 premiums.
+(3 active, 1 lapsed), $420 fees.
 
 Redeploy + reseed from scratch:
 ```bash
@@ -134,7 +134,7 @@ Deploy: Vercel team `mutav` (see `frontend/README.md`). Repo:
 - **Deploy `adapter-defindex` to testnet** against a real DeFindex vault (create
   via their factory — see `docs/defindex-testnet.md`) so `/earn/defi` links to it
   and real yield shows on the dashboard (today the slot uses `mock-strategy`).
-- **Live `/protocol` demo polish** — drive sign-guarantee/pay-premium/cover-default
+- **Live `/protocol` demo polish** — drive sign-guarantee/pay-fee/cover-default
   from the UI and confirm the dashboard moves.
 - **Soroswap (XLM swap) + Blend adapters** — same `Strategy` trait; `/earn/defi`
   already lists them as Planned. Add the `max_volatile_bps` cap when the first

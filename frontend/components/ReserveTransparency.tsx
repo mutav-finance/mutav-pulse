@@ -405,7 +405,7 @@ interface ContractRow {
 function contractRows(): ContractRow[] {
   const rows: ContractRow[] = [
     { role: "Vault", id: config.contracts.vault, desc: "Custody, tokenized shares & NAV, the redemption queue, and the strategy allocator." },
-    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain — premium-gated coverage and default payouts." },
+    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain — fee-gated coverage and default payouts." },
     { role: "Registry", id: config.contracts.registry, desc: "Writer-gated store of the active guarantee book." },
     { role: "USDC", id: config.contracts.usdc, desc: "The reserve's underlying asset (Stellar asset contract)." },
   ];
@@ -548,7 +548,7 @@ export function ReserveTransparency({
           <>
             The <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> reserve is a
             solvency-gated, tokenized vault that backs Brazilian rental guarantees and turns their
-            premiums into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
+            fees into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
             NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept — values are
             live on-chain reads, not a production reserve.
           </>
@@ -603,7 +603,7 @@ export function ReserveTransparency({
         title="Policy"
         intro={
           <>
-            The underwriting brain. The reserve writes premium-gated coverage on rental guarantees and
+            The underwriting brain. The reserve writes fee-gated coverage on rental guarantees and
             pays tenant defaults — while the solvency invariant keeps committed coverage at or below
             stable assets, always.
           </>
@@ -655,8 +655,8 @@ export function ReserveTransparency({
                 label="Underwriting Spread"
                 value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
                 accentValue
-                unit="premiums − expected defaults"
-                tooltip="Extra return from underwriting: annual premiums minus expected default payouts, over total assets. From the live book."
+                unit="fees − expected defaults"
+                tooltip="Extra return from underwriting: annual fees minus expected default payouts, over total assets. From the live book."
                 loading={loading}
                 error={error ?? undefined}
               />
@@ -664,8 +664,8 @@ export function ReserveTransparency({
                 label="Loss Ratio"
                 value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
                 accentValue
-                unit="expected payout ÷ premiums"
-                tooltip="Expected annual default payouts as a share of premium income. Below 100% means premiums cover expected losses."
+                unit="expected payout ÷ fees"
+                tooltip="Expected annual default payouts as a share of fee income. Below 100% means fees cover expected losses."
                 loading={loading}
                 error={error ?? undefined}
               />
@@ -674,7 +674,7 @@ export function ReserveTransparency({
                 value={hasBook ? fmtMult(econ.cushion) : "—"}
                 accentValue
                 unit="vs break-even delinquency"
-                tooltip={`How far monthly defaults can rise before premiums stop covering payouts. Break-even ${fmtPct2(econ.breakevenRho)} vs ${fmtPct2(econ.rho)} modeled.`}
+                tooltip={`How far monthly defaults can rise before fees stop covering payouts. Break-even ${fmtPct2(econ.breakevenRho)} vs ${fmtPct2(econ.rho)} modeled.`}
                 loading={loading}
                 error={error ?? undefined}
               />

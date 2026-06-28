@@ -243,13 +243,13 @@ const NODES: Node[] = [
 const EDGES: Edge<GateData>[] = [
   { id: "deposit", type: "gate", source: "investor", sourceHandle: "dep", target: "reserve", targetHandle: "dep", markerEnd: arrow, data: { label: "deposit USDC", dy: -20 } },
   { id: "redeem", type: "gate", source: "reserve", sourceHandle: "red", target: "investor", targetHandle: "red", markerEnd: arrow, data: { label: "async redeem", gate: "1", dy: 20 } },
-  { id: "premium", type: "gate", source: "guarantees", sourceHandle: "prem", target: "reserve", targetHandle: "prem", markerEnd: arrow, data: { label: "premium → NAV", gate: "2", dy: -20 } },
+  { id: "premium", type: "gate", source: "guarantees", sourceHandle: "prem", target: "reserve", targetHandle: "prem", markerEnd: arrow, data: { label: "fee → NAV", gate: "2", dy: -20 } },
   { id: "cover", type: "gate", source: "reserve", sourceHandle: "cover", target: "landlord", targetHandle: "cover", markerEnd: arrow, data: { label: "cover_default", gate: "2" } },
 ];
 
 const GATES = [
   { n: "1", title: "Solvency gate", body: "Async redemption (EIP-7540 style): request → surplus-gated process → claim. Exits and new guarantees draw only from free_capital = stable_assets − coverage_required. stable ≥ coverage, always — no bank run." },
-  { n: "2", title: "Premium gate", body: "A guarantee is covered only while its premiums are current. Stop paying → coverage lapses and cover_default halts until it's caught up." },
+  { n: "2", title: "Fee gate", body: "A guarantee is covered only while its fees are current. Stop paying → coverage lapses and cover_default halts until it's caught up." },
   { n: "3", title: "Stable-backed floor", body: "Only stable strategy balances count toward coverage. Volatile adapters lift NAV but never the floor, so a price crash can't make the reserve insolvent." },
 ];
 
