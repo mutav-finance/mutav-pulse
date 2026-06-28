@@ -10,7 +10,7 @@ import { contractUrl } from "@/lib/config";
 export function UnverifiedReserve({ address }: { address: string }) {
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
-      <div style={{ maxWidth: "720px", margin: "0 auto", padding: "64px 32px" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto", padding: "64px var(--page-pad)" }}>
         <p className="font-body" style={{ fontSize: "11px", fontWeight: 500, letterSpacing: "0.08em", color: "var(--color-error)", textTransform: "uppercase", margin: "0 0 8px" }}>
           UNVERIFIED RESERVE
         </p>

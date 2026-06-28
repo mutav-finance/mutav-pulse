@@ -1,6 +1,9 @@
 export const STROOP_SCALE = 10_000_000n;
 export const STROOP_SCALE_NUM = 1e7;
 
+/** Clamp a fraction into [0, 1] — used for allocation/gauge segment sizing. */
+export const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
+
 export function errMsg(e: unknown, fallback = "Transaction failed"): string {
   if (e instanceof Error) return e.message;
   // Soroban contracts revert with bare strings (e.g. "invalid guarantee ID"),

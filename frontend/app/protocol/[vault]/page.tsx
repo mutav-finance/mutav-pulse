@@ -38,6 +38,7 @@ import { LockIcon } from "@/components/LockIcon";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { Mono } from "@/components/Mono";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   ProtocolActionForm,
   FormField,
@@ -63,7 +64,7 @@ import {
   setCoverageRatioBps,
   setGraceSecs,
 } from "@/lib/admin-tx";
-import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
+import { fmtFiat, truncAddr, errMsg, parseToStroops, clamp01, type Money } from "@/lib/format";
 import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { venueName, ADAPTER_CATALOG } from "@/lib/providers";
 import type { StrategyAlloc } from "vault";
@@ -1933,10 +1934,10 @@ function OperatorOverview({
   currency: string;
 }) {
   const totalNum = Number(data.totalAssets);
-  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
   const committedFrac = totalNum > 0 ? Number(data.coverageRequired) / totalNum : 0;
   const bufferFrac = totalNum > 0 ? Number(data.freeCapital) / totalNum : 0;
-  const utilizationPct = totalNum > 0 ? committedFrac * 100 : 0;
+  // committedFrac is already 0 when totalNum <= 0, so no extra guard needed.
+  const utilizationPct = committedFrac * 100;
   // total_assets ≥ coverage_required is the solvency posture we can read without
   // a wallet; the precise stable-asset invariant lives behind the admin reads.
   const withinCoverage = data.totalAssets >= data.coverageRequired;
@@ -2005,29 +2006,12 @@ function OperatorOverview({
           marginBottom: "16px",
         }}
       >
-        <div
-          role="status"
-          aria-label={`Coverage status: ${withinCoverage ? "within coverage" : "over-committed"}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 14px",
-            backgroundColor: "var(--color-surface)",
-            border: `1px solid ${statusColor}`,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{ width: "6px", height: "6px", flexShrink: 0, backgroundColor: statusColor }}
-          />
-          <span
-            className="font-mono"
-            style={{ fontSize: "12px", fontWeight: 500, letterSpacing: "0.06em", color: statusColor }}
-          >
-            {withinCoverage ? "WITHIN COVERAGE" : "OVER-COMMITTED"}
-          </span>
-        </div>
+        <StatusBadge
+          bordered
+          color={statusColor}
+          label={withinCoverage ? "WITHIN COVERAGE" : "OVER-COMMITTED"}
+          ariaLabel={`Coverage status: ${withinCoverage ? "within coverage" : "over-committed"}`}
+        />
         <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
           <span
             className="font-body"

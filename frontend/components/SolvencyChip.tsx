@@ -11,6 +11,7 @@
 
 import { fmtFiat, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface SolvencyChipProps {
   stableAssets: bigint;
@@ -108,29 +109,8 @@ export function SolvencyChip({
       role="status"
       aria-label={`Solvency status: ${label}`}
     >
-      {/* Status badge: square + label */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <div
-          aria-hidden="true"
-          style={{
-            width: "6px",
-            height: "6px",
-            flexShrink: 0,
-            backgroundColor: statusColor,
-          }}
-        />
-        <span
-          className="font-mono"
-          style={{
-            fontSize: "12px",
-            fontWeight: 500,
-            letterSpacing: "0.06em",
-            color: statusColor,
-          }}
-        >
-          {label}
-        </span>
-      </div>
+      {/* Status badge: square + label (shared atom) */}
+      <StatusBadge color={statusColor} label={label} />
 
       {/* Divider */}
       <div

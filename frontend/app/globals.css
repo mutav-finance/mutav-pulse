@@ -365,12 +365,20 @@ input:disabled {
 .nav-hamburger {
   display: none;
 }
+/* Panel visibility is breakpoint-governed (like its siblings above), not just
+   render-state — so it can't linger if the menu is open while resizing past 768px. */
+.nav-mobile-panel {
+  display: none;
+}
 @media (max-width: 767px) {
   .nav-links-desktop {
     display: none;
   }
   .nav-hamburger {
     display: inline-flex;
+  }
+  .nav-mobile-panel {
+    display: block;
   }
   :root {
     --page-pad: 16px;

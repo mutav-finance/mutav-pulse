@@ -274,6 +274,9 @@ const DIAGRAM_LABEL =
   "via cover_default. Idle float earns yield through strategy adapters. The gates are " +
   "described in the legend below.";
 
+// Shared fit padding — used by the fitView prop (mount) and the resize re-fit.
+const FIT_OPTIONS = { padding: 0.14 };
+
 export function ProtocolDiagram() {
   const boxRef = useRef<HTMLDivElement>(null);
   const rfRef = useRef<ReactFlowInstance | null>(null);
@@ -299,9 +302,10 @@ export function ProtocolDiagram() {
     [tokens.arrow],
   );
 
+  // Capture the instance for the resize re-fit; the initial fit is handled by
+  // the `fitView` + `fitViewOptions` props below.
   const onInit = useCallback((inst: ReactFlowInstance) => {
     rfRef.current = inst;
-    inst.fitView({ padding: 0.14 });
   }, []);
 
   // Re-fit whenever the container resizes — fitView runs once on mount, so
@@ -309,7 +313,7 @@ export function ProtocolDiagram() {
   useEffect(() => {
     const el = boxRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => rfRef.current?.fitView({ padding: 0.14 }));
+    const ro = new ResizeObserver(() => rfRef.current?.fitView(FIT_OPTIONS));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -331,7 +335,7 @@ export function ProtocolDiagram() {
           edgeTypes={edgeTypes}
           colorMode="dark"
           fitView
-          fitViewOptions={{ padding: 0.14 }}
+          fitViewOptions={FIT_OPTIONS}
           // Allow fitView to zoom out far enough to fit every node on a narrow
           // viewport (the default minZoom 0.5 clamped and clipped the end nodes).
           minZoom={0.2}

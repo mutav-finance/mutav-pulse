@@ -29,7 +29,7 @@ import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
-import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr } from "@/lib/format";
+import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr, clamp01 } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
 import { resolveProvider, venueName } from "@/lib/providers";
 import { config, contractUrl } from "@/lib/config";
@@ -385,8 +385,8 @@ export function ReserveTransparency({
   const totalNum = Number(data.totalAssets);
   const committedFrac = totalNum > 0 ? Number(data.coverageRequired) / totalNum : 0;
   const bufferFrac = totalNum > 0 ? Number(data.freeCapital) / totalNum : 0;
-  // Clamp geometry only (insolvency can push coverage > total); labels keep truth.
-  const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+  // clamp01 (lib/format) clamps geometry only — insolvency can push coverage
+  // > total; the displayed labels keep the true (unclamped) values.
 
   // Strategy ALLOCATION — where the reserve's capital actually sits right now,
   // broken across each venue + idle cash. The vault identity is
