@@ -10,27 +10,17 @@ export interface ReserveContracts {
   registry: string;
 }
 
+/** Shared client options for any contract on this network — one rpc + passphrase. */
+const clientOpts = (contractId: string) => ({
+  rpcUrl: config.rpcUrl,
+  contractId,
+  networkPassphrase: config.networkPassphrase,
+});
+
 export function reserveReads(c: ReserveContracts) {
-  const vaultClient = () =>
-    new VaultClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.vault,
-      networkPassphrase: config.networkPassphrase,
-    });
-
-  const policyClient = () =>
-    new PolicyClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.policy,
-      networkPassphrase: config.networkPassphrase,
-    });
-
-  const registryClient = () =>
-    new RegistryClient({
-      rpcUrl: config.rpcUrl,
-      contractId: c.registry,
-      networkPassphrase: config.networkPassphrase,
-    });
+  const vaultClient = () => new VaultClient(clientOpts(c.vault));
+  const policyClient = () => new PolicyClient(clientOpts(c.policy));
+  const registryClient = () => new RegistryClient(clientOpts(c.registry));
 
   return {
     async vaultTotalAssets(): Promise<bigint> {
@@ -70,11 +60,7 @@ export function reserveReads(c: ReserveContracts) {
      * real amount deployed per venue instead of the target weight.
      */
     async strategyBalance(address: string): Promise<bigint> {
-      const tx = await new StrategyClient({
-        rpcUrl: config.rpcUrl,
-        contractId: address,
-        networkPassphrase: config.networkPassphrase,
-      }).balance();
+      const tx = await new StrategyClient(clientOpts(address)).balance();
       return tx.result;
     },
 

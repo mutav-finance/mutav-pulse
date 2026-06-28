@@ -45,6 +45,9 @@ export const config = {
       process.env.NEXT_PUBLIC_REGISTRY_ID,
     ),
     usdc: requireEnv("NEXT_PUBLIC_USDC_ID", process.env.NEXT_PUBLIC_USDC_ID),
+    // DeFindex strategy adapter. OPTIONAL — empty until wired. The reserve hub
+    // resolves provider identity from this (see lib/providers.ts).
+    adapter: process.env.NEXT_PUBLIC_ADAPTER_ID ?? "",
     // Testnet-only demo faucet. Empty/undefined on mainnet.
     faucet: process.env.NEXT_PUBLIC_FAUCET_ID ?? "",
     // BRL-native MBRL reserve contract set. OPTIONAL — empty until that reserve

@@ -13,20 +13,17 @@ export function RefreshControl({
   onRefresh,
   loading,
   lastRefreshed,
-  align = "end",
 }: {
   onRefresh: () => void;
   loading: boolean;
   lastRefreshed: Date | null;
-  /** Cross-axis alignment of the timestamp under the button. */
-  align?: "start" | "end";
 }) {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: align === "end" ? "flex-end" : "flex-start",
+        alignItems: "flex-end",
         gap: "6px",
       }}
     >

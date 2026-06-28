@@ -30,6 +30,7 @@ import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
 import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
+import { resolveProvider, venueName } from "@/lib/providers";
 import { config, contractUrl } from "@/lib/config";
 
 // ── Layout constants ───────────────────────────────────────────────────────────
@@ -62,35 +63,6 @@ const LABEL: React.CSSProperties = {
 /** Format a multiple ("4.9×"). */
 function fmtMult(v: number): string {
   return Number.isFinite(v) ? v.toFixed(1) + "×" : "∞";
-}
-
-/** Map a strategy address to a friendly venue name when we know it. */
-function venueName(addr: string): string {
-  const adapterId = process.env.NEXT_PUBLIC_ADAPTER_ID;
-  if (adapterId && addr === adapterId) return "DeFindex";
-  return truncAddr(addr);
-}
-
-/** Off-chain metadata for a yield provider behind a strategy adapter. */
-interface StrategyProvider {
-  name: string;
-  kind: string;
-  blurb: string;
-  url: string;
-}
-
-const DEFINDEX_PROVIDER: StrategyProvider = {
-  name: "DeFindex",
-  kind: "Multi-strategy yield",
-  blurb: "On-chain yield aggregator on Stellar. The adapter routes reserve capital into a DeFindex vault and reports its live balance back.",
-  url: "https://defindex.io",
-};
-
-/** Resolve provider metadata for a strategy address (null when unknown). */
-function providerFor(addr: string): StrategyProvider | null {
-  const adapterId = process.env.NEXT_PUBLIC_ADAPTER_ID;
-  if (adapterId && addr === adapterId) return DEFINDEX_PROVIDER;
-  return null;
 }
 
 /** Highlight the section currently in view. */
@@ -240,21 +212,21 @@ function ChartRow({ donut, cards }: { donut: React.ReactNode; cards: React.React
       }}
     >
       <div style={{ flex: "0 0 auto", paddingTop: "4px" }}>{donut}</div>
-      <div
-        style={{
-          flex: "1 1 320px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "1px",
-          backgroundColor: "var(--color-border)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
+      <div style={{ flex: "1 1 320px", ...hairlineGrid(160) }}>
         {cards}
       </div>
     </div>
   );
 }
+
+/** Brutalist hairline grid — 1px gaps over the border color, no radius/shadow. */
+const hairlineGrid = (minPx: number): React.CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(auto-fit, minmax(${minPx}px, 1fr))`,
+  gap: "1px",
+  backgroundColor: "var(--color-border)",
+  border: "1px solid var(--color-border)",
+});
 
 const SUBHEAD: React.CSSProperties = {
   ...LABEL,
@@ -263,7 +235,7 @@ const SUBHEAD: React.CSSProperties = {
   color: "var(--color-text)",
 };
 
-// ── Capital-state bar ───────────────────────────────────────────────────────────
+// ── Allocation bar ──────────────────────────────────────────────────────────────
 
 interface BarSegment {
   label: string;
@@ -275,9 +247,8 @@ interface BarSegment {
 /**
  * Horizontal stacked bar reading left→right as capital actually sits. Honest
  * "where is my money" view: the segments are real amounts that sum to the total.
- * Replaces a target-weight donut, which misrepresented intent as reality.
  */
-function CapitalStateBar({ segments, loading }: { segments: BarSegment[]; loading: boolean }) {
+function AllocationBar({ segments, loading }: { segments: BarSegment[]; loading: boolean }) {
   return (
     <div style={{ marginBottom: "28px" }}>
       <div
@@ -332,7 +303,96 @@ function CapitalStateBar({ segments, loading }: { segments: BarSegment[]; loadin
   );
 }
 
-// ── Capital-flow rail ───────────────────────────────────────────────────────────
+// ── Strategy allocation table row ─────────────────────────────────────────────
+
+/** Right-aligned mono numeric cell — repeated across the allocation table. */
+const numCell: React.CSSProperties = {
+  padding: "14px",
+  fontSize: "13px",
+  textAlign: "right",
+  fontFeatureSettings: '"tnum" 1',
+};
+
+/** One row of the allocation table — a strategy venue OR the in-vault asset. */
+interface AllocRow {
+  key: string;
+  name: string;
+  url: string;
+  blurb: string;
+  /** Adapter address to show as an "Adapter … ↗" sub-line (venues only). */
+  adapterAddr?: string;
+  type: string;
+  targetBps: number;
+  /** Live amount; undefined renders "—". */
+  amount?: bigint;
+  yieldPct: number;
+  yieldModeled: boolean;
+  status: "live" | "liquid";
+}
+
+function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
+  return (
+    <tr
+      style={{
+        borderTop: "1px solid var(--color-border)",
+        verticalAlign: "top",
+        backgroundColor: row.status === "liquid" ? "var(--color-surface)" : undefined,
+      }}
+    >
+      <td style={{ padding: "14px", maxWidth: "320px" }}>
+        <a
+          href={row.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-body"
+          style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", textDecoration: "none" }}
+        >
+          {row.name}
+        </a>
+        <p className="font-body" style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--color-text-3)", margin: row.adapterAddr ? "4px 0 6px" : "4px 0 0" }}>
+          {row.blurb}
+        </p>
+        {row.adapterAddr && (
+          <a
+            href={contractUrl(row.adapterAddr)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono"
+            style={{ fontSize: "10px", color: "var(--color-text-3)", textDecoration: "none", letterSpacing: "0.02em" }}
+          >
+            Adapter {truncAddr(row.adapterAddr)} ↗
+          </a>
+        )}
+      </td>
+      <td className="font-body" style={{ padding: "14px", fontSize: "12px", color: "var(--color-text-2)" }}>
+        {row.type}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
+        {fmtBps(row.targetBps)}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)" }}>
+        {row.amount === undefined ? "—" : fmtFiat(row.amount, reserve)}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: row.yieldModeled ? "var(--color-accent)" : "var(--color-text-3)" }}>
+        {fmtPct2(row.yieldPct)}
+        {row.yieldModeled && (
+          <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
+        )}
+      </td>
+      <td style={{ padding: "14px" }}>
+        {row.status === "live" ? (
+          <span className="font-mono" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-accent)" }}>
+            <span className="live-dot" aria-hidden="true" /> Live
+          </span>
+        ) : (
+          <span className="font-mono" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>
+            Liquid
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+}
 
 // ── Contract directory data ────────────────────────────────────────────────────
 
@@ -349,9 +409,8 @@ function contractRows(): ContractRow[] {
     { role: "Registry", id: config.contracts.registry, desc: "Writer-gated store of the active guarantee book." },
     { role: "USDC", id: config.contracts.usdc, desc: "The reserve's underlying asset (Stellar asset contract)." },
   ];
-  const adapterId = process.env.NEXT_PUBLIC_ADAPTER_ID;
-  if (adapterId) {
-    rows.push({ role: "DeFindex adapter", id: adapterId, desc: "Strategy adapter that deploys the idle buffer into DeFindex yield." });
+  if (config.contracts.adapter) {
+    rows.push({ role: "DeFindex adapter", id: config.contracts.adapter, desc: "Strategy adapter that deploys reserve capital into DeFindex yield." });
   }
   return rows;
 }
@@ -401,7 +460,6 @@ export function ReserveTransparency({
   const TOTAL_BPS = 10_000;
   const stratSum = data.strategies.reduce((a, s) => a + s.weight_bps, 0);
   const idleBps = Math.max(0, TOTAL_BPS - stratSum);
-  const liveStrategies = data.strategies.length;
 
   const idleFrac = totalNum > 0 ? Number(data.availableHeld) / totalNum : 0;
 
@@ -423,6 +481,41 @@ export function ReserveTransparency({
       display: fmtFiat(data.availableHeld, reserve),
       fraction: idleFrac,
       color: "var(--color-text-3)",
+    },
+  ];
+
+  // Same allocation as table rows: one per strategy venue + the in-vault asset.
+  const heldYieldBearing = reserve.underlyingYieldBearing;
+  const allocRows: AllocRow[] = [
+    ...data.strategies.map((s) => {
+      const provider = resolveProvider(s.address);
+      return {
+        key: s.address,
+        name: provider?.name ?? venueName(s.address),
+        url: provider?.url ?? contractUrl(s.address),
+        blurb: provider?.blurb ?? "On-chain strategy adapter wired to this vault.",
+        adapterAddr: s.address,
+        type: s.volatile ? "Volatile yield" : "Stable yield",
+        targetBps: s.weight_bps,
+        amount: data.strategyBalances[s.address],
+        yieldPct: econ.underlyingYield,
+        yieldModeled: true,
+        status: "live" as const,
+      };
+    }),
+    {
+      key: "in-vault",
+      name: reserve.depositToken,
+      url: contractUrl(config.contracts.usdc),
+      blurb: heldYieldBearing
+        ? `Held directly in the vault. ${reserve.depositToken} is yield-bearing, so it accrues its base yield even when not deployed.`
+        : "Held directly in the vault — not deployed to any venue. Liquid for operations and redemptions.",
+      type: heldYieldBearing ? "Yield-bearing asset" : "Cash · underlying",
+      targetBps: idleBps,
+      amount: data.availableHeld,
+      yieldPct: heldYieldBearing ? reserve.assumptions.underlyingYield : 0,
+      yieldModeled: heldYieldBearing,
+      status: "liquid" as const,
     },
   ];
 
@@ -470,15 +563,7 @@ export function ReserveTransparency({
           />
         }
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-            gap: "1px",
-            backgroundColor: "var(--color-border)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
+        <div style={hairlineGrid(170)}>
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
@@ -641,12 +726,12 @@ export function ReserveTransparency({
         }
         aside={
           <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${liveStrategies} wired`}
+            {loading ? "…" : `${data.strategies.length} wired`}
           </span>
         }
       >
         {/* Chart — allocation across each venue + the asset held in-vault, summing to total. */}
-        <CapitalStateBar loading={loading} segments={allocationSegments} />
+        <AllocationBar loading={loading} segments={allocationSegments} />
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
         <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
@@ -682,95 +767,7 @@ export function ReserveTransparency({
                   </td>
                 </tr>
               ) : (
-                <>
-                  {data.strategies.map((s) => {
-                    const bal = data.strategyBalances[s.address];
-                    const provider = providerFor(s.address);
-                    return (
-                      <tr key={s.address} style={{ borderTop: "1px solid var(--color-border)", verticalAlign: "top" }}>
-                        {/* Provider + adapter info */}
-                        <td style={{ padding: "14px", maxWidth: "320px" }}>
-                          <a
-                            href={provider?.url ?? contractUrl(s.address)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-body"
-                            style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", textDecoration: "none" }}
-                          >
-                            {provider?.name ?? venueName(s.address)}
-                          </a>
-                          <p className="font-body" style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--color-text-3)", margin: "4px 0 6px" }}>
-                            {provider?.blurb ?? "On-chain strategy adapter wired to this vault."}
-                          </p>
-                          <a
-                            href={contractUrl(s.address)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono"
-                            style={{ fontSize: "10px", color: "var(--color-text-3)", textDecoration: "none", letterSpacing: "0.02em" }}
-                          >
-                            Adapter {truncAddr(s.address)} ↗
-                          </a>
-                        </td>
-                        <td className="font-body" style={{ padding: "14px", fontSize: "12px", color: "var(--color-text-2)" }}>
-                          {s.volatile ? "Volatile yield" : "Stable yield"}
-                        </td>
-                        <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: "var(--color-text-2)", fontFeatureSettings: '"tnum" 1' }}>
-                          {fmtBps(s.weight_bps)}
-                        </td>
-                        <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: "var(--color-text)", fontFeatureSettings: '"tnum" 1' }}>
-                          {bal === undefined ? "—" : fmtFiat(bal, reserve)}
-                        </td>
-                        <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: "var(--color-accent)", fontFeatureSettings: '"tnum" 1' }}>
-                          {fmtPct2(econ.underlyingYield)}
-                          <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
-                        </td>
-                        <td style={{ padding: "14px" }}>
-                          <span className="font-mono" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-                            <span className="live-dot" aria-hidden="true" /> Live
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {/* In-vault asset — the undeployed remainder, held directly as the underlying. */}
-                  <tr style={{ borderTop: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", verticalAlign: "top" }}>
-                    <td style={{ padding: "14px", maxWidth: "320px" }}>
-                      <a
-                        href={contractUrl(config.contracts.usdc)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-body"
-                        style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", textDecoration: "none" }}
-                      >
-                        {reserve.depositToken}
-                      </a>
-                      <p className="font-body" style={{ fontSize: "11px", lineHeight: 1.45, color: "var(--color-text-3)", margin: "4px 0 0" }}>
-                        {reserve.underlyingYieldBearing
-                          ? `Held directly in the vault. ${reserve.depositToken} is yield-bearing, so it accrues its base yield even when not deployed.`
-                          : "Held directly in the vault — not deployed to any venue. Liquid for operations and redemptions."}
-                      </p>
-                    </td>
-                    <td className="font-body" style={{ padding: "14px", fontSize: "12px", color: "var(--color-text-3)" }}>
-                      {reserve.underlyingYieldBearing ? "Yield-bearing asset" : "Cash · underlying"}
-                    </td>
-                    <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: "var(--color-text-3)", fontFeatureSettings: '"tnum" 1' }}>
-                      {fmtBps(idleBps)}
-                    </td>
-                    <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: "var(--color-text-2)", fontFeatureSettings: '"tnum" 1' }}>
-                      {fmtFiat(data.availableHeld, reserve)}
-                    </td>
-                    <td className="font-mono" style={{ padding: "14px", fontSize: "13px", textAlign: "right", color: reserve.underlyingYieldBearing ? "var(--color-accent)" : "var(--color-text-3)", fontFeatureSettings: '"tnum" 1' }}>
-                      {reserve.underlyingYieldBearing ? fmtPct2(reserve.assumptions.underlyingYield) : fmtPct2(0)}
-                      {reserve.underlyingYieldBearing && (
-                        <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
-                      )}
-                    </td>
-                    <td className="font-mono" style={{ padding: "14px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>
-                      Liquid
-                    </td>
-                  </tr>
-                </>
+                allocRows.map((row) => <AllocRowView key={row.key} row={row} reserve={reserve} />)
               )}
             </tbody>
           </table>
@@ -791,15 +788,7 @@ export function ReserveTransparency({
           </>
         }
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "1px",
-            backgroundColor: "var(--color-border)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
+        <div style={hairlineGrid(280)}>
           {contractRows().map(({ role, id, desc }) => (
             <a
               key={role}
