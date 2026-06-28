@@ -279,15 +279,16 @@ export function ProtocolDiagram() {
   const rfRef = useRef<ReactFlowInstance | null>(null);
 
   // React Flow paints the grid + arrowheads as SVG attributes, where CSS vars
-  // don't resolve — so resolve the brand tokens to concrete values at runtime
-  // (and stay in sync if the front/theme changes) instead of hardcoding hex.
-  const [tokens, setTokens] = useState({ grid: GRID_COLOR, arrow: ARROW_COLOR });
-  useEffect(() => {
+  // don't resolve — so resolve the brand tokens to concrete values at mount
+  // (lazy initializer; React Flow renders client-side) instead of hardcoding hex.
+  const [tokens] = useState(() => {
+    if (typeof window === "undefined") return { grid: GRID_COLOR, arrow: ARROW_COLOR };
     const cs = getComputedStyle(document.documentElement);
-    const grid = cs.getPropertyValue("--color-border").trim() || GRID_COLOR;
-    const arrow = cs.getPropertyValue("--color-text-3").trim() || ARROW_COLOR;
-    setTokens({ grid, arrow });
-  }, []);
+    return {
+      grid: cs.getPropertyValue("--color-border").trim() || GRID_COLOR,
+      arrow: cs.getPropertyValue("--color-text-3").trim() || ARROW_COLOR,
+    };
+  });
 
   const edges = useMemo<Edge[]>(
     () =>

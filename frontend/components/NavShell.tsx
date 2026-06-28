@@ -22,7 +22,7 @@
  * Design: Precision Brutalism — 56px height, border-bottom only, no shadows.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -50,11 +50,6 @@ export function NavShell() {
   const pathname = usePathname();
   const terminal = isTerminalFront(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // Close the mobile menu whenever the route changes.
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   /** True when this link is the current page */
   function isActive(link: NavLink): boolean {
@@ -120,6 +115,7 @@ export function NavShell() {
           <Link
             href="/"
             aria-label="MUTAV — home"
+            onClick={() => setMenuOpen(false)}
             style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -10,6 +10,7 @@
  * Design: Precision Brutalism / Investidor front. Brand tokens only.
  */
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getReserves } from "@/lib/discovery";
 import { standardProductEconomics } from "@/lib/economics";
@@ -81,7 +82,6 @@ export default function ReservesPage() {
               letterSpacing: "0.02em",
               color: "var(--color-text-3)",
               margin: 0,
-              whiteSpace: "nowrap",
               fontFeatureSettings: '"tnum" 1',
               fontVariantNumeric: "tabular-nums",
             }}
@@ -108,6 +108,7 @@ export default function ReservesPage() {
                 ].map((c, i) => (
                   <th
                     key={i}
+                    scope="col"
                     className="font-body"
                     style={{
                       textAlign: c.a as "left" | "right",
@@ -150,14 +151,10 @@ export default function ReservesPage() {
                 return (
                   <tr
                     key={r.id}
+                    // Whole-row click is a pointer convenience only; the real
+                    // keyboard/AT-navigable control is the <Link> in the last
+                    // cell (faked role="link" on a <tr> was stripped — 4.1.2).
                     onClick={href ? () => router.push(href) : undefined}
-                    onKeyDown={
-                      href
-                        ? (e) => {
-                            if (e.key === "Enter") router.push(href);
-                          }
-                        : undefined
-                    }
                     onMouseEnter={
                       clickable
                         ? (e) => {
@@ -172,9 +169,6 @@ export default function ReservesPage() {
                           }
                         : undefined
                     }
-                    role={clickable ? "link" : undefined}
-                    tabIndex={clickable ? 0 : undefined}
-                    aria-label={clickable ? `View ${r.name} vault` : undefined}
                     style={{
                       opacity: live ? 1 : 0.8,
                       cursor: clickable ? "pointer" : "default",
@@ -227,10 +221,24 @@ export default function ReservesPage() {
                       {live ? `AUM ${aumFor(r)}` : r.market}
                     </td>
                     <td style={{ ...cell, textAlign: "right" }}>
-                      {clickable ? (
-                        <span className="font-mono" style={{ fontSize: "12px", color: "var(--color-accent)", whiteSpace: "nowrap" }}>
+                      {clickable && href ? (
+                        <Link
+                          href={href}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`View ${r.name} vault`}
+                          className="font-mono"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            minHeight: "24px",
+                            fontSize: "12px",
+                            color: "var(--color-accent)",
+                            textDecoration: "none",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           view ↗
-                        </span>
+                        </Link>
                       ) : (
                         <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)" }}>—</span>
                       )}
