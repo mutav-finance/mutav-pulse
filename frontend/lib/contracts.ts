@@ -64,8 +64,8 @@ export function reserveReads(c: ReserveContracts) {
       return tx.result;
     },
 
-    async vaultPremiumIncome(): Promise<bigint> {
-      const tx = await vaultClient().premium_income();
+    async vaultFeeIncome(): Promise<bigint> {
+      const tx = await vaultClient().fee_income();
       return tx.result;
     },
 

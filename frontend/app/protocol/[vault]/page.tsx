@@ -14,9 +14,9 @@
  *     pending count, strategy balances)
  *   - Admin gate: if connected wallet ≠ vault/policy admin → read-only notice
  *   - Action groups (admin-only):
- *       Underwriting  — sign_guarantee, settle_guarantee
- *       Premiums      — pay_premium
- *       Claims        — cover_default (active guarantee picker)
+ *       Underwriting  — sign_guarantee (two-leg), settle_guarantee
+ *       Fees          — pay_fee
+ *       Claims        — cover_default + cover_exit (active guarantee picker)
  *       Liquidity     — rebalance, process_redemptions
  *       Strategies    — add_strategy, remove_strategy + live alloc list
  *
@@ -44,8 +44,9 @@ import {
 } from "@/components/ProtocolActionForm";
 import {
   signGuarantee,
-  payPremium,
+  payFee,
   coverDefault,
+  coverExit,
   settleGuarantee,
   rebalance,
   processRedemptions,
@@ -248,6 +249,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
   // ── Form state: Cover Default ────────────────────────────────────────────────
   const [cdId, setCdId] = useState("");
+
+  // ── Form state: Cover Exit ───────────────────────────────────────────────────
+  const [ceId, setCeId] = useState("");
+  const [ceAmount, setCeAmount] = useState("");
 
   // ── Form state: Process Redemptions ─────────────────────────────────────────
   const [prMaxBatch, setPrMaxBatch] = useState("10");
@@ -602,7 +607,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             >
               {[
                 { id: "underwriting", label: "Underwriting" },
-                { id: "premiums", label: "Premiums" },
+                { id: "premiums", label: "Fees" },
                 { id: "claims", label: "Claims" },
                 { id: "liquidity", label: "Liquidity" },
                 { id: "strategies", label: "Strategies" },
@@ -811,15 +816,15 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             </>
             )}
 
-            {/* ── Premiums ─────────────────────────────────────────────── */}
+            {/* ── Fees ─────────────────────────────────────────────────── */}
             {activeSection === "premiums" && (
             <>
-            <SectionBio>Keep guarantees covered. Paying a premium advances its paid-until date; coverage lapses if it falls behind.</SectionBio>
+            <SectionBio>Keep guarantees covered. Paying a fee advances its paid-until date; coverage lapses if it falls behind.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
                 currency={currency}
-                title="Pay Premium"
-                description="policy.pay_premium"
+                title="Pay Fee"
+                description="policy.pay_fee"
                 actionLabel="Pay"
                 disabled={!isAdmin}
                 onSubmit={async () => {
@@ -827,7 +832,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!ppId) throw new Error("select a guarantee first");
                   const id = parseInt(ppId, 10);
                   if (isNaN(id)) throw new Error("invalid guarantee ID");
-                  return payPremium(contracts, address, id);
+                  return payFee(contracts, address, id);
                 }}
                 onSuccess={() => {
                   setPpId("");
@@ -872,9 +877,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     maxWidth: "280px",
                   }}
                 >
-                  Premium payments advance the <Mono style={{ fontSize: "11px", color: "var(--color-text-2)" }}>paid_until</Mono>{" "}
-                  timestamp. Contract asserts premiums are not yet current
-                  before accepting. Premium income accrues to NAV (PoC testnet only).
+                  Fee payments advance the <Mono style={{ fontSize: "11px", color: "var(--color-text-2)" }}>paid_until</Mono>{" "}
+                  timestamp. Contract asserts the fee is not yet current
+                  before accepting. Fee income accrues to NAV (PoC testnet only).
                 </p>
               </div>
             </ActionGrid>
@@ -884,7 +889,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Claims ───────────────────────────────────────────────── */}
             {activeSection === "claims" && (
             <>
-            <SectionBio>Pay out a defaulted guarantee. The covered amount is disbursed to the landlord, only while premiums are current.</SectionBio>
+            <SectionBio>Pay out a guarantee&apos;s two legs. Cover Default disburses one monthly amount (rent-arrears leg); Cover Exit disburses an arbitrary amount up to the exit cap (property-recovery leg). Both reduce coverage before disbursing, so solvency holds.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
                 currency={currency}
@@ -938,6 +943,61 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 >
                   Reduces coverage_required first, then disburses one monthly amount to the landlord. Solvency (stable_assets ≥ coverage_required) is enforced before disbursement.
                 </p>
+              </ProtocolActionForm>
+
+              {/* Cover Exit (EXIT leg) */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Cover Exit"
+                description="policy.cover_exit"
+                actionLabel="Cover Exit"
+                disabled={!isPolicyAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!ceId) throw new Error("select a guarantee first");
+                  const id = parseInt(ceId, 10);
+                  if (isNaN(id)) throw new Error("invalid guarantee ID");
+                  const amount = parseToStroops(ceAmount);
+                  if (amount === null)
+                    throw new Error("amount must be a positive number");
+                  return coverExit(contracts, address, id, amount);
+                }}
+                onSuccess={() => {
+                  setCeId("");
+                  setCeAmount("");
+                  handleSuccess();
+                }}
+              >
+                <FormSelect
+                  id="ce-id"
+                  label="Guarantee"
+                  value={ceId}
+                  onChange={setCeId}
+                  options={guaranteeOptions}
+                  disabled={!isPolicyAdmin}
+                  placeholder="Select guarantee…"
+                />
+                <FormField
+                  id="ce-amount"
+                  label={`Exit Amount (in ${depositToken})`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="500.00"
+                  value={ceAmount}
+                  onChange={setCeAmount}
+                  disabled={!isPolicyAdmin}
+                  hint="Partial draws allowed, up to monthly × exit_months (the EXIT cap)"
+                />
+                {ceId && (
+                  <GuaranteeDetail
+                    guarantee={data.activeGuarantees.find(
+                      (g) => String(g.id) === ceId,
+                    )}
+                    money={money}
+                  />
+                )}
               </ProtocolActionForm>
 
               <div

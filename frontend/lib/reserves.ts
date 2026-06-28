@@ -17,7 +17,7 @@
  * When their sub-vaults deploy, fill in `contracts` and flip `status` to "live".
  */
 
-import { config, mbrlConfigured } from "./config";
+import { config, mbrlConfigured, mtesouroConfigured } from "./config";
 import type { ModelAssumptions } from "./economics";
 
 export type ReserveStatus = "live" | "planned";
@@ -83,9 +83,9 @@ export const RESERVES: Reserve[] = [
     id: "usdc",
     currency: "MUSD",
     name: "Mutav USD Reserve",
-    underlying: "USDC · stablecoin DeFi (DeFindex)",
-    depositToken: "USDC",
-    underlyingYieldBearing: false, // USDC is a stablecoin — idle balance earns nothing
+    underlying: "cUSD · testnet test-USD (stablecoin DeFi)",
+    depositToken: "cUSD",
+    underlyingYieldBearing: false, // cUSD is a stablecoin — idle balance earns nothing
     fiatSymbol: "$",
     unitPriceFiat: 1, // USDC ≈ $1
     market: "Brazil · testnet PoC",
@@ -101,31 +101,36 @@ export const RESERVES: Reserve[] = [
     },
   },
   {
-    // Legacy reserve, renamed MBRL → MTESOURO (spec §2): the underlying is
-    // TESOURO (a yield-bearing treasury token ≈ R$1.22), so the name is now
-    // honest about what backs it. Metadata-only rename — the on-chain vault
-    // address, balances, and seeded state are unchanged. The BRL-native reserve
-    // below (currency "MBRL", underlying cBRL) is the economically-correct shape.
+    // MTESOURO reserve (spec §2): the underlying is cTSR (a testnet
+    // tokenized-treasury test asset ≈ R$1.22), so the name is honest about what
+    // backs it. Contracts are env-driven (NEXT_PUBLIC_MTESOURO_*), NOT hardcoded,
+    // following the MUSD/MBRL pattern. Until that reserve is deployed the env vars
+    // are blank → `mtesouroConfigured` is false → this entry degrades to a
+    // non-live "planned" reserve so the build and pages never break.
     id: "tesouro",
     currency: "MTESOURO",
     name: "Mutav TESOURO Reserve",
-    underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
-    depositToken: "TESOURO",
-    underlyingYieldBearing: true, // TESOURO is a tokenized treasury — accrues yield even when held
+    underlying: "cTSR · tokenized Brazilian treasury (testnet test asset)",
+    depositToken: "cTSR",
+    underlyingYieldBearing: true, // cTSR is a tokenized treasury — accrues yield even when held
     fiatSymbol: "R$",
-    // TESOURO is yield-bearing → not 1:1 with BRL; indicative price (env-overridable).
+    // cTSR is yield-bearing → not 1:1 with BRL; indicative price (env-overridable).
     unitPriceFiat: config.tesouro.priceBrl,
     market: "Brazil · testnet PoC",
-    status: "live",
-    tag: "Testnet",
+    status: mtesouroConfigured ? "live" : "planned",
+    tag: mtesouroConfigured ? "Testnet" : "Soon",
     // Selic/CDI ~14%; Brazilian (South) rental delinquency.
     assumptions: { underlyingYield: 0.14, delinquency: 0.0246 },
-    address: "CD6DLQKZ56DATLWPYBF32CYNRADBL722ZRWLBMTQJ23FLPDFKHK2VAHA",
-    contracts: {
-      vault: "CD6DLQKZ56DATLWPYBF32CYNRADBL722ZRWLBMTQJ23FLPDFKHK2VAHA",
-      policy: "CCFG7UYGVAC4IXU2NNHKIPUUN4CUQKLLXIRAGMXCVFK2WP6TFXNZRXRR",
-      registry: "CBMNQIOSAM5IDXFD4Y3N6U7XS57OMNBLPRKBMJLBBLMFNEWN7L3UQ4AA",
-    },
+    ...(mtesouroConfigured
+      ? {
+          address: config.contracts.mtesouroVault,
+          contracts: {
+            vault: config.contracts.mtesouroVault,
+            policy: config.contracts.mtesouroPolicy,
+            registry: config.contracts.mtesouroRegistry,
+          },
+        }
+      : {}),
   },
   {
     // BRL-native reserve (spec §6): the underlying is cBRL (a BRL stablecoin),

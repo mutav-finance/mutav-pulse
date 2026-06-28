@@ -6,15 +6,18 @@ import {
 } from "./economics";
 import type { Guarantee } from "policy";
 
-// Helper: a standard $1,000 / 6-month / 12%-per-30d guarantee, premium-current.
+// Helper: a standard $1,000 / 12%-per-30d two-leg guarantee, fee-current.
+// Two-leg fiança: 3-month DEFAULT (rent-arrears) leg + 6-month EXIT leg.
 const STROOP = 10_000_000n; // 1 unit = 1e7 stroops
 function g(over: Partial<Guarantee> = {}, isCurrent = true) {
   const guarantee: Guarantee = {
     id: 1,
     landlord: "GAAA",
     monthly_amount: 1000n * STROOP, // 1,000
-    months_covered: 6,
+    months_covered: 3,
     months_used: 0,
+    exit_months: 6,
+    exit_used: 0n,
     fee_bps: 1200, // 12% per period
     period_secs: 2_592_000n, // 30 days
     paid_until: 0n,
@@ -79,14 +82,15 @@ describe("computeEconomics", () => {
     expect(e.annualPremium).toBeCloseTo(one.annualPremium, 6);
   });
 
-  it("standardProductEconomics matches the model per currency peg", () => {
+  it("standardProductEconomics matches the two-leg model per currency peg", () => {
     const usd = standardProductEconomics({ delinquency: 0.0246, underlyingYield: 0.055 });
     const brl = standardProductEconomics({ delinquency: 0.0246, underlyingYield: 0.14 });
-    // USD ≈ 24.9%, BRL ≈ 33.4% (from the Python model section [0])
-    expect(usd.modeledApy).toBeGreaterThan(0.24);
-    expect(usd.modeledApy).toBeLessThan(0.26);
-    expect(brl.modeledApy).toBeGreaterThan(0.32);
-    expect(brl.modeledApy).toBeLessThan(0.35);
+    // Two-leg: capital reserved = monthly × (3 + 6) = 9,000, so spread ≈ 12.95%.
+    // USD ≈ 18.5% (5.5% + 12.95%), BRL ≈ 27.0% (14% + 12.95%).
+    expect(usd.modeledApy).toBeGreaterThan(0.18);
+    expect(usd.modeledApy).toBeLessThan(0.19);
+    expect(brl.modeledApy).toBeGreaterThan(0.26);
+    expect(brl.modeledApy).toBeLessThan(0.28);
     // spread currency-independent
     expect(brl.underwritingSpread).toBeCloseTo(usd.underwritingSpread, 9);
   });

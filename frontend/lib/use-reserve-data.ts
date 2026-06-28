@@ -22,7 +22,7 @@ export interface ReserveData {
   totalAssets: bigint;
   navPerShare: bigint;
   freeCapital: bigint;
-  premiumIncome: bigint;
+  feeIncome: bigint;
   totalSupply: bigint;
   stableAssets: bigint;
   coverageRequired: bigint;
@@ -40,7 +40,7 @@ export const INITIAL_RESERVE_DATA: ReserveData = {
   totalAssets: 0n,
   navPerShare: 0n,
   freeCapital: 0n,
-  premiumIncome: 0n,
+  feeIncome: 0n,
   totalSupply: 0n,
   stableAssets: 0n,
   coverageRequired: 0n,
@@ -72,7 +72,7 @@ export function useReserveData(reads: Reads): UseReserveData {
         totalAssets,
         navPerShare,
         freeCapital,
-        premiumIncome,
+        feeIncome,
         totalSupply,
         stableAssets,
         coverageRequired,
@@ -83,7 +83,7 @@ export function useReserveData(reads: Reads): UseReserveData {
         reads.vaultTotalAssets(),
         reads.vaultNavPerShare(),
         reads.vaultFreeCapital(),
-        reads.vaultPremiumIncome(),
+        reads.vaultFeeIncome(),
         reads.vaultTotalSupply(),
         reads.vaultStableAssets(),
         reads.policyCoverageRequired(),
@@ -122,7 +122,7 @@ export function useReserveData(reads: Reads): UseReserveData {
         totalAssets,
         navPerShare,
         freeCapital,
-        premiumIncome,
+        feeIncome,
         totalSupply,
         stableAssets,
         coverageRequired,

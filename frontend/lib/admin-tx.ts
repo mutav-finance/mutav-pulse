@@ -3,7 +3,8 @@
  *
  * Same assemble→sign→submit pattern as lib/tx.ts, reserve-parameterized: each
  * helper takes the target reserve's `contracts` (uses `.policy` / `.vault`).
- * Policy actions: sign_guarantee, pay_premium, cover_default, settle_guarantee
+ * Policy actions: sign_guarantee (two-leg), pay_fee, cover_default, cover_exit,
+ *                 settle_guarantee
  * Vault actions:  rebalance, process_redemptions, add_strategy, remove_strategy
  *
  * Amount args are bigint stroops (display × 1e7). All helpers require the
@@ -27,7 +28,11 @@ function vaultWriter(address: string, vaultId: string): VaultClient {
 
 // ─── Policy write helpers ────────────────────────────────────────────────────
 
-/** Underwrite a new rental guarantee (feeBps is per-period, not annual). */
+/**
+ * Underwrite a new two-leg rental guarantee. `feeBps` is per-period, not annual.
+ * `exitMonths` reserves the EXIT (property-recovery/restoration) leg as a multiple
+ * of monthly rent (pilot default 6); the DEFAULT (rent-arrears) leg is `monthsCovered`.
+ */
 export async function signGuarantee(
   contracts: ReserveContracts,
   caller: string,
@@ -36,12 +41,14 @@ export async function signGuarantee(
   monthsCovered: number,
   feeBps: number,
   periodSecs: bigint,
+  exitMonths: number = 6,
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.sign_guarantee({
     landlord,
     monthly_amount: monthlyAmount,
     months_covered: monthsCovered,
+    exit_months: exitMonths,
     fee_bps: feeBps,
     period_secs: periodSecs,
   });
@@ -49,19 +56,22 @@ export async function signGuarantee(
   return extractHash(sent);
 }
 
-/** Pay the next premium period for a guarantee. */
-export async function payPremium(
+/** Pay the next fee period for a guarantee (advances `paid_until`). */
+export async function payFee(
   contracts: ReserveContracts,
   caller: string,
   id: number,
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
-  const tx = await client.pay_premium({ payer: caller, id });
+  const tx = await client.pay_fee({ payer: caller, id });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }
 
-/** Cover a default: disburse the monthly amount to the landlord. Admin only. */
+/**
+ * Cover a default (DEFAULT leg): disburse one monthly amount to the landlord and
+ * advance `months_used`. Admin only.
+ */
 export async function coverDefault(
   contracts: ReserveContracts,
   caller: string,
@@ -69,6 +79,23 @@ export async function coverDefault(
 ): Promise<string> {
   const client = policyWriter(caller, contracts.policy);
   const tx = await client.cover_default({ id });
+  const sent = await tx.signAndSend();
+  return extractHash(sent);
+}
+
+/**
+ * Cover an exit cost (EXIT leg): disburse an arbitrary `amount` (stroops) to the
+ * landlord up to the cap `monthly_amount * exit_months`, accruing `exit_used`.
+ * Admin only.
+ */
+export async function coverExit(
+  contracts: ReserveContracts,
+  caller: string,
+  id: number,
+  amount: bigint,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
+  const tx = await client.cover_exit({ id, amount });
   const sent = await tx.signAndSend();
   return extractHash(sent);
 }

@@ -679,8 +679,8 @@ export function ReserveTransparency({
                 error={error ?? undefined}
               />
               <MetricCard
-                label="Premiums Collected"
-                value={loading ? "—" : fmtFiat(data.premiumIncome, reserve)}
+                label="Fees Collected"
+                value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
                 unit={`cumulative · indicative ${reserve.fiatSymbol}`}
                 loading={loading}
                 error={error ?? undefined}

@@ -103,29 +103,38 @@ export function computeEconomics(
 }
 
 /**
- * Reference economics for the STANDARD product (one $1,000 / 6-month / 12%-per-30d
- * guarantee, fully packed) under a given currency peg. Used to show a model-backed
- * headline APY for reserves that have no live book yet (planned currencies).
+ * Reference economics for the STANDARD two-leg product (one $1,000 / 12%-per-30d
+ * guarantee, fully packed) under a given currency peg. Two-leg fiança: a 3-month
+ * DEFAULT (rent-arrears) leg + a 6-month EXIT (property-recovery) leg, so the
+ * capital reserved per guarantee is `monthly * (months_covered + exit_months)` =
+ * 1,000 × (3 + 6) = 9,000. Used to show a model-backed headline APY for reserves
+ * that have no live book yet (planned currencies).
  */
 export function standardProductEconomics(
   assumptions: ModelAssumptions = MODEL_ASSUMPTIONS,
 ): ModeledEconomics {
+  const monthsCovered = 3;
+  const exitMonths = 6;
   const guarantee = {
     id: 1,
     landlord: "",
     monthly_amount: 1000n * STROOP_SCALE,
-    months_covered: 6,
+    months_covered: monthsCovered,
     months_used: 0,
+    exit_months: exitMonths,
+    exit_used: 0n,
     fee_bps: 1200,
     period_secs: 2_592_000n,
     paid_until: 0n,
     active: true,
   } as Guarantee;
+  // Capital reserved per guarantee = monthly × (default leg + exit leg).
+  const capital = BigInt(monthsCovered + exitMonths) * 1000n * STROOP_SCALE;
   return computeEconomics(
     {
       guarantees: [{ guarantee, isCurrent: true }],
-      coverageRequired: 6000n * STROOP_SCALE,
-      totalAssets: 6000n * STROOP_SCALE,
+      coverageRequired: capital,
+      totalAssets: capital,
     },
     assumptions,
   );
