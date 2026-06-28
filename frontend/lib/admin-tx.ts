@@ -7,8 +7,21 @@
  *                 settle_guarantee
  * Vault actions:  rebalance, process_redemptions, add_strategy, remove_strategy
  *
- * Amount args are bigint stroops (display × 1e7). All helpers require the
- * connected wallet to BE the admin on-chain; the contract rejects otherwise.
+ * Amount args are bigint stroops (display × 1e7).
+ *
+ * Source vs signer: the admin contracts gate on `admin.require_auth()`, where the
+ * admin is an on-chain account that may be a multisig the connected wallet only
+ * SIGNS for. So each admin-gated write takes the admin account as `adminAccount`
+ * and uses it as the tx SOURCE, while signing the envelope with `caller` (the
+ * connected wallet). Soroban then satisfies `require_auth` via source-account
+ * credentials, and the signer's signature (weight ≥ threshold) validates the tx —
+ * no auth-entry juggling, single signature (threshold-1 multisig).
+ *
+ * `adminAccount` is threaded in by the caller (the cockpit already reads + renders
+ * `vault.admin()` / `policy.admin()` as `data.vaultAdmin` / `data.policyAdmin`) so
+ * the source is always the same fresh value the UI shows — no second resolution
+ * path that could drift. `payFee` is the one non-admin helper (gated on `payer`),
+ * so its source stays `caller`.
  */
 
 import { Client as PolicyClient } from "policy";
@@ -17,14 +30,14 @@ import type { ReserveContracts } from "./contracts";
 import { makeWriterOpts, submit } from "./wallet";
 import { STANDARD_PRODUCT } from "./economics";
 
-// ─── Client factories (bound to caller + sign fn + reserve contract id) ───────
+// ─── Client factories (bound to signer + source + reserve contract id) ────────
 
-function policyWriter(address: string, policyId: string): PolicyClient {
-  return new PolicyClient(makeWriterOpts(address, policyId));
+function policyWriter(signer: string, policyId: string, source: string): PolicyClient {
+  return new PolicyClient(makeWriterOpts(signer, policyId, source));
 }
 
-function vaultWriter(address: string, vaultId: string): VaultClient {
-  return new VaultClient(makeWriterOpts(address, vaultId));
+function vaultWriter(signer: string, vaultId: string, source: string): VaultClient {
+  return new VaultClient(makeWriterOpts(signer, vaultId, source));
 }
 
 // ─── Policy write helpers ────────────────────────────────────────────────────
@@ -37,6 +50,7 @@ function vaultWriter(address: string, vaultId: string): VaultClient {
 export async function signGuarantee(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   landlord: string,
   monthlyAmount: bigint,
   monthsCovered: number,
@@ -44,7 +58,7 @@ export async function signGuarantee(
   periodSecs: bigint,
   exitMonths: number = STANDARD_PRODUCT.exitMonths,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.sign_guarantee({
     landlord,
     monthly_amount: monthlyAmount,
@@ -62,7 +76,8 @@ export async function payFee(
   caller: string,
   id: number,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  // pay_fee gates on `payer` (the caller), not admin — source stays the caller.
+  const client = policyWriter(caller, contracts.policy, caller);
   const tx = await client.pay_fee({ payer: caller, id });
   return submit(tx);
 }
@@ -74,9 +89,10 @@ export async function payFee(
 export async function coverDefault(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   id: number,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.cover_default({ id });
   return submit(tx);
 }
@@ -89,10 +105,11 @@ export async function coverDefault(
 export async function coverExit(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   id: number,
   amount: bigint,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.cover_exit({ id, amount });
   return submit(tx);
 }
@@ -101,9 +118,10 @@ export async function coverExit(
 export async function settleGuarantee(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   id: number,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.settle_guarantee({ id });
   return submit(tx);
 }
@@ -114,8 +132,9 @@ export async function settleGuarantee(
 export async function rebalance(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.rebalance();
   return submit(tx);
 }
@@ -124,9 +143,10 @@ export async function rebalance(
 export async function processRedemptions(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   maxBatch: number,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.process_redemptions({ max_batch: maxBatch });
   return submit(tx);
 }
@@ -135,11 +155,12 @@ export async function processRedemptions(
 export async function addStrategy(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   address: string,
   weightBps: number,
   volatile: boolean,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.add_strategy({
     address,
     weight_bps: weightBps,
@@ -152,9 +173,10 @@ export async function addStrategy(
 export async function removeStrategy(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   address: string,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.remove_strategy({ address });
   return submit(tx);
 }
@@ -167,9 +189,10 @@ export async function removeStrategy(
 export async function setMinLiquidBufferBps(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   bps: number,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.set_min_liquid_buffer_bps({ bps });
   return submit(tx);
 }
@@ -181,10 +204,11 @@ export async function setMinLiquidBufferBps(
 export async function setStrategyMaxDebtBps(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   strategy: string,
   bps: number,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.set_strategy_max_debt_bps({ strategy, bps });
   return submit(tx);
 }
@@ -198,9 +222,10 @@ export async function setStrategyMaxDebtBps(
 export async function setVaultAdmin(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   newAdmin: string,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.set_admin({ new_admin: newAdmin });
   return submit(tx);
 }
@@ -212,9 +237,10 @@ export async function setVaultAdmin(
 export async function setPolicyAdmin(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   newAdmin: string,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.set_admin({ new_admin: newAdmin });
   return submit(tx);
 }
@@ -226,9 +252,10 @@ export async function setPolicyAdmin(
 export async function setVaultPolicy(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   policy: string,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.set_policy({ policy });
   return submit(tx);
 }
@@ -237,10 +264,11 @@ export async function setVaultPolicy(
 export async function setTokenMetadata(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   name: string,
   symbol: string,
 ): Promise<string> {
-  const client = vaultWriter(caller, contracts.vault);
+  const client = vaultWriter(caller, contracts.vault, adminAccount);
   const tx = await client.set_token_metadata({ name, symbol });
   return submit(tx);
 }
@@ -253,9 +281,10 @@ export async function setTokenMetadata(
 export async function setCoverageRatioBps(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   bps: number,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.set_coverage_ratio_bps({ bps });
   return submit(tx);
 }
@@ -264,9 +293,10 @@ export async function setCoverageRatioBps(
 export async function setGraceSecs(
   contracts: ReserveContracts,
   caller: string,
+  adminAccount: string,
   secs: bigint,
 ): Promise<string> {
-  const client = policyWriter(caller, contracts.policy);
+  const client = policyWriter(caller, contracts.policy, adminAccount);
   const tx = await client.set_grace_secs({ secs });
   return submit(tx);
 }

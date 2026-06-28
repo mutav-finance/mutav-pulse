@@ -39,11 +39,12 @@ const NAV_LINKS: NavLink[] = [
   { href: "/", label: "home", match: "exact" },
   { href: "/reserves", label: "reserves", match: "prefix" },
   { href: `/protocol/${PRIMARY_RESERVE.address}`, label: "protocol", match: "prefix" },
+  { href: "/admin", label: "admin", match: "prefix" },
 ];
 
 /** Resolve whether this front is the terminal register */
 function isTerminalFront(pathname: string): boolean {
-  return pathname.startsWith("/protocol");
+  return pathname.startsWith("/protocol") || pathname.startsWith("/admin");
 }
 
 export function NavShell() {

@@ -117,15 +117,27 @@ export async function disconnect(): Promise<void> {
 
 /**
  * Build the base options for a write-capable binding Client (vault/policy/etc).
- * Lifted verbatim from the per-helper writer factories: binds the caller's
- * public key + a signTransaction fn so the binding can assemble + sign.
+ * Binds a public key + a signTransaction fn so the binding can assemble + sign.
+ *
+ * `address` is the SIGNER — the connected wallet that signs the envelope.
+ * `sourceAccount` (optional) is the tx SOURCE / fee account. When the source is
+ * a multisig account the connected wallet is only a *signer* of, pass the admin
+ * account here: the binding builds the tx with `source = sourceAccount` so the
+ * contract's `require_auth(sourceAccount)` is met by source-account credentials,
+ * while the envelope is still signed by the connected wallet (a valid signer of
+ * that account). Omit it (the default) and source = signer, the single-key path
+ * used by investor deposit/redeem and the faucet.
  */
-export function makeWriterOpts(address: string, contractId: string) {
+export function makeWriterOpts(
+  address: string,
+  contractId: string,
+  sourceAccount?: string,
+) {
   return {
     rpcUrl: config.rpcUrl,
     contractId,
     networkPassphrase: config.networkPassphrase,
-    publicKey: address,
+    publicKey: sourceAccount ?? address,
     signTransaction: makeSignTransaction(address),
   };
 }
