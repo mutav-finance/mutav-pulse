@@ -30,13 +30,19 @@ export interface AdminAccount {
 /**
  * Read the admin account's signer set + thresholds from Horizon.
  *
- * Any non-OK status throws: a 404 means the admin account doesn't exist on-chain
- * (a real misconfiguration, not an empty signer set to silently render), and any
- * other status is transient — throw so the UI surfaces it and retries rather than
- * mislabelling the multisig state. Mirrors lib/trustline.ts `readAssetInfo`.
+ * 404 is NOT an error: it means the address isn't a funded classic account — a
+ * contract-address (`C…`) admin, or an unfunded account — which legitimately has
+ * no classic signers. Return an empty set so callers degrade to equality-gating
+ * rather than conflating it with a fetch failure. Any OTHER non-OK status is
+ * transient (5xx/429/network) and MUST throw so callers surface it and retry,
+ * never silently mislabel the multisig state. Mirrors lib/trustline.ts
+ * `readAssetInfo`'s 404-vs-transient split.
  */
 export async function readAdminAccount(address: string): Promise<AdminAccount> {
   const res = await fetch(`${config.horizonUrl}/accounts/${address}`);
+  if (res.status === 404) {
+    return { address, signers: [], thresholds: { low: 0, med: 0, high: 0 } };
+  }
   if (!res.ok) {
     throw new Error(
       `Horizon request failed (${res.status} ${res.statusText}) while reading the admin account ${address}.`,

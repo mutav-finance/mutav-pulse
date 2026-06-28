@@ -64,7 +64,7 @@ import {
   setCoverageRatioBps,
   setGraceSecs,
 } from "@/lib/admin-tx";
-import { readAdminAccount } from "@/lib/admin-account";
+import { readAdminAccount, isSigner, type AccountSigner } from "@/lib/admin-account";
 import { fmtFiat, truncAddr, errMsg, parseToStroops, clamp01, type Money } from "@/lib/format";
 import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { venueName, ADAPTER_CATALOG } from "@/lib/providers";
@@ -77,11 +77,11 @@ interface ProtocolData {
   vaultAdmin: string;
   policyAdmin: string;
   /**
-   * Signer keys per admin account address. The admin account is a classic
+   * Signer set per admin account address. The admin account is a classic
    * multisig, so the gate admits any *signer* of the admin account, not only
    * the account itself. Keyed by admin address (vault & policy usually share one).
    */
-  adminSigners: Record<string, string[]>;
+  adminSigners: Record<string, AccountSigner[]>;
   totalAssets: bigint;
   freeCapital: bigint;
   coverageRequired: bigint;
@@ -278,17 +278,15 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
       // Admin accounts may be classic multisig — fetch their signer sets so the
       // gate admits any signer, not only the account itself. Vault & policy
-      // usually share one admin account; dedupe the fetch. An unreadable set
-      // (e.g. a contract-address admin) falls back to equality-only gating.
-      const adminSigners: Record<string, string[]> = {};
+      // usually share one admin account; dedupe the fetch. `readAdminAccount`
+      // returns [] for a contract-address admin (404) and THROWS on a transient
+      // Horizon error — let that propagate to the outer catch so the cockpit
+      // shows its error/retry state instead of silently mislabelling a signer
+      // as non-admin.
+      const adminSigners: Record<string, AccountSigner[]> = {};
       await Promise.all(
         [...new Set([vaultAdmin, policyAdmin])].map(async (acct) => {
-          try {
-            const a = await readAdminAccount(acct);
-            adminSigners[acct] = a.signers.map((s) => s.key);
-          } catch {
-            adminSigners[acct] = [];
-          }
+          adminSigners[acct] = (await readAdminAccount(acct)).signers;
         }),
       );
 
@@ -340,11 +338,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   // (see lib/admin-tx.ts), so a signer's single signature authorizes require_auth.
   const isAdminOf = (adminAccount: string): boolean => {
     if (!address || !adminAccount) return false;
-    const a = address.toLowerCase();
-    if (a === adminAccount.toLowerCase()) return true;
-    return (data.adminSigners[adminAccount] ?? []).some(
-      (k) => k.toLowerCase() === a,
-    );
+    if (address.toLowerCase() === adminAccount.toLowerCase()) return true;
+    return isSigner(data.adminSigners[adminAccount] ?? [], address);
   };
   const isVaultAdmin = isAdminOf(data.vaultAdmin);
   const isPolicyAdmin = isAdminOf(data.policyAdmin);
@@ -914,6 +909,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   return signGuarantee(
                     contracts,
                     address,
+                    data.policyAdmin,
                     sgLandlord,
                     monthly,
                     months,
@@ -1013,7 +1009,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   const id = parseGuaranteeId(settleId);
-                  return settleGuarantee(contracts, address, id);
+                  return settleGuarantee(contracts, address, data.policyAdmin, id);
                 }}
                 onSuccess={() => {
                   setSettleId("");
@@ -1125,7 +1121,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   const id = parseGuaranteeId(cdId);
-                  return coverDefault(contracts, address, id);
+                  return coverDefault(contracts, address, data.policyAdmin, id);
                 }}
                 onSuccess={() => {
                   setCdId("");
@@ -1176,7 +1172,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   const amount = parseToStroops(ceAmount);
                   if (amount === null)
                     throw new Error("amount must be a positive number");
-                  return coverExit(contracts, address, id, amount);
+                  return coverExit(contracts, address, data.policyAdmin, id, amount);
                 }}
                 onSuccess={() => {
                   setCeId("");
@@ -1322,7 +1318,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   const maxBatch = parseInt(prMaxBatch, 10);
                   if (isNaN(maxBatch))
                     throw new Error("max batch size must be a number");
-                  return processRedemptions(contracts, address, maxBatch);
+                  return processRedemptions(contracts, address, data.vaultAdmin, maxBatch);
                 }}
                 onSuccess={handleSuccess}
               >
@@ -1464,7 +1460,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
-                  return rebalance(contracts, address);
+                  return rebalance(contracts, address, data.vaultAdmin);
                 }}
                 onSuccess={handleSuccess}
               >
@@ -1525,7 +1521,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!asAddress) throw new Error("strategy address is required");
                   const pct = parseFloat(asWeightPct);
                   if (isNaN(pct) || pct < 0) throw new Error("weight must be a non-negative percent");
-                  return addStrategy(contracts, address, asAddress, Math.round(pct * 100), isVolatile);
+                  return addStrategy(contracts, address, data.vaultAdmin, asAddress, Math.round(pct * 100), isVolatile);
                 }}
                 onSuccess={() => {
                   setAsAddress("");
@@ -1574,7 +1570,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!address) throw new Error("no wallet");
                   const pct = parseFloat(bufferInput);
                   if (isNaN(pct) || pct < 0 || pct > 100) throw new Error("buffer must be 0–100%");
-                  return setMinLiquidBufferBps(contracts, address, Math.round(pct * 100));
+                  return setMinLiquidBufferBps(contracts, address, data.vaultAdmin, Math.round(pct * 100));
                 }}
                 onSuccess={() => {
                   setBufferInput("");
@@ -1607,7 +1603,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!capStrategy) throw new Error("select a strategy first");
                   const pct = parseFloat(capInput);
                   if (isNaN(pct) || pct < 0 || pct > 100) throw new Error("cap must be 0–100%");
-                  return setStrategyMaxDebtBps(contracts, address, capStrategy, Math.round(pct * 100));
+                  return setStrategyMaxDebtBps(contracts, address, data.vaultAdmin, capStrategy, Math.round(pct * 100));
                 }}
                 onSuccess={() => {
                   setCapStrategy("");
@@ -1649,7 +1645,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!rsAddress) throw new Error("select a strategy first");
-                  return removeStrategy(contracts, address, rsAddress);
+                  return removeStrategy(contracts, address, data.vaultAdmin, rsAddress);
                 }}
                 onSuccess={() => {
                   setRsAddress("");
@@ -1721,7 +1717,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!newVaultAdmin) throw new Error("new admin address is required");
-                  return setVaultAdmin(contracts, address, newVaultAdmin);
+                  return setVaultAdmin(contracts, address, data.vaultAdmin, newVaultAdmin);
                 }}
                 onSuccess={() => { setNewVaultAdmin(""); handleSuccess(); }}
               >
@@ -1739,7 +1735,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!newPolicyAdmin) throw new Error("new admin address is required");
-                  return setPolicyAdmin(contracts, address, newPolicyAdmin);
+                  return setPolicyAdmin(contracts, address, data.policyAdmin, newPolicyAdmin);
                 }}
                 onSuccess={() => { setNewPolicyAdmin(""); handleSuccess(); }}
               >
@@ -1763,7 +1759,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!address) throw new Error("no wallet");
                   const pct = parseFloat(ratioInput);
                   if (isNaN(pct) || pct <= 0) throw new Error("ratio must be a positive percent");
-                  return setCoverageRatioBps(contracts, address, Math.round(pct * 100));
+                  return setCoverageRatioBps(contracts, address, data.policyAdmin, Math.round(pct * 100));
                 }}
                 onSuccess={() => { setRatioInput(""); handleSuccess(); }}
               >
@@ -1781,7 +1777,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   if (!address) throw new Error("no wallet");
                   const days = parseFloat(graceInput);
                   if (isNaN(days) || days < 0) throw new Error("grace must be a non-negative number of days");
-                  return setGraceSecs(contracts, address, BigInt(Math.round(days * 86400)));
+                  return setGraceSecs(contracts, address, data.policyAdmin, BigInt(Math.round(days * 86400)));
                 }}
                 onSuccess={() => { setGraceInput(""); handleSuccess(); }}
               >
@@ -1818,7 +1814,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!newPolicyAddr) throw new Error("policy address is required");
-                  return setVaultPolicy(contracts, address, newPolicyAddr);
+                  return setVaultPolicy(contracts, address, data.vaultAdmin, newPolicyAddr);
                 }}
                 onSuccess={() => { setNewPolicyAddr(""); handleSuccess(); }}
               >
@@ -1835,7 +1831,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!tokenName.trim() || !tokenSymbol.trim()) throw new Error("name and symbol are required");
-                  return setTokenMetadata(contracts, address, tokenName.trim(), tokenSymbol.trim());
+                  return setTokenMetadata(contracts, address, data.vaultAdmin, tokenName.trim(), tokenSymbol.trim());
                 }}
                 onSuccess={() => { setTokenName(""); setTokenSymbol(""); handleSuccess(); }}
               >

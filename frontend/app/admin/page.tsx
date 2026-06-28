@@ -45,8 +45,6 @@ interface ReserveAdminRow {
 
 interface AdminData {
   rows: ReserveAdminRow[];
-  /** Canonical admin account = the primary reserve's vault admin. */
-  adminAccount: string;
   account: AdminAccount | null;
   loading: boolean;
   error: string | null;
@@ -54,7 +52,6 @@ interface AdminData {
 
 const INITIAL: AdminData = {
   rows: [],
-  adminAccount: "",
   account: null,
   loading: true,
   error: null,
@@ -92,8 +89,21 @@ export default function AdminPage() {
       // Canonical admin = the primary (first live) reserve's vault admin. The
       // status table flags any reserve whose admins differ from it.
       const canonical = reserveRows[0]?.vaultAdmin ?? "";
-      const acct = canonical ? await readAdminAccount(canonical) : null;
-      setData({ rows: reserveRows, adminAccount: canonical, account: acct, loading: false, error: null });
+      // The status table needs only the per-reserve admin reads above. The signer
+      // set is a SEPARATE Horizon read — if it fails (transient), still commit the
+      // status table and surface a scoped error rather than blanking the whole
+      // page. (readAdminAccount returns [] for a contract-address admin; only a
+      // transient error throws.)
+      let acct: AdminAccount | null = null;
+      let signerError: string | null = null;
+      if (canonical) {
+        try {
+          acct = await readAdminAccount(canonical);
+        } catch (e) {
+          signerError = errMsg(e, "Failed to read admin signers — signer management unavailable; retry.");
+        }
+      }
+      setData({ rows: reserveRows, account: acct, loading: false, error: signerError });
     } catch (e) {
       setData((prev) => ({ ...prev, loading: false, error: errMsg(e, "Failed to load admin data") }));
     }
@@ -103,7 +113,10 @@ export default function AdminPage() {
     fetchAll();
   }, [fetchAll, refreshKey]);
 
-  const { rows, adminAccount, account, loading, error } = data;
+  const { rows, account, loading, error } = data;
+  // Canonical admin account = the primary reserve's vault admin (derived, not
+  // stored — it can never drift from `rows`).
+  const adminAccount = rows[0]?.vaultAdmin ?? "";
   const canManage = !!account && isSigner(account.signers, address);
   // Signers that may be removed: everything except the account's own master key
   // (key === account address) — removing it here would risk a master lockout.
@@ -380,6 +393,23 @@ export default function AdminPage() {
             onSubmit={async () => {
               if (!removeTarget) throw new Error("Select a signer to remove.");
               if (!address) throw new Error("Connect a signer wallet first.");
+              // Lockout floor: the remaining signer weight must still meet the
+              // account threshold (and at least 1), or the admin account — which
+              // gates every vault/policy — becomes permanently unusable. Guards
+              // the hardened case (master weight 0, or thresholds raised > 1).
+              if (account) {
+                const removed = account.signers.find((s) => eq(s.key, removeTarget));
+                const remaining = account.signers.reduce(
+                  (n, s) => n + (eq(s.key, removeTarget) ? 0 : s.weight),
+                  0,
+                );
+                const floor = Math.max(account.thresholds.med, 1);
+                if (removed && remaining < floor) {
+                  throw new Error(
+                    `Removing this signer drops total weight to ${remaining}, below the account threshold (${floor}) — it would lock the admin account out. Lower the threshold or add another signer first.`,
+                  );
+                }
+              }
               return removeSigner(adminAccount, removeTarget, address);
             }}
             onSuccess={() => { setRemoveTarget(""); bump(); }}
