@@ -376,7 +376,7 @@ impl Vault {
     // stellar-contract-utils — identical to what OZ's `Vault` uses, with a
     // virtual offset of 1 (`VIRTUAL_OFFSET`, i.e. OZ decimals_offset = 0). The
     // only divergence from the audited vault is the `total_assets` source.
-    // See docs/sep0056-conformance-decisions.md.
+    // See docs/security/testing-and-audits.md (SEP-0056 design decisions).
     //
     // Redemptions are queue-only (D2, attack-surface reduction): synchronous
     // `withdraw`/`redeem` are disabled (revert) and `max_withdraw`/`max_redeem`

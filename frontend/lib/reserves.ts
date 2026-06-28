@@ -10,7 +10,7 @@
  * for MUSD) is a separate thing — see `depositToken`.
  *
  * Reserves never cross-subsidize — each is solvent in its own currency, so FX
- * never leaks into a solvency floor (see docs/whitepaper.md §5).
+ * never leaks into a solvency floor (see docs/concepts/economic-model.md §5).
  *
  * Today only the MUSD reserve is deployed (Stellar testnet); MBRL and MARS are
  * declared here as `planned` so the UI shows the full multi-currency picture.

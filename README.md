@@ -12,7 +12,7 @@
 - **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, fee, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
-- **Live on testnet:** vault/policy/registry deployed + seeded; 23 contract unit tests + 10 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
+- **Live on testnet:** vault/policy/registry deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; investor interviews in progress.
 - ▶️ **Demo video:** <!-- TODO: link --> · 🌐 **Live demo:** <!-- TODO: Vercel URL -->
@@ -32,7 +32,7 @@ Mutav is a **fiador institucional** — an institutional guarantor. Instead of f
 A reserve of USDC on Stellar — held by the `vault` contract — that is **provably always able to cover the *fianças* Mutav has written**:
 
 - **Tenants** get a *fiança* from Mutav and pay a monthly **fee** — no personal guarantor, no large deposit. Real-estate agencies (*imobiliárias*) are the distribution channel that onboards them.
-- **Investors** fund the reserve: they deposit USDC and receive `mtvR` vault shares (a tokenized position). Their capital is what backs the *fianças*, and it earns yield.
+- **Investors** fund the reserve: they deposit USDC and receive `MUSD` vault shares (a tokenized position — each reserve mints a per-currency share; `MUSD` is the USD reserve). Their capital is what backs the *fianças*, and it earns yield.
 - **Mutav** pays the landlord on a tenant default (`cover_default`) — one month of rent at a time, and stops paying out the moment a *fiança* falls behind on fees.
 - The whole thing is **solvency-gated**: the invariant `stable_assets ≥ coverage_required` is enforced onchain on every payout and every redemption. Only *surplus* capital (`free_capital = stable_assets − coverage_required`) can ever leave the reserve — an onchain anti-bank-run guarantee.
 - Idle reserve capital is **put to work earning DeFi yield** through a pluggable strategy allocator — a DeFindex adapter today, with Soroswap / Blend designed against the same interface.
@@ -53,7 +53,7 @@ A modular, single-responsibility design — custody, data, and the underwriting 
 
 | Contract | Responsibility |
 |---|---|
-| `vault` | **Custody** — USDC funds, tokenized `mtvR` shares (OpenZeppelin fungible token, virtual-offset anti-inflation), NAV, surplus-gated redemption queue, strategy allocator. [SEP-0056](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0056.md) (Tokenized Vault Standard) surface — note `withdraw`/`redeem` are intentionally disabled in favor of the async redemption queue (a conformant "withdrawals-gated" configuration). |
+| `vault` | **Custody** — USDC funds, tokenized per-currency shares (`MUSD` for the USD reserve; OpenZeppelin fungible token, virtual-offset anti-inflation), NAV, surplus-gated redemption queue, strategy allocator. [SEP-0056](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0056.md) (Tokenized Vault Standard) surface — note `withdraw`/`redeem` are intentionally disabled in favor of the async redemption queue (a conformant "withdrawals-gated" configuration). |
 | `policy` | **Underwriting brain** — fee model, coverage math, `cover_default`. Swappable without moving funds. |
 | `registry` | Writer-gated typed store of guarantee records. |
 | `strategy` (trait) + `adapter-defindex` | Yield venues. `adapter-defindex` integrates **[DeFindex](https://www.defindex.io/)**, a Stellar DeFi yield protocol — `invest` deposits idle reserve into a DeFindex vault, `balance` values the position in real time, `divest` withdraws. Built and unit-tested against the DeFindex interface; live testnet deployment is the next step (see [Roadmap](#roadmap--extensibility)). |
@@ -68,9 +68,9 @@ Technical depth worth noting:
 
 - **Re-entrancy-safe solvency** — the policy reduces coverage in the registry *before* calling `vault.disburse`, so the vault never has to call back into a policy already on the stack (a Soroban re-entrancy trap). Exercised by the full-default-path test in `contracts/policy/src/test_system.rs`.
 - **Fees mint no shares** — they accrue to NAV instead (test: `contracts/vault/src/test.rs`).
-- **Virtual-offset share token** — an anti-inflation (donation-attack) defense on `mtvR`, with a dedicated test.
+- **Virtual-offset share token** — an anti-inflation (donation-attack) defense on the `MUSD` share token, with a dedicated test.
 
-See `docs/specs/` and `docs/plans/` for the full design history (one spec + one plan per phase).
+Full protocol documentation — concepts, contract reference, the security model, and guides — lives in [`docs/`](docs/README.md). The build-evolution history is preserved in the git log.
 
 **Why this matters for Stellar:** Mutav Pulse is a reusable, solvency-gated **RWA vault primitive** on Soroban — the first onchain *fiança* for Brazil's mandatory-guarantee rental market. It brings a real LATAM cash-flow use case onchain and contributes a SEP-0056-aligned, strategy-pluggable vault pattern other builders can fork.
 
@@ -93,15 +93,15 @@ Deployed and wired on Stellar testnet (RPC `https://soroban-testnet.stellar.org`
 
 | Contract | Address | Verify |
 |---|---|---|
-| vault | `CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CAJ2L2JBV3B5JZDOQNAKU6SZSIDB354VFCPRAAXHD5FD73WFXSRWPBMR) |
-| policy | `CA7SROLJVJXMPCUG7DLI5EUOWFMYCT2SJSKHXG35PV2I36KXSNA3BTHO` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CA7SROLJVJXMPCUG7DLI5EUOWFMYCT2SJSKHXG35PV2I36KXSNA3BTHO) |
-| registry | `CCFYHEAI5SBPAE44ZGV5QNDHIMCLZSIMTBT26NBYQDEDMJGPRMB2PAZ6` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CCFYHEAI5SBPAE44ZGV5QNDHIMCLZSIMTBT26NBYQDEDMJGPRMB2PAZ6) |
-| mock-strategy *(yield slot; DeFindex adapter pending deploy)* | `CDULHUYDOO7W3FKHACBC4ER7EMDJMBKZJRKXGT4XTCXGFWMHJKW5RXPJ` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDULHUYDOO7W3FKHACBC4ER7EMDJMBKZJRKXGT4XTCXGFWMHJKW5RXPJ) |
+| vault | `CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX) |
+| policy | `CDAYVNXHJD2T4QO66ECBX6LNA2SD2HCP66H23FPYWW7VSUR74QJ2K2VK` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDAYVNXHJD2T4QO66ECBX6LNA2SD2HCP66H23FPYWW7VSUR74QJ2K2VK) |
+| registry | `CA7WWXTNBG2QCDBQMYL3SV7DRXBW7KALM5JGWPJJEAP34DWWUMLYGSKN` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CA7WWXTNBG2QCDBQMYL3SV7DRXBW7KALM5JGWPJJEAP34DWWUMLYGSKN) |
+| mock-strategy *(yield slot; DeFindex adapter pending deploy)* | `CDKJQP5M34SBLT47CHRBGOAUFONG6JUN5URWSGCSGTGAS5JBM2NYGZ33` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDKJQP5M34SBLT47CHRBGOAUFONG6JUN5URWSGCSGTGAS5JBM2NYGZ33) |
 
 USDC settles in SAC `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`.
 
 **Proof of operation** — verify the protocol actually runs onchain, not just deployed:
-<!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted mtvR, a collect_fee, and a cover_default disbursement. -->
+<!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted MUSD, a collect_fee, and a cover_default disbursement. -->
 
 ▶️ **Demo video:** <!-- TODO: 1–2 min walkthrough link --> · 🌐 **Live demo:** <!-- TODO: Vercel URL, e.g. https://pulse.mutav.finance -->
 
@@ -114,7 +114,7 @@ MUTAV is built directly against the two sides of the Brazilian rental market it 
 - **Real-estate agencies (*imobiliárias*)** — interviews completed. Findings: <!-- TODO: summarize key findings — what guarantee products they use today, pain points, what would make them adopt an onchain guarantee. -->
 - **Investors (DeFi / yield)** — interviews in progress. <!-- TODO: add findings on appetite for solvency-verifiable rental-guarantee yield. -->
 
-Full write-ups, methodology, and the investor interview guide are in [`docs/customer-discovery.md`](docs/customer-discovery.md).
+Full write-ups, methodology, and the investor interview guide are in [`docs/resources/customer-discovery.md`](docs/resources/customer-discovery.md).
 
 ---
 
@@ -123,7 +123,7 @@ Full write-ups, methodology, and the investor interview guide are in [`docs/cust
 ```bash
 # Contracts — test + build (use the Stellar CLI, NOT `cargo build --release`;
 # soroban-sdk 26.1 spec-shaking needs the CLI)
-cargo test            # 23 unit tests
+cargo test            # 135 unit tests
 stellar contract build
 
 # Frontend
@@ -133,7 +133,16 @@ bun install
 bun dev                       # → http://localhost:3000/earn
 ```
 
-Redeploy + reseed from scratch (`bootstrap.sh` deploys + wires; `seed.sh` restores the demo state) — see [`HANDOFF.md`](HANDOFF.md) for the full operator runbook, invariants, and gotchas.
+Redeploy + reseed from scratch: `bootstrap.sh` deploys + wires every contract; `seed.sh` restores the demo state. See the [Quickstart](docs/guides/quickstart.md) and [Deploying & wiring](docs/guides/deploying-and-wiring.md) guides for detail.
+
+## Documentation
+
+Full protocol docs are in [`docs/`](docs/README.md):
+
+- [Overview](docs/overview.md) · [Concepts](docs/concepts/solvency-and-coverage.md) (solvency, coverage, vault, yield) · [Economic model](docs/concepts/economic-model.md)
+- [Guides](docs/guides/quickstart.md) — quickstart, running locally, deploying & wiring
+- [Contract reference](docs/reference/contracts/vault.md) · [Deployments](docs/reference/deployments.md) · [Errors](docs/reference/errors.md)
+- [Security model](docs/security/security-model.md) · [Threat model](docs/security/threat-model.md) · [Testing & audits](docs/security/testing-and-audits.md)
 
 ## Repository layout
 
@@ -142,9 +151,8 @@ contracts/        Soroban smart contracts (Rust workspace)
   vault/  policy/  registry/  interfaces/  strategy/
   adapter-defindex/   mock-strategy/  mock-policy/  mock-defindex/
 frontend/         Next.js 16 investor app + /protocol operator cockpit
-docs/specs/       one design spec per phase
-docs/plans/       one implementation plan per phase
-HANDOFF.md        operator runbook: deploy, seed, invariants, gotchas
+docs/             protocol documentation (overview, concepts, guides, reference, security)
+model/            economic model (mutav_model.py) backing the docs economic-model page
 PRODUCT.md        product brief: users, purpose, design principles
 ```
 
@@ -165,7 +173,7 @@ The strategy allocator is a trait, so new yield venues plug in without touching 
 
 - **DeFindex (live wiring)** — deploy the built `adapter-defindex` onto a DeFindex testnet vault and make it the active strategy, so real yield flows into NAV (the slot runs a mock today).
 - **Soroswap / Blend** — additional adapters against the same `Strategy` trait (listed as Planned in the venue directory on `/earn/transparency`); add a `max_volatile_bps` cap when the first volatile venue lands.
-- **Mainnet path** — set a real slippage floor on the DeFindex adapter (`min_amounts_out` is `[0]` for the demo) before any mainnet deploy.
+- **Mainnet path** — characterize and tune the DeFindex adapter's slippage floor (today a conservative 0.5% default via `max_slippage_bps`, not yet validated against a live DeFindex vault) before any mainnet deploy.
 
 ## License
 

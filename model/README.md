@@ -118,7 +118,7 @@ rents, so expected monthly DEFAULT payout per guarantee ≈ `rho · R` (capped a
 | `banda_ate_1k` | 5.43% | worst rent band (≤ R$1.000/mo) — stress anchor |
 | `parana` | 5.10% | PR ran hot in 2026 |
 
-See [`../docs/whitepaper.md`](../docs/whitepaper.md) for the full write-up, citations, and
+See [`../docs/concepts/economic-model.md`](../docs/concepts/economic-model.md) for the full write-up, citations, and
 interpretation.
 
 > The numbers in the whitepaper are produced by this script — re-run it to regenerate.
