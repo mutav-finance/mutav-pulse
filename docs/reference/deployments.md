@@ -58,7 +58,8 @@ Stellar Expert.
 All three deposit tokens are **mock classic assets** on testnet. Each vault's
 `underlying` is the asset's Stellar Asset Contract (SAC) above. The codes and
 issuers below are read live from each SAC's on-chain `name()` — never copied by
-hand (re-run `make sync-deploy` to refresh).
+hand (re-run `make sync-deploy` to refresh), and each configured SAC is verified to be the
+canonical contract deterministically derived from that `CODE:ISSUER`.
 
 | Reserve | Deposit token | Issuer |
 |---|---|---|
@@ -73,5 +74,9 @@ hand (re-run `make sync-deploy` to refresh).
   and the README block.
 - The two-leg fiança policy is live: each reserve's `policy` exposes `cover_default`,
   `cover_exit`, `grace_secs`, and `set_coverage_ratio_bps`.
+- Each configured SAC is verified at generation time to be the **canonical** Stellar
+  Asset Contract deterministically derived from its on-chain `CODE:ISSUER` — a contract
+  that merely reports a plausible `name()` from a non-canonical address is rejected, so
+  these addresses are authentic, not just internally consistent.
 - For the per-method contract surface, see [`./contracts/vault.md`](./contracts/vault.md);
   for revert codes see [`./errors.md`](./errors.md).
