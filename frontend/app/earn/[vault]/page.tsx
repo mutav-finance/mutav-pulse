@@ -30,6 +30,7 @@ import { InvestCard } from "@/components/InvestCard";
 import { ReserveTransparency } from "@/components/ReserveTransparency";
 import { RefreshControl } from "@/components/RefreshControl";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
+import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export default function ReserveHub() {
@@ -98,18 +99,21 @@ function VerifiedHub({
               {" · "}
               <span style={{ color: "var(--color-accent)" }}>TESTNET</span>
             </p>
-            <h1
-              className="font-display"
-              style={{
-                fontSize: "28px",
-                letterSpacing: "-0.01em",
-                textTransform: "uppercase",
-                margin: 0,
-                color: "var(--color-text)",
-              }}
-            >
-              {reserve.currency} Reserve
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <CurrencyLogo currency={reserve.currency} width={28} />
+              <h1
+                className="font-display"
+                style={{
+                  fontSize: "28px",
+                  letterSpacing: "-0.01em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  color: "var(--color-text)",
+                }}
+              >
+                {reserve.currency} Reserve
+              </h1>
+            </div>
             <p
               className="font-body"
               style={{

@@ -35,6 +35,7 @@ import { ConnectButton } from "@/components/ConnectButton";
 import { ReserveHealthHeader } from "@/components/ReserveHealthHeader";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { LockIcon } from "@/components/LockIcon";
+import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { Mono } from "@/components/Mono";
 import {
@@ -603,6 +604,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     opacity: 0.55,
                   }}
                 >
+                  <CurrencyLogo currency={r.currency} width={16} muted />
                   {r.currency}
                   <LockIcon size={11} label="Locked" />
                 </span>
@@ -620,6 +622,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   color: active ? "var(--color-canvas)" : "var(--color-text-2)",
                 }}
               >
+                <CurrencyLogo currency={r.currency} width={16} />
                 {r.currency}
               </Link>
             );
