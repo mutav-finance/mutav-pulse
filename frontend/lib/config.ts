@@ -172,10 +172,11 @@ export const tesouroFaucetEnabled =
   isTestnet && tesouroConfigured && config.contracts.tesouroFaucet.length > 0;
 
 /**
- * Whether the cTSR AMM swap (BuyTesouro) is available — needs a configured
- * TESOURO issuer (for the trustline + path) plus a Soroswap Router id. Unlike
- * the faucet this is NOT testnet-gated: a real cUSD/cTSR Soroswap pool could
- * back it on mainnet. The MTESOURO Fund tab hides the swap card when false.
+ * Whether the cTSR AMM swap (BuyTesouro) is available — needs testnet + a
+ * configured TESOURO issuer (for the trustline + path) + a Soroswap Router id.
+ * Testnet-gated like `tesouroFaucetEnabled`: cTSR is a testnet demo asset and the
+ * swap path is hardcoded `[cUSD, cTSR]`, so a copied mainnet env must NOT render a
+ * real-funds swap against it. The MTESOURO Fund tab hides the swap card when false.
  */
 export const tesouroSwapEnabled =
-  tesouroConfigured && config.contracts.soroswapRouter.length > 0;
+  isTestnet && tesouroConfigured && config.contracts.soroswapRouter.length > 0;

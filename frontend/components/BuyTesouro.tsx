@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTesouroInfo, addTesouroTrustline, buyTesouro, type AssetInfo } from "@/lib/buy-tesouro";
 import { config, tesouroSwapEnabled } from "@/lib/config";
-import { errMsg, fmtUnitPrice, type Money } from "@/lib/format";
+import { errMsg, fmtUnitPrice, parseToStroops, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
 
@@ -24,9 +24,15 @@ interface BuyTesouroProps {
   money: Money;
   /** Called after a successful trustline/swap so the parent refreshes balances */
   onSuccess(hash: string): void;
+  /**
+   * Bumped by the parent after any tx so this card re-reads its trustline/balance.
+   * Needed because the cTSR Fund tab stacks this card with TesouroFaucet — both own
+   * the same cTSR trustline, so an action in one must refresh the other.
+   */
+  refreshSignal?: number;
 }
 
-export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
+export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTesouroProps) {
   const [info, setInfo] = useState<AssetInfo | null>(null);
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
@@ -42,11 +48,12 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
   }, [address]);
 
   useEffect(() => {
-    // Intentional on-mount external-system read (Horizon trustline/balance), not a
-    // render-driven state sync — same pattern as the faucet card.
+    // On-mount + on refreshSignal external-system read (Horizon trustline/balance),
+    // not a render-driven state sync — same pattern as the faucet card. The
+    // refreshSignal dep re-reads after a sibling card (TesouroFaucet) acts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
-  }, [refresh]);
+  }, [refresh, refreshSignal]);
 
   const run = useCallback(
     async (action: () => Promise<string>) => {
@@ -69,7 +76,10 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
 
   const code = config.tesouro.code;
   const isPending = status === "pending";
-  const canBuy = !!info?.hasTrustline && parseFloat(amount) > 0 && !isPending;
+  // Validate with the SAME parser buyTesouro uses (parseToStroops), not parseFloat —
+  // parseFloat accepts exponent input like "1e3" that parseToStroops rejects, which
+  // would otherwise enable the button then hard-error at swap time.
+  const canBuy = !!info?.hasTrustline && (parseToStroops(amount) ?? 0n) > 0n && !isPending;
 
   // The swap isn't available in this deploy — missing cTSR issuer or Soroswap
   // router id. The trustline/swap would throw, so surface that up front instead.
@@ -126,6 +136,9 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
         </p>
         <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "8px" }}>
           1 {code} ≈ {fmtUnitPrice(money)} · indicative — {code} is yield-bearing, not 1:1 with BRL
+        </p>
+        <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "6px", lineHeight: 1.4 }}>
+          Testnet pool — large swaps move the price; if the swap fails, try a smaller amount.
         </p>
       </div>
 

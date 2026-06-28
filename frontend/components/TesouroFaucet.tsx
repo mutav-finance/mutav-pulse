@@ -12,7 +12,15 @@ import { getTesouroInfo, addTesouroTrustline } from "@/lib/buy-tesouro";
 import { dripTesouroFaucet } from "@/lib/faucet";
 import { FaucetCard } from "@/components/FaucetCard";
 
-export function TesouroFaucet({ address, onSuccess }: { address: string; onSuccess(): void }) {
+export function TesouroFaucet({
+  address,
+  onSuccess,
+  refreshSignal,
+}: {
+  address: string;
+  onSuccess(): void;
+  refreshSignal?: number;
+}) {
   return (
     <FaucetCard
       address={address}
@@ -22,6 +30,7 @@ export function TesouroFaucet({ address, onSuccess }: { address: string; onSucce
       getInfo={getTesouroInfo}
       addTrustline={addTesouroTrustline}
       drip={dripTesouroFaucet}
+      refreshSignal={refreshSignal}
     />
   );
 }

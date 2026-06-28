@@ -29,6 +29,12 @@ export interface FaucetCardProps {
   getInfo(address: string): Promise<AssetInfo>;
   addTrustline(address: string): Promise<string>;
   drip(address: string): Promise<string>;
+  /**
+   * Bumped by the parent after any tx so this card re-reads its trustline/balance.
+   * Lets a sibling card sharing the same asset trustline (e.g. BuyTesouro for cTSR)
+   * refresh this one after it acts. Optional — single-card reserves omit it.
+   */
+  refreshSignal?: number;
 }
 
 type Action = "trustline" | "drip" | null;
@@ -41,6 +47,7 @@ export function FaucetCard({
   getInfo,
   addTrustline,
   drip,
+  refreshSignal,
 }: FaucetCardProps) {
   const [hasTrustline, setHasTrustline] = useState<boolean | null>(null);
   const [balance, setBalance] = useState("0");
@@ -62,10 +69,11 @@ export function FaucetCard({
   }, [address, getInfo]);
 
   useEffect(() => {
-    // Intentional on-mount external-system read (wallet trustline/balance), not derived state.
+    // On-mount + on refreshSignal external-system read (wallet trustline/balance),
+    // not derived state. The refreshSignal dep re-reads after a sibling card acts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
-  }, [refresh]);
+  }, [refresh, refreshSignal]);
 
   const run = useCallback(
     async (action: Exclude<Action, null>) => {

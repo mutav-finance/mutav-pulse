@@ -89,6 +89,23 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   const canTesouroSwap = tesouroSwapEnabled && isTesouro;
   const hasFund = canFaucet || canCbrl || canTesouroFaucet || canTesouroSwap;
 
+  // Dev guard: a live cTSR reserve with neither a faucet nor a swap configured
+  // silently offers no way to acquire the deposit token (the Fund tab is hidden
+  // when hasFund is false). Warn in dev so a partial deploy is caught early.
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      isTesouro &&
+      !canTesouroFaucet &&
+      !canTesouroSwap
+    ) {
+      console.warn(
+        `[InvestCard] ${reserve.currency} reserve has no fund rail — set ` +
+          `NEXT_PUBLIC_TESOURO_FAUCET_ID or NEXT_PUBLIC_SOROSWAP_ROUTER_ID so testers can acquire ${reserve.depositToken}.`,
+      );
+    }
+  }, [isTesouro, canTesouroFaucet, canTesouroSwap, reserve.currency, reserve.depositToken]);
+
   useEffect(() => {
     let cancelled = false;
     setData((prev) => ({ ...prev, loading: true, error: null }));
@@ -305,10 +322,10 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
                 /* cTSR: instant faucet + cUSD→cTSR Soroswap swap, stacked. */
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {canTesouroFaucet && (
-                    <TesouroFaucet address={address} onSuccess={handleSuccess} />
+                    <TesouroFaucet address={address} onSuccess={handleSuccess} refreshSignal={refreshKey} />
                   )}
                   {canTesouroSwap && (
-                    <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
+                    <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} refreshSignal={refreshKey} />
                   )}
                 </div>
               ) : canFaucet ? (

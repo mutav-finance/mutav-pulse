@@ -125,7 +125,16 @@ echo "  MBRL: $MBRL_CODE / $MBRL_ISSUER"
 # fixed external Soroswap deployment, not a per-deploy reserve contract, so it is
 # not on-chain validated here the way the reserve vaults are.
 SOROSWAP_ROUTER="$(get SOROSWAP_ROUTER)"
-[ -n "$SOROSWAP_ROUTER" ] && echo "  Soroswap router: $SOROSWAP_ROUTER"
+if [ -n "$SOROSWAP_ROUTER" ]; then
+  # Light liveness check (read-only get_factory) so a stale/typo'd/wrong-network
+  # router id is caught HERE, not silently published to .env.example/docs and then
+  # failing only when a tester clicks Buy. Warn (not die) — the swap is optional.
+  if [ -n "$(invoke "$SOROSWAP_ROUTER" get_factory)" ]; then
+    echo "  Soroswap router: $SOROSWAP_ROUTER"
+  else
+    echo "  ⚠ SOROSWAP_ROUTER $SOROSWAP_ROUTER did not answer get_factory on $NET — publishing anyway, but the swap will fail at runtime. Verify the id/network." >&2
+  fi
+fi
 
 # ── Generate frontend/.env.example ────────────────────────────────────────────
 cat > "$ROOT/frontend/.env.example" <<EOF
