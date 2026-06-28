@@ -64,6 +64,7 @@ import {
   setCoverageRatioBps,
   setGraceSecs,
 } from "@/lib/admin-tx";
+import { readAdminAccount } from "@/lib/admin-account";
 import { fmtFiat, truncAddr, errMsg, parseToStroops, clamp01, type Money } from "@/lib/format";
 import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { venueName, ADAPTER_CATALOG } from "@/lib/providers";
@@ -75,6 +76,12 @@ import type { Guarantee } from "policy";
 interface ProtocolData {
   vaultAdmin: string;
   policyAdmin: string;
+  /**
+   * Signer keys per admin account address. The admin account is a classic
+   * multisig, so the gate admits any *signer* of the admin account, not only
+   * the account itself. Keyed by admin address (vault & policy usually share one).
+   */
+  adminSigners: Record<string, string[]>;
   totalAssets: bigint;
   freeCapital: bigint;
   coverageRequired: bigint;
@@ -98,6 +105,7 @@ interface ProtocolData {
 const INITIAL: ProtocolData = {
   vaultAdmin: "",
   policyAdmin: "",
+  adminSigners: {},
   totalAssets: 0n,
   freeCapital: 0n,
   coverageRequired: 0n,
@@ -268,6 +276,22 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         }),
       );
 
+      // Admin accounts may be classic multisig — fetch their signer sets so the
+      // gate admits any signer, not only the account itself. Vault & policy
+      // usually share one admin account; dedupe the fetch. An unreadable set
+      // (e.g. a contract-address admin) falls back to equality-only gating.
+      const adminSigners: Record<string, string[]> = {};
+      await Promise.all(
+        [...new Set([vaultAdmin, policyAdmin])].map(async (acct) => {
+          try {
+            const a = await readAdminAccount(acct);
+            adminSigners[acct] = a.signers.map((s) => s.key);
+          } catch {
+            adminSigners[acct] = [];
+          }
+        }),
+      );
+
       // Fetch guarantee details for active IDs
       const activeGuarantees = await Promise.all(
         activeIds.map(async (id) => {
@@ -282,6 +306,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
       setData({
         vaultAdmin,
         policyAdmin,
+        adminSigners,
         totalAssets,
         freeCapital,
         coverageRequired,
@@ -310,14 +335,19 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   }, [fetchAll, refreshKey]);
 
   // ── Admin gate ───────────────────────────────────────────────────────────────
-  const isVaultAdmin =
-    !!address &&
-    !!data.vaultAdmin &&
-    address.toLowerCase() === data.vaultAdmin.toLowerCase();
-  const isPolicyAdmin =
-    !!address &&
-    !!data.policyAdmin &&
-    address.toLowerCase() === data.policyAdmin.toLowerCase();
+  // The admin account is a classic multisig: a wallet is admin if it IS the admin
+  // account OR is a signer of it. Admin writes then set source = the admin account
+  // (see lib/admin-tx.ts), so a signer's single signature authorizes require_auth.
+  const isAdminOf = (adminAccount: string): boolean => {
+    if (!address || !adminAccount) return false;
+    const a = address.toLowerCase();
+    if (a === adminAccount.toLowerCase()) return true;
+    return (data.adminSigners[adminAccount] ?? []).some(
+      (k) => k.toLowerCase() === a,
+    );
+  };
+  const isVaultAdmin = isAdminOf(data.vaultAdmin);
+  const isPolicyAdmin = isAdminOf(data.policyAdmin);
   const isAdmin = isVaultAdmin || isPolicyAdmin;
 
   // ── Form state: Underwriting ─────────────────────────────────────────────────
