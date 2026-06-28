@@ -38,3 +38,39 @@ export function resolveProvider(addr: string): StrategyProvider | null {
 export function venueName(addr: string): string {
   return resolveProvider(addr)?.name ?? truncAddr(addr);
 }
+
+/**
+ * Catalog of strategy ADAPTERS the vault can interact with — the operator-facing
+ * "what venues can this reserve plug into" list (akin to Safe modules/plugins).
+ * `live` adapters can be wired today (an on-chain `address` when deployed);
+ * `planned` ones are designed against the same `Strategy` trait but not shipped.
+ */
+export interface AdapterCatalogEntry extends StrategyProvider {
+  status: "live" | "planned";
+  /** Deployed adapter contract address, when it exists on-chain. */
+  address?: string;
+}
+
+export const ADAPTER_CATALOG: AdapterCatalogEntry[] = [
+  {
+    ...DEFINDEX,
+    status: "live",
+    address: config.contracts.adapter || undefined,
+  },
+  {
+    name: "Soroswap",
+    kind: "AMM / DEX liquidity",
+    blurb:
+      "AMM and swap aggregator on Stellar. A future adapter would route idle reserve into Soroswap liquidity against the same Strategy trait.",
+    url: "https://soroswap.finance",
+    status: "planned",
+  },
+  {
+    name: "Blend",
+    kind: "Lending pools",
+    blurb:
+      "Lending protocol on Stellar. A future adapter would supply reserve capital into Blend pools for lending yield.",
+    url: "https://blend.capital",
+    status: "planned",
+  },
+];

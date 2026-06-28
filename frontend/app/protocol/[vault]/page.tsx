@@ -52,8 +52,18 @@ import {
   processRedemptions,
   addStrategy,
   removeStrategy,
+  setMinLiquidBufferBps,
+  setStrategyMaxDebtBps,
+  setVaultAdmin,
+  setPolicyAdmin,
+  setVaultPolicy,
+  setTokenMetadata,
+  setCoverageRatioBps,
+  setGraceSecs,
 } from "@/lib/admin-tx";
 import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
+import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
+import { venueName, ADAPTER_CATALOG } from "@/lib/providers";
 import type { StrategyAlloc } from "vault";
 import type { Guarantee } from "policy";
 
@@ -67,6 +77,16 @@ interface ProtocolData {
   coverageRequired: bigint;
   pendingIds: number[];
   strategies: StrategyAlloc[];
+  /** Idle cash held by the vault (not deployed). `total_assets = availableHeld + Σ strategy balances`. */
+  availableHeld: bigint;
+  /** Liquid cash-buffer target, bps of total assets (0 = deploy everything). */
+  bufferBps: number;
+  /** Default grace window (seconds); null when the deployed policy predates set_grace_secs. */
+  graceSecs: bigint | null;
+  /** Live actual balance deployed per strategy, keyed by address. */
+  strategyBalances: Record<string, bigint>;
+  /** Per-strategy concentration cap, bps of total assets, keyed by address. */
+  strategyCaps: Record<string, number>;
   activeGuarantees: Array<{ id: number; guarantee: Guarantee; isCurrent: boolean }>;
   loading: boolean;
   error: string | null;
@@ -80,6 +100,11 @@ const INITIAL: ProtocolData = {
   coverageRequired: 0n,
   pendingIds: [],
   strategies: [],
+  availableHeld: 0n,
+  bufferBps: 0,
+  graceSecs: null,
+  strategyBalances: {},
+  strategyCaps: {},
   activeGuarantees: [],
   loading: true,
   error: null,
@@ -113,6 +138,25 @@ function SectionBio({ children }: { children: React.ReactNode }) {
     >
       {children}
     </p>
+  );
+}
+
+/** Section sub-heading — a small all-caps label that groups blocks within a tab. */
+function SubHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3
+      className="font-body"
+      style={{
+        fontSize: "11px",
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "var(--color-text-2)",
+        margin: "0 0 12px",
+      }}
+    >
+      {children}
+    </h3>
   );
 }
 
@@ -186,6 +230,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         coverageRequired,
         pendingIds,
         strategies,
+        availableHeld,
+        bufferBps,
+        graceSecs,
         activeIds,
       ] = await Promise.all([
         reads.vaultAdmin(),
@@ -195,8 +242,28 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         reads.policyCoverageRequired(),
         reads.vaultPendingRequests(),
         reads.vaultStrategies(),
+        reads.vaultAvailableHeld(),
+        reads.vaultMinLiquidBufferBps(),
+        // Tolerate a deployed policy that predates set_grace_secs — a single
+        // missing method must not blank the whole cockpit.
+        reads.policyGraceSecs().catch(() => null),
         reads.registryActiveIds(),
       ]);
+
+      // Per-strategy live balance + concentration cap (the real allocation vs
+      // target weight) — one round per strategy, all in parallel.
+      const strategyBalances: Record<string, bigint> = {};
+      const strategyCaps: Record<string, number> = {};
+      await Promise.all(
+        strategies.map(async (s) => {
+          const [bal, cap] = await Promise.all([
+            reads.strategyBalance(s.address),
+            reads.strategyMaxDebtBps(s.address),
+          ]);
+          strategyBalances[s.address] = bal;
+          strategyCaps[s.address] = cap;
+        }),
+      );
 
       // Fetch guarantee details for active IDs
       const activeGuarantees = await Promise.all(
@@ -217,6 +284,11 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         coverageRequired,
         pendingIds,
         strategies,
+        availableHeld,
+        bufferBps,
+        graceSecs,
+        strategyBalances,
+        strategyCaps,
         activeGuarantees,
         loading: false,
         error: null,
@@ -270,11 +342,25 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
   // ── Form state: Add Strategy ─────────────────────────────────────────────────
   const [asAddress, setAsAddress] = useState("");
-  const [asWeightBps, setAsWeightBps] = useState("");
+  const [asWeightPct, setAsWeightPct] = useState("");
   const [isVolatile, setIsVolatile] = useState(false);
 
   // ── Form state: Remove Strategy ──────────────────────────────────────────────
   const [rsAddress, setRsAddress] = useState("");
+
+  // ── Form state: Liquid buffer + per-strategy cap ─────────────────────────────
+  const [bufferInput, setBufferInput] = useState("");
+  const [capStrategy, setCapStrategy] = useState("");
+  const [capInput, setCapInput] = useState("");
+
+  // ── Form state: Manage (governance) ──────────────────────────────────────────
+  const [newVaultAdmin, setNewVaultAdmin] = useState("");
+  const [newPolicyAdmin, setNewPolicyAdmin] = useState("");
+  const [newPolicyAddr, setNewPolicyAddr] = useState("");
+  const [tokenName, setTokenName] = useState("");
+  const [tokenSymbol, setTokenSymbol] = useState("");
+  const [ratioInput, setRatioInput] = useState("");
+  const [graceInput, setGraceInput] = useState("");
 
   // ── Guarantee / strategy options for pickers (memoized — stable refs so the
   //    FormSelects don't re-render on unrelated form-state keystrokes) ──────────
@@ -308,6 +394,73 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
       data.strategies.map((s) => ({
         value: s.address,
         label: `${truncAddr(s.address)} · ${(s.weight_bps / 100).toFixed(0)}%${s.volatile ? " · VOL" : ""}`,
+      })),
+    [data.strategies],
+  );
+
+  // ── Allocation model ─────────────────────────────────────────────────────────
+  // The SAME live actual-balance partition the investor overview renders (so the
+  // two never disagree), plus the target each strategy is heading toward. The
+  // contract normalizes weights by their SUM and keeps `bufferBps` idle, so a
+  // strategy's TARGET share of total = (1 − buffer) × weight / Σweight, clamped to
+  // its cap. Current share = live balance / total. Drift = current − target.
+  const alloc = useMemo(() => {
+    const totalNum = Number(data.totalAssets);
+    const frac = (v: bigint) => (totalNum > 0 ? Number(v) / totalNum : 0);
+    const weightSum = data.strategies.reduce((a, s) => a + s.weight_bps, 0);
+    const bufferFrac = data.bufferBps / 10_000;
+    const deployableFrac = Math.max(0, 1 - bufferFrac);
+    const COLORS = ["var(--color-accent)", "var(--color-text-2)", "var(--color-copper, var(--color-text-2))"];
+
+    const rows = data.strategies.map((s, i) => {
+      const bal = data.strategyBalances[s.address] ?? 0n;
+      const capFrac = (data.strategyCaps[s.address] ?? 10_000) / 10_000;
+      const rawTarget = weightSum > 0 ? deployableFrac * (s.weight_bps / weightSum) : 0;
+      const targetFrac = Math.min(rawTarget, capFrac);
+      const currentFrac = frac(bal);
+      return {
+        key: s.address,
+        name: venueName(s.address),
+        address: s.address,
+        volatile: s.volatile,
+        amount: bal,
+        weightBps: s.weight_bps,
+        capFrac,
+        capCapped: rawTarget > capFrac + 1e-9,
+        targetFrac,
+        currentFrac,
+        driftFrac: currentFrac - targetFrac,
+        color: COLORS[i % COLORS.length],
+      };
+    });
+
+    const deployedTargetFrac = rows.reduce((a, r) => a + r.targetFrac, 0);
+    const idleTargetFrac = Math.max(0, 1 - deployedTargetFrac);
+
+    const segments: BarSegment[] = [
+      ...rows.map((r) => ({
+        label: r.name,
+        display: fmtFiat(r.amount, money),
+        fraction: r.currentFrac,
+        color: r.color,
+      })),
+      {
+        label: `${depositToken} · idle`,
+        display: fmtFiat(data.availableHeld, money),
+        fraction: frac(data.availableHeld),
+        color: "var(--color-text-3)",
+      },
+    ];
+
+    return { rows, weightSum, bufferFrac, idleTargetFrac, idleCurrentFrac: frac(data.availableHeld), segments };
+  }, [data.strategies, data.strategyBalances, data.strategyCaps, data.availableHeld, data.bufferBps, data.totalAssets, money, depositToken]);
+
+  // Adapter catalog rows annotated with their wired state in THIS vault.
+  const catalog = useMemo(
+    () =>
+      ADAPTER_CATALOG.map((a) => ({
+        ...a,
+        wired: !!a.address && data.strategies.some((s) => s.address === a.address),
       })),
     [data.strategies],
   );
@@ -638,6 +791,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 { id: "claims", label: "Claims" },
                 { id: "liquidity", label: "Liquidity" },
                 { id: "strategies", label: "Strategies" },
+                { id: "manage", label: "Manage" },
               ].map((s) => {
                 const active = activeSection === s.id;
                 return (
@@ -1107,36 +1261,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Liquidity ────────────────────────────────────────────── */}
             {activeSection === "liquidity" && (
             <>
-            <SectionBio>Move reserve capital. Rebalance redeploys idle float across strategies; process redemptions fulfills queued exits from surplus.</SectionBio>
+            <SectionBio>Fulfill queued investor exits from surplus. Rebalancing strategy allocations now lives in the <strong>Strategies</strong> tab.</SectionBio>
             <ActionGrid>
-              {/* Rebalance */}
-              <ProtocolActionForm
-                currency={currency}
-                title="Rebalance"
-                description="vault.rebalance"
-                actionLabel="Rebalance"
-                disabled={!isVaultAdmin}
-                onSubmit={async () => {
-                  if (!address) throw new Error("no wallet");
-                  return rebalance(contracts, address);
-                }}
-                onSuccess={handleSuccess}
-              >
-                <p
-                  className="font-body"
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--color-text-3)",
-                    margin: 0,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Reallocates assets across strategies according to current
-                  weight_bps. Call after adding/removing a strategy or when
-                  drift exceeds tolerance.
-                </p>
-              </ProtocolActionForm>
-
               {/* Process Redemptions */}
               <ProtocolActionForm
                 currency={currency}
@@ -1173,36 +1299,34 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Strategies ───────────────────────────────────────────── */}
             {activeSection === "strategies" && (
             <>
-            <SectionBio>Manage where idle float earns yield. Add or remove strategy adapters; their weights must total 100%.</SectionBio>
+            <SectionBio>Where idle reserve capital earns yield. See the live allocation, point capital at venues by weight, then <strong>Apply</strong> to deploy. Weights are relative shares of the deployable pool — the contract keeps the idle buffer first, then splits the rest by weight.</SectionBio>
 
-            {/* Live strategy list */}
+            {/* ── Allocation (live) — same actual-balance view as the investor overview ── */}
+            <SubHeading>Allocation (live)</SubHeading>
+            {data.strategies.length > 0 || data.availableHeld > 0n ? (
+              <AllocationBar segments={alloc.segments} loading={data.loading} />
+            ) : null}
+
+            {/* Current vs target table */}
             {!data.loading && data.strategies.length > 0 && (
               <div
                 style={{
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
-                  marginBottom: "24px",
+                  marginBottom: "16px",
+                  overflowX: "auto",
                 }}
               >
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                  }}
-                >
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "560px" }}>
                   <thead>
-                    <tr
-                      style={{
-                        borderBottom: "1px solid var(--color-border)",
-                      }}
-                    >
-                      {["Address", "Weight", "Volatile"].map((h) => (
+                    <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
+                      {["Venue", "Deployed", "Current", "Target", "Drift", "Cap", "Class"].map((h, i) => (
                         <th
                           key={h}
                           className="font-body"
                           style={{
                             padding: "8px 16px",
-                            textAlign: "left",
+                            textAlign: i === 0 ? "left" : "right",
                             fontSize: "10px",
                             fontWeight: 500,
                             letterSpacing: "0.08em",
@@ -1216,49 +1340,128 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     </tr>
                   </thead>
                   <tbody>
-                    {data.strategies.map((s) => (
-                      <tr
-                        key={s.address}
-                        style={{ borderBottom: "1px solid var(--color-border)" }}
-                      >
+                    {alloc.rows.map((r) => (
+                      <tr key={r.key} style={{ borderBottom: "1px solid var(--color-border)" }}>
                         <td style={{ padding: "10px 16px" }}>
-                          <Mono
-                            style={{
-                              fontSize: "12px",
-                              color: "var(--color-text-2)",
-                            }}
-                          >
-                            {s.address}
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }} title={r.address}>
+                            <span aria-hidden style={{ width: "8px", height: "8px", backgroundColor: r.color, flexShrink: 0 }} />
+                            <Mono style={{ fontSize: "12px", color: "var(--color-text)" }}>{r.name}</Mono>
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "12px", color: "var(--color-text-2)" }}>{fmtFiat(r.amount, money)}</Mono>
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "13px", color: "var(--color-text)" }}>{(r.currentFrac * 100).toFixed(1)}%</Mono>
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "13px", color: "var(--color-copper)" }}>{(r.targetFrac * 100).toFixed(1)}%</Mono>
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "12px", color: Math.abs(r.driftFrac) >= 0.01 ? "var(--color-text-2)" : "var(--color-text-3)" }}>
+                            {r.driftFrac >= 0 ? "+" : "−"}{(Math.abs(r.driftFrac) * 100).toFixed(1)}%
                           </Mono>
                         </td>
-                        <td style={{ padding: "10px 16px" }}>
-                          <Mono
-                            style={{
-                              fontSize: "13px",
-                              color: "var(--color-copper)",
-                            }}
-                          >
-                            {(s.weight_bps / 100).toFixed(0)}%
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "12px", color: r.capCapped ? "var(--color-accent)" : "var(--color-text-3)" }}>
+                            {r.capFrac >= 1 ? "—" : `${(r.capFrac * 100).toFixed(0)}%`}
                           </Mono>
                         </td>
-                        <td style={{ padding: "10px 16px" }}>
-                          <Mono
-                            style={{
-                              fontSize: "11px",
-                              color: s.volatile
-                                ? "var(--color-copper)"
-                                : "var(--color-text-3)",
-                            }}
-                          >
-                            {s.volatile ? "VOL" : "stable"}
+                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                          <Mono style={{ fontSize: "11px", color: r.volatile ? "var(--color-copper)" : "var(--color-text-3)" }}>
+                            {r.volatile ? "VOL" : "stable"}
                           </Mono>
                         </td>
                       </tr>
                     ))}
+                    {/* Idle / liquid buffer row */}
+                    <tr>
+                      <td style={{ padding: "10px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span aria-hidden style={{ width: "8px", height: "8px", backgroundColor: "var(--color-text-3)", flexShrink: 0 }} />
+                          <Mono style={{ fontSize: "12px", color: "var(--color-text-2)" }}>Idle · liquid buffer</Mono>
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                        <Mono style={{ fontSize: "12px", color: "var(--color-text-2)" }}>{fmtFiat(data.availableHeld, money)}</Mono>
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                        <Mono style={{ fontSize: "13px", color: "var(--color-text)" }}>{(alloc.idleCurrentFrac * 100).toFixed(1)}%</Mono>
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                        <Mono style={{ fontSize: "13px", color: "var(--color-copper)" }}>{(alloc.idleTargetFrac * 100).toFixed(1)}%</Mono>
+                      </td>
+                      <td colSpan={3} style={{ padding: "10px 16px", textAlign: "right" }}>
+                        <Mono style={{ fontSize: "11px", color: "var(--color-text-3)" }}>buffer {(data.bufferBps / 100).toFixed(0)}%</Mono>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             )}
+            {!data.loading && data.strategies.length === 0 && (
+              <p className="font-mono" style={{ fontSize: "12px", color: "var(--color-text-3)", marginBottom: "16px" }}>
+                No strategies wired — all assets sit idle in the vault. Add an adapter below, then Apply.
+              </p>
+            )}
+
+            {/* Apply allocations — co-located rebalance */}
+            <div style={{ marginBottom: "32px" }}>
+              <ProtocolActionForm
+                currency={currency}
+                title="Apply allocations ▸ Rebalance"
+                description="vault.rebalance"
+                actionLabel="Apply"
+                disabled={!isVaultAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  return rebalance(contracts, address);
+                }}
+                onSuccess={handleSuccess}
+              >
+                <p className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}>
+                  Deploys idle float toward the target weights above (keeping the liquid buffer), and pulls over-target venues back. Idempotent — running at target is a no-op. Run after changing weights, the buffer, or a cap.
+                </p>
+              </ProtocolActionForm>
+            </div>
+
+            {/* ── Available adapters (plug the vault into yield venues) ── */}
+            <SubHeading>Available adapters</SubHeading>
+            <p className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)", margin: "0 0 14px", lineHeight: 1.5, maxWidth: "760px" }}>
+              Yield venues this reserve can plug into. Each is a strategy adapter wired against the same trait; `live` ones can be added today, `planned` ones are designed but not yet shipped.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px", marginBottom: "32px" }}>
+              {catalog.map((a) => {
+                const addable = a.status === "live" && !!a.address && !a.wired;
+                const badge = a.wired ? "Wired" : a.status === "live" ? (a.address ? "Available" : "Deploy adapter") : "Planned";
+                const badgeColor = a.wired ? "var(--color-accent)" : a.status === "live" ? "var(--color-copper)" : "var(--color-text-3)";
+                return (
+                  <div key={a.name} style={{ backgroundColor: "var(--color-surface)", border: `1px solid ${a.wired ? "var(--color-accent)" : "var(--color-border)"}`, padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+                      <span className="font-display" style={{ fontSize: "15px", color: "var(--color-text)" }}>{a.name}</span>
+                      <Mono style={{ fontSize: "10px", letterSpacing: "0.06em", textTransform: "uppercase", color: badgeColor }}>{badge}</Mono>
+                    </div>
+                    <span className="font-body" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>{a.kind}</span>
+                    <p className="font-body" style={{ fontSize: "12px", color: "var(--color-text-2)", margin: 0, lineHeight: 1.5, flexGrow: 1 }}>{a.blurb}</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "4px" }}>
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", textDecoration: "none" }}>↗ {a.url.replace(/^https?:\/\//, "")}</a>
+                      {addable && isVaultAdmin && (
+                        <button
+                          type="button"
+                          className="font-mono"
+                          onClick={() => { setAsAddress(a.address!); document.getElementById("as-address")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+                          style={{ fontSize: "11px", color: "var(--color-canvas)", backgroundColor: "var(--color-accent)", border: "1px solid var(--color-accent)", padding: "4px 10px", cursor: "pointer", letterSpacing: "0.02em" }}
+                        >
+                          Add to vault
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <SubHeading>Manage</SubHeading>
 
             <ActionGrid>
               {/* Add Strategy */}
@@ -1271,19 +1474,13 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   if (!asAddress) throw new Error("strategy address is required");
-                  const weightBps = parseInt(asWeightBps, 10);
-                  if (isNaN(weightBps)) throw new Error("weight bps must be a number");
-                  return addStrategy(
-                    contracts,
-                    address,
-                    asAddress,
-                    weightBps,
-                    isVolatile,
-                  );
+                  const pct = parseFloat(asWeightPct);
+                  if (isNaN(pct) || pct < 0) throw new Error("weight must be a non-negative percent");
+                  return addStrategy(contracts, address, asAddress, Math.round(pct * 100), isVolatile);
                 }}
                 onSuccess={() => {
                   setAsAddress("");
-                  setAsWeightBps("");
+                  setAsWeightPct("");
                   setIsVolatile(false);
                   handleSuccess();
                 }}
@@ -1297,16 +1494,16 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   disabled={!isVaultAdmin}
                 />
                 <FormField
-                  id="as-weight-bps"
-                  label="Weight (bps)"
+                  id="as-weight"
+                  label="Weight (%)"
                   type="number"
                   min="0"
                   step="1"
-                  placeholder="5000"
-                  value={asWeightBps}
-                  onChange={setAsWeightBps}
+                  placeholder="50"
+                  value={asWeightPct}
+                  onChange={setAsWeightPct}
                   disabled={!isVaultAdmin}
-                  hint="Total weights across all strategies must sum to 10000"
+                  hint={`Relative share of the deployable pool. Strategies total ${(alloc.weightSum / 100).toFixed(0)}% now.`}
                 />
                 <FormCheckbox
                   id="as-volatile"
@@ -1314,6 +1511,81 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   checked={isVolatile}
                   onChange={setIsVolatile}
                   disabled={!isVaultAdmin}
+                />
+              </ProtocolActionForm>
+
+              {/* Set Liquid Buffer */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Liquid Buffer"
+                description="vault.set_min_liquid_buffer_bps"
+                actionLabel="Set buffer"
+                disabled={!isVaultAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  const pct = parseFloat(bufferInput);
+                  if (isNaN(pct) || pct < 0 || pct > 100) throw new Error("buffer must be 0–100%");
+                  return setMinLiquidBufferBps(contracts, address, Math.round(pct * 100));
+                }}
+                onSuccess={() => {
+                  setBufferInput("");
+                  handleSuccess();
+                }}
+              >
+                <FormField
+                  id="buffer-pct"
+                  label="Liquid buffer (%)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder={(data.bufferBps / 100).toFixed(0)}
+                  value={bufferInput}
+                  onChange={setBufferInput}
+                  disabled={!isVaultAdmin}
+                  hint={`Idle cash kept back from deployment. Currently ${(data.bufferBps / 100).toFixed(0)}%.`}
+                />
+              </ProtocolActionForm>
+
+              {/* Set Strategy Cap */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Strategy Cap"
+                description="vault.set_strategy_max_debt_bps"
+                actionLabel="Set cap"
+                disabled={!isVaultAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!capStrategy) throw new Error("select a strategy first");
+                  const pct = parseFloat(capInput);
+                  if (isNaN(pct) || pct < 0 || pct > 100) throw new Error("cap must be 0–100%");
+                  return setStrategyMaxDebtBps(contracts, address, capStrategy, Math.round(pct * 100));
+                }}
+                onSuccess={() => {
+                  setCapStrategy("");
+                  setCapInput("");
+                  handleSuccess();
+                }}
+              >
+                <FormSelect
+                  id="cap-strategy"
+                  label="Strategy"
+                  value={capStrategy}
+                  onChange={setCapStrategy}
+                  options={strategyOptions}
+                  disabled={!isVaultAdmin || data.strategies.length === 0}
+                  placeholder={data.strategies.length === 0 ? "No strategies registered" : "Select strategy…"}
+                />
+                <FormField
+                  id="cap-pct"
+                  label="Concentration cap (%)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="100"
+                  value={capInput}
+                  onChange={setCapInput}
+                  disabled={!isVaultAdmin}
+                  hint="Max share of total assets rebalance will deploy here. 100% = uncapped."
                 />
               </ProtocolActionForm>
 
@@ -1357,10 +1629,169 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     lineHeight: 1.5,
                   }}
                 >
-                  Call rebalance after removing to reallocate the freed
-                  weight. Removing the last strategy leaves all assets in
-                  the vault&apos;s free_capital.
+                  Divests the strategy and frees its weight. Apply (rebalance)
+                  after to redeploy. Removing the last strategy leaves all assets
+                  idle in the vault.
                 </p>
+              </ProtocolActionForm>
+            </ActionGrid>
+            </>
+            )}
+
+            {/* ── Manage (governance / lifecycle) ──────────────────────── */}
+            {activeSection === "manage" && (
+            <>
+            <SectionBio>Governance and lifecycle. Transfer admin control, tune policy parameters, swap the underwriting model, and re-label shares. Contract <strong>upgrades</strong> are performed via the Stellar CLI / <code>bootstrap.sh</code> (the wasm must be installed on-chain first), not from this cockpit.</SectionBio>
+
+            {/* Roles */}
+            <SubHeading>Roles · admin</SubHeading>
+            <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", padding: "14px 16px", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                { label: "Vault admin", addr: data.vaultAdmin, you: isVaultAdmin },
+                { label: "Policy admin", addr: data.policyAdmin, you: isPolicyAdmin },
+              ].map((r) => (
+                <div key={r.label} style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
+                  <span className="font-body" style={{ fontSize: "10px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-text-3)", width: "92px", flexShrink: 0 }}>{r.label}</span>
+                  <Mono style={{ fontSize: "12px", color: "var(--color-text-2)" }}>{r.addr || "—"}</Mono>
+                  {r.you && <span className="font-mono" style={{ fontSize: "10px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-accent)" }}>you</span>}
+                </div>
+              ))}
+            </div>
+            <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-3)", margin: "0 0 14px", lineHeight: 1.5, maxWidth: "760px" }}>
+              Each contract has a <strong>single</strong> admin. Transferring hands control over entirely and is <strong>irreversible</strong> unless you also control the new address — there is no multi-admin list to add to or remove from.
+            </p>
+            <ActionGrid>
+              {/* Transfer Vault Admin */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Transfer Vault Admin"
+                description="vault.set_admin"
+                actionLabel="Transfer"
+                disabled={!isVaultAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newVaultAdmin) throw new Error("new admin address is required");
+                  return setVaultAdmin(contracts, address, newVaultAdmin);
+                }}
+                onSuccess={() => { setNewVaultAdmin(""); handleSuccess(); }}
+              >
+                <FormField id="new-vault-admin" label="New Vault Admin (C…/G…)" placeholder="G… or C…" value={newVaultAdmin} onChange={setNewVaultAdmin} disabled={!isVaultAdmin} hint="Hands over vault control. Double-check the address." />
+              </ProtocolActionForm>
+
+              {/* Transfer Policy Admin */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Transfer Policy Admin"
+                description="policy.set_admin"
+                actionLabel="Transfer"
+                disabled={!isPolicyAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newPolicyAdmin) throw new Error("new admin address is required");
+                  return setPolicyAdmin(contracts, address, newPolicyAdmin);
+                }}
+                onSuccess={() => { setNewPolicyAdmin(""); handleSuccess(); }}
+              >
+                <FormField id="new-policy-admin" label="New Policy Admin (C…/G…)" placeholder="G… or C…" value={newPolicyAdmin} onChange={setNewPolicyAdmin} disabled={!isPolicyAdmin} hint="Hands over the underwriting brain's admin." />
+              </ProtocolActionForm>
+            </ActionGrid>
+
+            {/* Policy parameters */}
+            <div style={{ marginTop: "24px" }}>
+              <SubHeading>Policy parameters</SubHeading>
+            </div>
+            <ActionGrid>
+              {/* Coverage ratio */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Coverage Ratio (c)"
+                description="policy.set_coverage_ratio_bps"
+                actionLabel="Set ratio"
+                disabled={!isPolicyAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  const pct = parseFloat(ratioInput);
+                  if (isNaN(pct) || pct <= 0) throw new Error("ratio must be a positive percent");
+                  return setCoverageRatioBps(contracts, address, Math.round(pct * 100));
+                }}
+                onSuccess={() => { setRatioInput(""); handleSuccess(); }}
+              >
+                <FormField id="ratio-pct" label="Coverage ratio (%)" type="number" min="1" step="1" placeholder="100" value={ratioInput} onChange={setRatioInput} disabled={!isPolicyAdmin} hint="Solvency multiplier on raw coverage. 100% = 1.0× (hard-solvent); >100% over-collateralizes." />
+              </ProtocolActionForm>
+
+              {/* Grace window */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Grace Window"
+                description="policy.set_grace_secs"
+                actionLabel="Set grace"
+                disabled={!isPolicyAdmin || data.graceSecs === null}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  const days = parseFloat(graceInput);
+                  if (isNaN(days) || days < 0) throw new Error("grace must be a non-negative number of days");
+                  return setGraceSecs(contracts, address, BigInt(Math.round(days * 86400)));
+                }}
+                onSuccess={() => { setGraceInput(""); handleSuccess(); }}
+              >
+                <FormField
+                  id="grace-days"
+                  label="Grace window (days)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder={data.graceSecs === null ? "—" : (Number(data.graceSecs) / 86400).toFixed(0)}
+                  value={graceInput}
+                  onChange={setGraceInput}
+                  disabled={!isPolicyAdmin || data.graceSecs === null}
+                  hint={data.graceSecs === null
+                    ? "Not available — the deployed policy predates set_grace_secs. Redeploy the policy to enable."
+                    : `Window after a missed fee before default. Currently ${(Number(data.graceSecs) / 86400).toFixed(1)} days.`}
+                />
+              </ProtocolActionForm>
+            </ActionGrid>
+
+            {/* Wiring & token */}
+            <div style={{ marginTop: "24px" }}>
+              <SubHeading>Wiring &amp; share token</SubHeading>
+            </div>
+            <ActionGrid>
+              {/* Set Policy (swap the model) */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Set Policy"
+                description="vault.set_policy"
+                actionLabel="Wire policy"
+                disabled={!isVaultAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newPolicyAddr) throw new Error("policy address is required");
+                  return setVaultPolicy(contracts, address, newPolicyAddr);
+                }}
+                onSuccess={() => { setNewPolicyAddr(""); handleSuccess(); }}
+              >
+                <FormField id="new-policy-addr" label="Policy Contract (C…)" placeholder="C…" value={newPolicyAddr} onChange={setNewPolicyAddr} disabled={!isVaultAdmin} hint="Swaps the underwriting model without moving funds. The new policy must be wired to this vault + registry." />
+              </ProtocolActionForm>
+
+              {/* Relabel shares */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Re-label Shares"
+                description="vault.set_token_metadata"
+                actionLabel="Set metadata"
+                disabled={!isVaultAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!tokenName.trim() || !tokenSymbol.trim()) throw new Error("name and symbol are required");
+                  return setTokenMetadata(contracts, address, tokenName.trim(), tokenSymbol.trim());
+                }}
+                onSuccess={() => { setTokenName(""); setTokenSymbol(""); handleSuccess(); }}
+              >
+                <FormField id="token-name" label="Share token name" placeholder="Mutav USD Reserve" value={tokenName} onChange={setTokenName} disabled={!isVaultAdmin} />
+                <FormField id="token-symbol" label="Share token symbol" placeholder="MUSD" value={tokenSymbol} onChange={setTokenSymbol} disabled={!isVaultAdmin} hint="Decimals are fixed at 7. Balances and NAV are preserved." />
               </ProtocolActionForm>
             </ActionGrid>
             </>

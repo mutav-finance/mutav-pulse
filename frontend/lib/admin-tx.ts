@@ -158,3 +158,115 @@ export async function removeStrategy(
   const tx = await client.remove_strategy({ address });
   return submit(tx);
 }
+
+/**
+ * Set the liquid-cash-buffer target — the fraction of total assets (in bps) the
+ * vault retains idle; `rebalance` deploys only the surplus above it. 0 = deploy
+ * everything. Admin only.
+ */
+export async function setMinLiquidBufferBps(
+  contracts: ReserveContracts,
+  caller: string,
+  bps: number,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_min_liquid_buffer_bps({ bps });
+  return submit(tx);
+}
+
+/**
+ * Set a strategy's concentration cap — the max fraction of total assets (in bps)
+ * `rebalance` will deploy to it. 10000 = uncapped. Admin only.
+ */
+export async function setStrategyMaxDebtBps(
+  contracts: ReserveContracts,
+  caller: string,
+  strategy: string,
+  bps: number,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_strategy_max_debt_bps({ strategy, bps });
+  return submit(tx);
+}
+
+// ─── Governance / management (Manage tab) ─────────────────────────────────────
+
+/**
+ * Transfer the vault admin to a new address. Single-admin: this HANDS OVER vault
+ * control entirely — irreversible if you don't control `newAdmin`. Admin only.
+ */
+export async function setVaultAdmin(
+  contracts: ReserveContracts,
+  caller: string,
+  newAdmin: string,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_admin({ new_admin: newAdmin });
+  return submit(tx);
+}
+
+/**
+ * Transfer the policy admin to a new address. Single-admin handover — irreversible
+ * if you don't control `newAdmin`. Admin only.
+ */
+export async function setPolicyAdmin(
+  contracts: ReserveContracts,
+  caller: string,
+  newAdmin: string,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
+  const tx = await client.set_admin({ new_admin: newAdmin });
+  return submit(tx);
+}
+
+/**
+ * Point the vault at a different policy contract — swaps the underwriting model
+ * without moving funds (the setter-wired connection). Admin only.
+ */
+export async function setVaultPolicy(
+  contracts: ReserveContracts,
+  caller: string,
+  policy: string,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_policy({ policy });
+  return submit(tx);
+}
+
+/** Re-label the share token (name + symbol). Decimals fixed at 7. Admin only. */
+export async function setTokenMetadata(
+  contracts: ReserveContracts,
+  caller: string,
+  name: string,
+  symbol: string,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_token_metadata({ name, symbol });
+  return submit(tx);
+}
+
+/**
+ * Set the coverage ratio `c` (bps) — the solvency multiplier on raw coverage.
+ * 10000 = 1.0 (hard-solvent); <10000 leverages, >10000 over-collateralizes.
+ * Admin only.
+ */
+export async function setCoverageRatioBps(
+  contracts: ReserveContracts,
+  caller: string,
+  bps: number,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
+  const tx = await client.set_coverage_ratio_bps({ bps });
+  return submit(tx);
+}
+
+/** Set the default grace window (seconds) before a missed fee counts as default. Admin only. */
+export async function setGraceSecs(
+  contracts: ReserveContracts,
+  caller: string,
+  secs: bigint,
+): Promise<string> {
+  const client = policyWriter(caller, contracts.policy);
+  const tx = await client.set_grace_secs({ secs });
+  return submit(tx);
+}

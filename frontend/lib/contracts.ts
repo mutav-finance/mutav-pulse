@@ -84,6 +84,18 @@ export function reserveReads(c: ReserveContracts) {
       return tx.result;
     },
 
+    /** Liquid cash-buffer target in bps of total assets (0 = deploy everything). */
+    async vaultMinLiquidBufferBps(): Promise<number> {
+      const tx = await vaultClient().min_liquid_buffer_bps();
+      return tx.result;
+    },
+
+    /** Per-strategy concentration cap in bps of total assets (10000 = uncapped). */
+    async strategyMaxDebtBps(address: string): Promise<number> {
+      const tx = await vaultClient().strategy_max_debt_bps({ strategy: address });
+      return tx.result;
+    },
+
     async vaultPendingRequests(): Promise<Array<number>> {
       const tx = await vaultClient().pending_requests();
       return tx.result;
@@ -106,6 +118,12 @@ export function reserveReads(c: ReserveContracts) {
 
     async policyAdmin(): Promise<string> {
       const tx = await policyClient().admin();
+      return tx.result;
+    },
+
+    /** Grace window (seconds) before a missed fee counts as default. */
+    async policyGraceSecs(): Promise<bigint> {
+      const tx = await policyClient().grace_secs();
       return tx.result;
     },
 

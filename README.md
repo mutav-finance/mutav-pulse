@@ -12,7 +12,7 @@
 - **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, fee, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
-- **Live on testnet:** vault/policy/registry deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
+- **Live on testnet:** three reserves (MUSD · MTESOURO · MBRL) deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; investor interviews in progress.
 - ▶️ **Demo video:** <!-- TODO: link --> · 🌐 **Live demo:** <!-- TODO: Vercel URL -->
@@ -89,16 +89,17 @@ The **MUTAV Reserve** investor app (`/earn` deposit·redeem, `/earn/transparency
 
 ## Live on testnet
 
-Deployed and wired on Stellar testnet (RPC `https://soroban-testnet.stellar.org`). Seeded with a **synthetic demo state** (for demonstration, not real traction): ~$50.4k reserve, NAV 1.0084, 4 guarantees (3 active / 1 lapsed), $420 fees collected.
+Deployed and wired on Stellar testnet (RPC `https://soroban-testnet.stellar.org`) — **three reserves live**: **MUSD** (USD · cUSD), **MTESOURO** (Brazilian treasury · cTSR), and **MBRL** (BRL-native · cBRL). Each is its own contract set (vault + policy + registry) and carries a **synthetic demo state** (for demonstration, not real traction); the primary MUSD reserve holds ~$305k with ~$144k coverage reserved behind its guarantee book.
+
+Primary reserve (MUSD) below; the full address set for all three reserves + their assets is in [`docs/reference/deployments.md`](docs/reference/deployments.md).
 
 | Contract | Address | Verify |
 |---|---|---|
-| vault | `CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CD6WEKU2UDDUJFSQAE6AMYUDC2Q5C6RA6J23WQMWRTBQVKTMTLDK45KX) |
-| policy | `CDAYVNXHJD2T4QO66ECBX6LNA2SD2HCP66H23FPYWW7VSUR74QJ2K2VK` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDAYVNXHJD2T4QO66ECBX6LNA2SD2HCP66H23FPYWW7VSUR74QJ2K2VK) |
-| registry | `CA7WWXTNBG2QCDBQMYL3SV7DRXBW7KALM5JGWPJJEAP34DWWUMLYGSKN` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CA7WWXTNBG2QCDBQMYL3SV7DRXBW7KALM5JGWPJJEAP34DWWUMLYGSKN) |
-| mock-strategy *(yield slot; DeFindex adapter pending deploy)* | `CDKJQP5M34SBLT47CHRBGOAUFONG6JUN5URWSGCSGTGAS5JBM2NYGZ33` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDKJQP5M34SBLT47CHRBGOAUFONG6JUN5URWSGCSGTGAS5JBM2NYGZ33) |
+| vault | `CA26WJGO5MINAT47DCGMU54HYW5A3RQ7VSE4ANPCYYA4TGXTJZQJ5EZQ` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CA26WJGO5MINAT47DCGMU54HYW5A3RQ7VSE4ANPCYYA4TGXTJZQJ5EZQ) |
+| policy | `CBC2IJHH3FQMIQETFYDIEQG7OFJXTRKKLJDDONQ6N47AB3HLWWEIZQVO` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CBC2IJHH3FQMIQETFYDIEQG7OFJXTRKKLJDDONQ6N47AB3HLWWEIZQVO) |
+| registry | `CDJYJLUJL55SFD5YPSEKH6IZN3XRPLOCSFG33LDXOHEI2JY2ILITUSZ4` | [stellar.expert](https://stellar.expert/explorer/testnet/contract/CDJYJLUJL55SFD5YPSEKH6IZN3XRPLOCSFG33LDXOHEI2JY2ILITUSZ4) |
 
-USDC settles in SAC `CALOXSNQXDC6KERPHF3WQ3QKFVGF25UHJWMNJR7NMQJRPEV2ZEGKEST6`.
+The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6GWX5ZK6OQJZTEDAH`. All three deposit tokens (cUSD / cTSR / cBRL) are mock testnet assets issued by `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO`.
 
 **Proof of operation** — verify the protocol actually runs onchain, not just deployed:
 <!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted MUSD, a collect_fee, and a cover_default disbursement. -->

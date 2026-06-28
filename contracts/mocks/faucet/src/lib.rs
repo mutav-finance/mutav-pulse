@@ -1,5 +1,5 @@
 #![no_std]
-//! Testnet demo faucet for the mock USDC (`CALOXSNQ…`).
+//! Testnet demo faucet for the mock cUSD (`CAWAVKYQ…`).
 //!
 //! Our reserve settles in a classic-asset USDC SAC issued by `pulse-admin`; only
 //! the issuer can mint, so testers can't self-mint. This faucet holds a pre-funded
