@@ -45,19 +45,29 @@ if [ -n "$BRL_NATIVE" ]; then
   FAUCET_COOLDOWN="${FAUCET_COOLDOWN:-86400}"      # 1 day
   FAUCET_FUND="${FAUCET_FUND:-1000000000000}"      # 100k cBRL minted into faucet
 
-  # cBRL test-asset SAC. Reuse BRL_SAC if pre-deployed; else deploy a classic
-  # asset SAC issued by the admin (mirrors the demo-USDC pattern).
+  # Test-asset SAC. A classic asset's SAC address is DETERMINISTIC (derived from
+  # code:issuer) — there is no salt and you cannot deploy a second one. So: reuse an
+  # explicit BRL_SAC, else reuse the on-chain SAC for this code if it already exists,
+  # else deploy it. Idempotent — never dies with "contract already exists".
   BRL_SAC="${BRL_SAC:-}"
   BRL_CODE="${BRL_CODE:-cBRL}"
   if [ -z "$BRL_SAC" ]; then
-    BRL_SAC=$(stellar contract asset deploy --asset "$BRL_CODE:$ADMIN" --source "$SOURCE" --network "$NETWORK")
-    echo "Deployed cBRL SAC: $BRL_SAC"
+    CANDIDATE=$(stellar contract id asset --asset "$BRL_CODE:$ADMIN" --network "$NETWORK" 2>/dev/null || true)
+    if [ -n "$CANDIDATE" ] && stellar contract invoke --id "$CANDIDATE" --source "$SOURCE" --network "$NETWORK" -- name >/dev/null 2>&1; then
+      BRL_SAC="$CANDIDATE"; echo "Reusing existing $BRL_CODE SAC: $BRL_SAC"
+    else
+      BRL_SAC=$(stellar contract asset deploy --asset "$BRL_CODE:$ADMIN" --source "$SOURCE" --network "$NETWORK")
+      echo "Deployed $BRL_CODE SAC: $BRL_SAC"
+    fi
   fi
 
-  # Faucet for the cBRL test asset, pre-funded by the admin (issuer).
+  # Faucet for the test asset, pre-funded by the admin (issuer). SETTLE between the
+  # mint and the drip: the drip's simulation reads the faucet balance, which otherwise
+  # races RPC propagation of the mint (Error(Contract,#10) "zero balance").
   FAUCET=$(dep faucet.wasm --token "$BRL_SAC" --amount "$FAUCET_AMOUNT" --cooldown_secs "$FAUCET_COOLDOWN")
   inv "$BRL_SAC" mint --to "$FAUCET" --amount "$FAUCET_FUND"
-  inv "$FAUCET" drip --to "$ADMIN"   # cBRL faucet drip (admin needs a trustline)
+  sleep "${SETTLE_SECS:-6}"
+  inv "$FAUCET" drip --to "$ADMIN"   # faucet drip (admin is issuer → holds without a trustline)
 
   # Core reserve: registry + vault(underlying=cBRL) + policy.
   REGISTRY=$(dep registry.wasm --admin "$ADMIN")

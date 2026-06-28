@@ -44,6 +44,9 @@ DEPOSIT=1000000000000     # 100,000 cBRL investor deposit
 # issuer"; the issuer already carries implicit infinite balance).
 echo "→ admin deposits 100,000 cBRL (SEP-0056 deposit: assets/receiver/from/operator)"
 inv "$VAULT" "$ADMIN" deposit --assets "$DEPOSIT" --receiver "$ADMIN_ADDR" --from "$ADMIN_ADDR" --operator "$ADMIN_ADDR"
+# SETTLE: sign_guarantee's solvency gate reads stable_assets, which races RPC
+# propagation of the deposit above (trap "insufficient capital" otherwise).
+sleep "${SETTLE_SECS:-6}"
 
 echo "→ signing ${#LANDLORDS[@]} two-leg guarantees (2,000/mo · N=${MONTHS_COVERED} + E=${EXIT_MONTHS} · 12% fee · 9× reserved each)"
 for L in "${LANDLORDS[@]}"; do
