@@ -1,0 +1,22 @@
+{
+  "version": "0.10.0",
+  "project_type": "brand",
+  "brand": {
+    "name": "",
+    "created": ""
+  },
+  "brand_mode": "new",
+  "e2e": false,
+  "evolution_scope": {
+    "preserve": [],
+    "evolve": [],
+    "replace": []
+  },
+  "system_config": {
+    "tech_stack": "",
+    "system_strategy": "generate",
+    "style_preset": "",
+    "style_base": []
+  },
+  "gsp_version": "0.10.0"
+}
