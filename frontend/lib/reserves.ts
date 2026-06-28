@@ -45,6 +45,13 @@ export interface Reserve {
   unitPriceFiat: number;
   /** The market whose rental defaults this reserve covers. */
   market: string;
+  /**
+   * Whether the underlying token itself accrues yield while simply held (e.g.
+   * TESOURO, a tokenized treasury). When true, even the in-vault (undeployed)
+   * balance earns the underlying base yield; when false (USDC, cBRL stablecoins)
+   * idle balance earns nothing and yield comes only from strategies + underwriting.
+   */
+  underlyingYieldBearing: boolean;
   status: ReserveStatus;
   /** Short badge override (e.g. "PoC"). Falls back to the status label. */
   tag?: string;
@@ -67,7 +74,7 @@ export interface LiveReserve extends Reserve {
 }
 
 /** Type guard: true when a reserve carries its deployed address + contract set. */
-function isLiveReserve(r: Reserve): r is LiveReserve {
+export function isLiveReserve(r: Reserve): r is LiveReserve {
   return r.status === "live" && r.address !== undefined && r.contracts !== undefined;
 }
 
@@ -78,6 +85,7 @@ export const RESERVES: Reserve[] = [
     name: "Mutav USD Reserve",
     underlying: "USDC · stablecoin DeFi (DeFindex)",
     depositToken: "USDC",
+    underlyingYieldBearing: false, // USDC is a stablecoin — idle balance earns nothing
     fiatSymbol: "$",
     unitPriceFiat: 1, // USDC ≈ $1
     market: "Brazil · testnet PoC",
@@ -103,6 +111,7 @@ export const RESERVES: Reserve[] = [
     name: "Mutav TESOURO Reserve",
     underlying: "TESOURO · tokenized Brazilian treasury (Etherfuse)",
     depositToken: "TESOURO",
+    underlyingYieldBearing: true, // TESOURO is a tokenized treasury — accrues yield even when held
     fiatSymbol: "R$",
     // TESOURO is yield-bearing → not 1:1 with BRL; indicative price (env-overridable).
     unitPriceFiat: config.tesouro.priceBrl,
@@ -132,6 +141,7 @@ export const RESERVES: Reserve[] = [
     name: "Mutav BRL Reserve",
     underlying: "cBRL · BRL stablecoin (TESOURO yield strategy)",
     depositToken: "cBRL",
+    underlyingYieldBearing: false, // cBRL is a stablecoin — yield comes from the strategy, not the token
     fiatSymbol: "R$",
     unitPriceFiat: 1, // cBRL is fiat-pegged ≈ R$1
     market: "Brazil · testnet PoC",
@@ -156,6 +166,7 @@ export const RESERVES: Reserve[] = [
     name: "Mutav ARS Reserve",
     underlying: "ARS · peso instrument",
     depositToken: "ARS",
+    underlyingYieldBearing: false, // illustrative stablecoin reserve
     fiatSymbol: "AR$",
     unitPriceFiat: 1, // peso-pegged placeholder
     market: "Argentina · illustrative",

@@ -288,10 +288,28 @@ p {
   animation: mutav-pulse 2s linear infinite;
 }
 
+/* ── Refresh spinner (state feedback only — stops when not loading) ── */
+@keyframes mtv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Contract directory row (Contracts section) ── */
+.contract-row:hover,
+.contract-row:focus-visible {
+  background-color: var(--color-surface-2) !important;
+}
+.contract-row:hover [data-contract-id],
+.contract-row:focus-visible [data-contract-id] {
+  color: var(--color-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .live-dot {
     animation: none;
     opacity: 1;
+  }
+  [style*="mtv-spin"] {
+    animation: none !important;
   }
 }
 

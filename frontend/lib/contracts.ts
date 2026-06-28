@@ -1,6 +1,7 @@
 import { Client as VaultClient, type RedeemRequest, type StrategyAlloc } from "vault";
 import { Client as PolicyClient, type Guarantee } from "policy";
 import { Client as RegistryClient } from "registry";
+import { Client as StrategyClient } from "strategy";
 import { config } from "./config";
 
 export interface ReserveContracts {
@@ -49,6 +50,31 @@ export function reserveReads(c: ReserveContracts) {
 
     async vaultFreeCapital(): Promise<bigint> {
       const tx = await vaultClient().free_capital();
+      return tx.result;
+    },
+
+    /**
+     * Liquidity held by the vault itself (not deployed to any strategy). The
+     * vault identity is `total_assets = available_held + Σ strategy balances`,
+     * so `deployed = total_assets − available_held`. This is the honest, live
+     * "deployed vs idle" split — distinct from the allocator's TARGET weights.
+     */
+    async vaultAvailableHeld(): Promise<bigint> {
+      const tx = await vaultClient().available_held();
+      return tx.result;
+    },
+
+    /**
+     * Live balance a single strategy adapter holds for this vault (its own
+     * `balance()` view, read via simulation — no signing). Lets the UI show the
+     * real amount deployed per venue instead of the target weight.
+     */
+    async strategyBalance(address: string): Promise<bigint> {
+      const tx = await new StrategyClient({
+        rpcUrl: config.rpcUrl,
+        contractId: address,
+        networkPassphrase: config.networkPassphrase,
+      }).balance();
       return tx.result;
     },
 
