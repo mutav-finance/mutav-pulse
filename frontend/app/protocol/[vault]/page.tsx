@@ -81,8 +81,8 @@ interface ProtocolData {
   availableHeld: bigint;
   /** Liquid cash-buffer target, bps of total assets (0 = deploy everything). */
   bufferBps: number;
-  /** Default grace window (seconds) before a missed fee counts as default. */
-  graceSecs: bigint;
+  /** Default grace window (seconds); null when the deployed policy predates set_grace_secs. */
+  graceSecs: bigint | null;
   /** Live actual balance deployed per strategy, keyed by address. */
   strategyBalances: Record<string, bigint>;
   /** Per-strategy concentration cap, bps of total assets, keyed by address. */
@@ -102,7 +102,7 @@ const INITIAL: ProtocolData = {
   strategies: [],
   availableHeld: 0n,
   bufferBps: 0,
-  graceSecs: 0n,
+  graceSecs: null,
   strategyBalances: {},
   strategyCaps: {},
   activeGuarantees: [],
@@ -244,7 +244,9 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         reads.vaultStrategies(),
         reads.vaultAvailableHeld(),
         reads.vaultMinLiquidBufferBps(),
-        reads.policyGraceSecs(),
+        // Tolerate a deployed policy that predates set_grace_secs — a single
+        // missing method must not blank the whole cockpit.
+        reads.policyGraceSecs().catch(() => null),
         reads.registryActiveIds(),
       ]);
 
@@ -1725,7 +1727,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 title="Grace Window"
                 description="policy.set_grace_secs"
                 actionLabel="Set grace"
-                disabled={!isPolicyAdmin}
+                disabled={!isPolicyAdmin || data.graceSecs === null}
                 onSubmit={async () => {
                   if (!address) throw new Error("no wallet");
                   const days = parseFloat(graceInput);
@@ -1734,7 +1736,20 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 }}
                 onSuccess={() => { setGraceInput(""); handleSuccess(); }}
               >
-                <FormField id="grace-days" label="Grace window (days)" type="number" min="0" step="1" placeholder={(Number(data.graceSecs) / 86400).toFixed(0)} value={graceInput} onChange={setGraceInput} disabled={!isPolicyAdmin} hint={`Window after a missed fee before default. Currently ${(Number(data.graceSecs) / 86400).toFixed(1)} days.`} />
+                <FormField
+                  id="grace-days"
+                  label="Grace window (days)"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder={data.graceSecs === null ? "—" : (Number(data.graceSecs) / 86400).toFixed(0)}
+                  value={graceInput}
+                  onChange={setGraceInput}
+                  disabled={!isPolicyAdmin || data.graceSecs === null}
+                  hint={data.graceSecs === null
+                    ? "Not available — the deployed policy predates set_grace_secs. Redeploy the policy to enable."
+                    : `Window after a missed fee before default. Currently ${(Number(data.graceSecs) / 86400).toFixed(1)} days.`}
+                />
               </ProtocolActionForm>
             </ActionGrid>
 

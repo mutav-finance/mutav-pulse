@@ -4,7 +4,7 @@
 //!
 //! Why this exists: DeFindex's own testnet yield strategies are bound to *their*
 //! USDC (issuer `GATALTGT…`), which we can't mint. Our reserve settles in our own
-//! mintable USDC SAC (`CALOXSNQ…`). To validate `adapter-defindex` against a
+//! mintable cUSD SAC (`CAWAVKYQ…`). To validate `adapter-defindex` against a
 //! *real* DeFindex vault on testnet (Stage 1), we wrap our own USDC with a
 //! strategy that just holds — no external pool, no yield. Real yield (Blend) is a
 //! Stage-2 / mainnet concern. The factory does not allowlist strategy code, so a
