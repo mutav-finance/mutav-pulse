@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Soroban contract clients (`stellar contract bindings typescript`)
+    // — machine-authored, not hand-maintained source. They carry generator-emitted
+    // `@ts-ignore` and class/interface declaration-merging that trip the TS rules;
+    // linting them is noise we never act on. Regenerate, don't hand-edit.
+    "bindings/**",
   ]),
 ]);
 
