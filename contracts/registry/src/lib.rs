@@ -6,61 +6,38 @@ use interfaces::{Guarantee, Registry as RegistryTrait, RegistryError};
 /// binary that changes the on-chain layout; an in-place `upgrade()` is refused
 /// (VersionMismatch) when the stored version differs from this, so a stale-layout
 /// instance is routed through redeploy + `bootstrap.sh` re-wire instead.
-pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 
-// ───────────────────── H3: bound the active set (coverage_required cost) ─────────────────────
+// ───────────────────── #39/#40: O(1) RawCoverage aggregate ─────────────────────
 //
-// `ActiveIds` is a `Vec<u32>` in the single instance entry, and
-// `policy.coverage_required` iterates it with one cross-contract `get()` per id, so
-// the loop's cost grows linearly with the number of ACTIVE guarantees. Left
-// unbounded it can exceed the tx resource budget and brick `pay_premium` (which
-// re-checks solvency via coverage_required). This is a MITIGATION, not a true O(1)
-// fix: an exact-equivalent O(1) scalar is provably impossible because
-// coverage_required's `paid_until > now` predicate flips with the passage of time
-// alone (no state-mutating call to hook an increment onto), and a policy-instance
-// aggregate would violate the stateless-policy-swap invariant the system test
-// encodes. Instead we bound N at its source — the active set — so the loop's
-// worst-case cost is a known constant. Centrifuge's epoch/timer is the only
-// mechanism that could make exact-parity coverage genuinely O(1); out of scope for
-// this prototype.
-//
-/// Hard cap on the number of CURRENTLY-ACTIVE guarantees. Sized so
-/// `coverage_required`'s loop of N cross-contract `get()`s stays inside ONE
-/// transaction's resource limits. The binding constraint is the per-tx LEDGER
-/// FOOTPRINT (entries touched), not CPU/mem: each iteration reads one persistent
-/// `Guarantee(id)` entry, plus the loop reads the registry instance entry
-/// (active_ids) and the policy instance entry. The testnet/mainnet per-tx footprint
-/// cap is ~100 read entries; 90 active guarantees + the handful of framing entries
-/// leaves headroom under that ceiling, which the
-/// `coverage_required_at_active_cap_stays_within_budget` system test exercises at
-/// EXACTLY this cap (a measured bound, not an asserted one — an earlier 200 was
-/// rejected by the host's invocation metering at `total footprint entries > 100`).
-/// Enforced only on the put branch that PUSHES a brand-new active id
-/// (sign_guarantee's first activating put); re-puts of existing active ids and
-/// deactivations never grow the set, so pay_premium / cover_default /
-/// settle_guarantee are never blocked. Counts only active entries — settle/cover
-/// free capacity. RESIDUAL: the cap is enforced only on post-upgrade writes; an
-/// instance already holding more than this at upgrade time is not retroactively
-/// trimmed, and once full a brand-new guarantee's first activating put hard-stops
-/// with `ActiveSetFull` (issuance pauses until slots free) — admin-gated
-/// sign_guarantee is the compensating control against an issuance-flood DoS.
-pub const MAX_ACTIVE_GUARANTEES: u32 = 90;
+// `put` is the SOLE mutator of `DataKey::RawCoverage` — the running raw-coverage
+// scalar (Σ contribution over active guarantees) is maintained incrementally by a
+// per-write delta, so it is EXACT at every write (Yearn-v3 anchors its stored total
+// at the single write chokepoint, not by re-summing on read). Reads are therefore
+// O(1): `policy.coverage_required` no longer loops `ActiveIds`. The flat
+// `MAX_ACTIVE_GUARANTEES` cap is gone — capacity is now enforced by the policy's
+// solvency gate (`coverage_required <= stable_assets`), i.e. capital sized to the
+// obligation (Nexus Mutual), not an arbitrary count ceiling. `ActiveIds` is retained
+// only for enumeration and the admin `reconcile()` drift true-up; it is off every
+// hot path.
 
 // ───────────────────────────── H6: storage TTL hygiene ─────────────────────────────
 //
 // Persistent Guarantee entries are long-lived (a guarantee's coverage span runs
 // for period_secs * months_covered). Without an explicit extend_ttl they decay to
 // the default min_persistent_entry_ttl and archive — which traps the lifecycle
-// reads behind policy.coverage_required / cover_default / pay_premium (an archived
+// reads behind policy.coverage_required / cover_default / pay_fee (an archived
 // entry needs a paid RestoreFootprint before it is readable). Archival protection
 // is provided by the WRITE paths ONLY: put() sizes the entry's TTL to its own full
 // coverage span on every write, and every policy lifecycle mutation re-put()s the
-// full struct (sign_guarantee / pay_premium / cover_default / settle_guarantee),
-// re-extending the TTL. The premium cadence (~period_secs) is far inside the span
-// TTL, so write-path re-extension covers the whole window; a guarantee that goes a
-// whole span with zero premiums has already lapsed (paid_until <= now → excluded by
-// coverage_required) so its archival is harmless. get() does NOT extend (re-audit
-// H2: it is a pure read — a read-path bump cost O(active) writes per solvency view).
+// full struct (sign_guarantee / pay_fee / cover_default / cover_exit / settle_guarantee),
+// re-extending the TTL. The fee cadence (~period_secs) is far inside the span TTL,
+// so write-path re-extension covers the whole window. A guarantee that misses its
+// fee is in DEFAULT (the fee stream is the default oracle), so the admin re-put()s it
+// via cover_default/cover_exit (or settle_guarantee) — write paths that re-extend the
+// TTL; coverage stays reserved throughout (no time-gate excludes a lapsed guarantee).
+// get() does NOT extend (re-audit H2: it is a pure read — a read-path bump cost
+// O(active) writes per solvency view).
 
 /// Stellar ledgers close on roughly a 5–6s cadence. Dividing the wall-clock span
 /// (seconds) by 5 yields MORE ledgers than a 6s assumption would — i.e. we
@@ -96,6 +73,11 @@ pub enum DataKey {
     // is positional, so appending preserves the encoding of every existing key
     // (Admin/Writer/NextId/ActiveIds/Guarantee). Never reorder or remove a variant.
     SchemaVersion,
+    // O(1) coverage aggregate (#39). INSTANCE entry, co-located with NextId/ActiveIds
+    // so the existing `bump_instance` TTL-extend covers it. Appended AFTER
+    // SchemaVersion (positional contracttype encoding is append-only). `put` is its
+    // SOLE mutator; `reconcile` overwrites it wholesale on an admin drift true-up.
+    RawCoverage, // i128
 }
 
 /// Emitted by `upgrade` after the wasm swap is committed. Mirrors the vault's bare
@@ -122,6 +104,9 @@ impl Registry {
         // not consumed, so it stays in scope for the SchemaVersion write below.
         e.storage().instance().set(&DataKey::Writer, &admin);
         e.storage().instance().set(&DataKey::SchemaVersion, &CURRENT_SCHEMA_VERSION);
+        // Initialize the O(1) coverage aggregate so reads never trap on a fresh
+        // deploy (raw_coverage also unwraps_or(0) as belt-and-suspenders).
+        e.storage().instance().set(&DataKey::RawCoverage, &0i128);
     }
 
     pub fn admin(e: &Env) -> Address {
@@ -160,9 +145,11 @@ impl Registry {
         Self::admin(&e).require_auth();
         // Refuse an in-place upgrade when the on-chain layout version does not
         // match what this binary expects (stale / layout-incompatible storage).
-        // A pre-versioning instance reads 0 (!= 1) and is refused — routed through
-        // redeploy + bootstrap.sh re-wire instead. The version stays 1 until a
-        // migrating binary bumps it; layout-CHANGING edits never ride upgrade().
+        // A stale instance (v1, pre-RawCoverage, or pre-versioning v0) reads != 2
+        // and is refused — routed through redeploy + bootstrap.sh re-wire instead.
+        // This binary IS the migrating binary that bumped the layout 1 -> 2 (the
+        // appended RawCoverage instance entry); layout-CHANGING edits never ride
+        // upgrade().
         let stored: u32 = e.storage().instance().get(&DataKey::SchemaVersion).unwrap_or(0);
         if stored != CURRENT_SCHEMA_VERSION {
             panic_with_error!(&e, RegistryError::VersionMismatch);
@@ -189,6 +176,62 @@ impl Registry {
             .instance()
             .extend_ttl(MAX_ENTRY_TTL / 2, MAX_ENTRY_TTL);
     }
+
+    /// Remaining coverage a guarantee reserves, summed by `raw_coverage`. Two legs:
+    /// DEFAULT (rent-arrears) `monthly * (months_covered - months_used)` and EXIT
+    /// (property-recovery) `monthly * exit_months - exit_used`. Zero unless the
+    /// guarantee is active AND in the issued range (`id < next`) — a settled or
+    /// not-yet-issued guarantee reserves nothing. `checked_*` with `.expect()`
+    /// converts a wrap into a trap now that the active set is unbounded (no
+    /// MAX_ACTIVE_GUARANTEES ceiling caps the running sum); `saturating_sub` on the
+    /// month counters mirrors the policy idiom (used never exceeds covered by
+    /// invariant, but never underflow the multiplier).
+    fn contribution(g: &Guarantee, next: u32) -> i128 {
+        if !(g.active && g.id < next) {
+            return 0;
+        }
+        let default_term = g
+            .monthly_amount
+            .checked_mul(g.months_covered.saturating_sub(g.months_used) as i128)
+            .expect("coverage default term overflow");
+        let exit_term = g
+            .monthly_amount
+            .checked_mul(g.exit_months as i128)
+            .expect("coverage exit term overflow")
+            .checked_sub(g.exit_used)
+            .expect("coverage exit term underflow");
+        default_term
+            .checked_add(exit_term)
+            .expect("coverage contribution overflow")
+    }
+
+    /// Admin drift true-up: recompute `RawCoverage` once from the active set and
+    /// overwrite the stored scalar. The `put` delta keeps the aggregate exact at
+    /// every write, but this is the safety valve (and `ActiveIds`' remaining
+    /// consumer) should any drift ever creep in.
+    pub fn reconcile(e: Env) {
+        Self::admin(&e).require_auth();
+        Self::bump_instance(&e);
+        let next: u32 = e.storage().instance().get(&DataKey::NextId).unwrap_or(0);
+        let active: Vec<u32> = e
+            .storage()
+            .instance()
+            .get(&DataKey::ActiveIds)
+            .unwrap_or_else(|| Vec::new(&e));
+        let mut sum: i128 = 0;
+        for id in active.iter() {
+            if let Some(g) = e
+                .storage()
+                .persistent()
+                .get::<_, Guarantee>(&DataKey::Guarantee(id))
+            {
+                sum = sum
+                    .checked_add(Self::contribution(&g, next))
+                    .expect("reconcile overflow");
+            }
+        }
+        e.storage().instance().set(&DataKey::RawCoverage, &sum);
+    }
 }
 
 #[contractimpl]
@@ -213,24 +256,23 @@ impl RegistryTrait for Registry {
         // monotonic NextId counter. A writer must never fabricate the primary key,
         // so reject any id at-or-beyond the next-to-issue. `>=` (not `>`) also
         // closes the empty-registry id=0 footgun (NextId==0) while still allowing
-        // re-puts of any previously-issued id (pay_premium / cover_default /
+        // re-puts of any previously-issued id (pay_fee / cover_default / cover_exit /
         // settle_guarantee all re-put existing ids, all of which are id < NextId).
         let next: u32 = e.storage().instance().get(&DataKey::NextId).unwrap_or(0);
         if g.id >= next {
             panic_with_error!(&e, RegistryError::InvalidId);
         }
+        // Read the PRIOR struct BEFORE any overwrite, reusing the already-read
+        // `next`. Load-bearing for the RawCoverage delta below: a first put /
+        // activation has old=None (contributes 0), and a re-put nets exactly
+        // because `old` is captured pre-overwrite.
+        let old: Option<Guarantee> = e.storage().persistent().get(&DataKey::Guarantee(g.id));
         let mut active: Vec<u32> = e.storage().instance().get(&DataKey::ActiveIds).unwrap();
         let present = active.iter().any(|x| x == g.id);
         if g.active && !present {
-            // H3: bound the active set at its source. Only a brand-new id's first
-            // activation grows the Vec, so the cap is enforced HERE, before
-            // push_back. Re-puts of already-present active ids (pay_premium /
-            // cover_default) and deactivations take the other branches and never
-            // hit this — they cannot grow the set. The cap bounds the worst-case
-            // cost of policy.coverage_required's per-id cross-contract get() loop.
-            if active.len() >= MAX_ACTIVE_GUARANTEES {
-                panic_with_error!(&e, RegistryError::ActiveSetFull);
-            }
+            // Capacity is no longer a count — the policy's solvency gate bounds the
+            // book (#40). Only a brand-new id's first activation grows the Vec;
+            // re-puts of present active ids and deactivations take the other branches.
             active.push_back(g.id);
         } else if !g.active && present {
             let mut next = Vec::<u32>::new(&e);
@@ -249,6 +291,24 @@ impl RegistryTrait for Registry {
         e.storage()
             .persistent()
             .extend_ttl(&DataKey::Guarantee(g.id), ttl, ttl);
+        // #39: maintain the O(1) RawCoverage aggregate. `put` is its SOLE mutator —
+        // every coverage delta (activation, cover_default, cover_exit, settle,
+        // exhaust) flows through a re-put, so applying (new − old) contribution here
+        // keeps the scalar EXACT at every write. `old` was read pre-overwrite, so a
+        // first put nets +new (old_c = 0) and a re-put nets the difference.
+        let new_c = Registry::contribution(&g, next);
+        let old_c = old.map(|o| Registry::contribution(&o, next)).unwrap_or(0);
+        let raw: i128 = e
+            .storage()
+            .instance()
+            .get(&DataKey::RawCoverage)
+            .unwrap_or(0);
+        let raw = raw
+            .checked_add(new_c)
+            .expect("raw coverage overflow")
+            .checked_sub(old_c)
+            .expect("raw coverage underflow");
+        e.storage().instance().set(&DataKey::RawCoverage, &raw);
     }
 
     fn get(e: Env, id: u32) -> Result<Guarantee, RegistryError> {
@@ -267,6 +327,15 @@ impl RegistryTrait for Registry {
 
     fn active_ids(e: Env) -> Vec<u32> {
         e.storage().instance().get(&DataKey::ActiveIds).unwrap()
+    }
+
+    /// O(1) coverage aggregate (Σ contribution over active guarantees), maintained
+    /// incrementally by the `put` delta. PURE read — NO require_auth, NO extend_ttl
+    /// (mirrors the H2 re-audit decision that `get` is side-effect-free, so a
+    /// solvency "view" never does storage writes). `unwrap_or(0)` is belt-and-
+    /// suspenders alongside the constructor init.
+    fn raw_coverage(e: Env) -> i128 {
+        e.storage().instance().get(&DataKey::RawCoverage).unwrap_or(0)
     }
 }
 

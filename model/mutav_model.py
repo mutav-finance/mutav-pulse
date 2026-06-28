@@ -5,10 +5,13 @@ MUTAV reserve — economic model (guarantees · coverage · premiums · yield ·
 Pure standard library, zero install. Models the on-chain mechanics exactly as the
 `policy` + `vault` Soroban contracts implement them:
 
-  - premium charged per pay_premium = monthly_amount * fee_bps / 10_000   (per period)
-  - coverage_required (active & current) = sum monthly_amount * (months_covered - months_used) * coverage_ratio
-  - cover_default pays ONE monthly_amount per call, increments months_used, caps at months_covered
-  - premiums accrue to NAV (no shares minted); defaults drain NAV
+  - fee charged per pay_fee = monthly_amount * fee_bps / 10_000   (per period)
+  - coverage_required (active) = sum coverage_ratio * [ monthly*(months_covered-months_used)  # DEFAULT leg
+        + (monthly*exit_months - exit_used) ]                                                 # EXIT leg
+    NO time-gate: a fee-miss past grace IS a default (it triggers the claim), never a release.
+  - cover_default pays ONE monthly_amount per call (DEFAULT/rent-arrears leg), caps at months_covered
+  - cover_exit pays property-recovery costs up to monthly*exit_months (EXIT leg)
+  - fees accrue to NAV (no shares minted); claims (default + exit) drain NAV
   - free_capital = max(0, stable_assets - coverage_required); only it may exit or back new guarantees
 
 Two layers:
@@ -85,7 +88,8 @@ class Params:
     own currency unit — APY is unit-invariant, so only `currency` (via its yield)
     and the rate inputs matter."""
     rent: float = 1_000.0          # monthly_amount (R), in `currency` units
-    months_covered: int = 6        # N — the standard product
+    months_covered: int = 3        # N — DEFAULT (rent-arrears) coverage, the eviction window
+    exit_months: int = 6           # E — EXIT (property-recovery) coverage, multiple of monthly rent
     fee_bps: int = 1_200           # f = fee_bps/10000 charged PER PERIOD (period=30d => monthly)
     period_days: int = 30          # period_secs/86400
     coverage_ratio: float = 1.00   # c — 1.0 = hard-solvent floor; <1.0 = actuarial mode
@@ -95,6 +99,14 @@ class Params:
 
     # severity shape (only used by the Monte Carlo / capped-payout refinement)
     mean_default_months: float = 4.0  # avg months a default spell runs before cure/eviction (L)
+
+    # EXIT-cost claim assumption (the one non-contract modelling input — exit severity is
+    # not in the rho default regime). p_exit = fraction of leases that draw exit cost;
+    # exit_severity = mean draw as a fraction of the E*R cap; lease_months annualizes the
+    # one-time exit cost. The full E*R is RESERVED regardless (hard solvency). CONFIRM these.
+    p_exit: float = 1.0               # every lease incurs some exit cost (wear/cleanup/restoration)
+    exit_severity: float = 0.15       # mean exit draw ≈ 0.15 * 6R = 0.9R (≈ one month of restoration)
+    lease_months: int = 30            # typical Brazilian lease span, to annualize the exit draw
 
     @property
     def f(self) -> float:
@@ -113,8 +125,16 @@ class Params:
 
     @property
     def capital_locked(self) -> float:
-        """coverage_required for one fresh guarantee = c * R * N."""
-        return self.coverage_ratio * self.rent * self.months_covered
+        """coverage_required for one fresh guarantee = c * R * (N + E) — both legs
+        (DEFAULT rent-arrears + EXIT property-recovery) reserved in full at c=1.0."""
+        return self.coverage_ratio * self.rent * (self.months_covered + self.exit_months)
+
+    @property
+    def annual_exit_payout(self) -> float:
+        """Expected exit-cost payout per guarantee, annualized. One-time draw of
+        exit_severity * (E*R) on a p_exit fraction of leases, spread over lease_months."""
+        lifetime_exit = self.p_exit * self.exit_severity * self.exit_months * self.rent
+        return lifetime_exit / (self.lease_months / MONTHS_PER_YEAR)
 
 
 # ───────────────────────── Deterministic unit economics ──────────────────────
@@ -122,7 +142,8 @@ class Params:
 class UnitEconomics:
     capital_locked: float
     annual_premium: float
-    annual_expected_payout: float
+    annual_expected_payout: float        # DEFAULT (rent-arrears) leg
+    annual_expected_exit_payout: float   # EXIT (property-recovery) leg
     annual_net_underwriting: float
     annual_defi_yield: float
     annual_total_return: float
@@ -136,28 +157,32 @@ def unit_economics(p: Params) -> UnitEconomics:
     """
     Closed-form annual P&L for a single fully-backed (or c-scaled) guarantee.
 
-    Premium income  = periods/yr * f * R          (contract: R*fee_bps/10000 per period)
-    Expected payout = 12 * rho * R                 (stock delinquency => fraction of rents paid)
+    Fee income      = periods/yr * f * R          (contract: R*fee_bps/10000 per period)
+    Default payout  = 12 * rho * R                 (stock delinquency => fraction of rents paid)
+    Exit payout     = p_exit * s_exit * E * R / lease_years   (one-time property-recovery cost)
     DeFi yield      = s * capital_locked           (the locked reserve is invested, not idle)
     """
     annual_premium = p.periods_per_year * p.f * p.rent
-    annual_expected_payout = MONTHS_PER_YEAR * p.rho * p.rent
-    net = annual_premium - annual_expected_payout
+    annual_expected_payout = MONTHS_PER_YEAR * p.rho * p.rent      # DEFAULT leg
+    annual_exit = p.annual_exit_payout                            # EXIT leg
+    net = annual_premium - annual_expected_payout - annual_exit
     defi = p.s * p.capital_locked
     total = net + defi
     apy = total / p.capital_locked if p.capital_locked else float("nan")
 
-    # breakeven: periods/yr * f * R == 12 * rho * R  =>  rho* = (periods/yr * f)/12
-    breakeven_rho = (p.periods_per_year * p.f) / MONTHS_PER_YEAR
+    # breakeven default rho: fee income == default payout + exit payout
+    #   periods/yr*f*R - exit  ==  12 * rho * R   =>   rho* = (premium - exit)/(12*R)
+    breakeven_rho = max(0.0, (annual_premium - annual_exit) / (MONTHS_PER_YEAR * p.rent)) if p.rent else float("nan")
     return UnitEconomics(
         capital_locked=p.capital_locked,
         annual_premium=annual_premium,
         annual_expected_payout=annual_expected_payout,
+        annual_expected_exit_payout=annual_exit,
         annual_net_underwriting=net,
         annual_defi_yield=defi,
         annual_total_return=total,
         apy=apy,
-        loss_ratio=(annual_expected_payout / annual_premium) if annual_premium else float("nan"),
+        loss_ratio=((annual_expected_payout + annual_exit) / annual_premium) if annual_premium else float("nan"),
         breakeven_rho=breakeven_rho,
         cushion=(breakeven_rho / p.rho) if p.rho else float("inf"),
     )
@@ -192,7 +217,7 @@ def portfolio_economics(reserve: float, p: Params) -> PortfolioEconomics:
     coverage = n * u.capital_locked
     free = reserve - coverage
     premium = n * u.annual_premium
-    payout = n * u.annual_expected_payout
+    payout = n * (u.annual_expected_payout + u.annual_expected_exit_payout)  # DEFAULT + EXIT legs
     net = premium - payout
     defi = p.s * reserve
     total = net + defi
@@ -269,6 +294,10 @@ def monte_carlo(p: Params, cfg: MCConfig) -> MCResult:
     cure_prob = 1.0 / max(1.0, p.mean_default_months)
     monthly_defi = (1.0 + p.s) ** (1.0 / 12.0) - 1.0
     monthly_premium = p.f * p.rent  # one period == one month at period_days=30
+    # EXIT leg: a one-time property-recovery draw per guarantee. Monthly one-shot
+    # hazard so expected ~p_exit draws over the horizon; each pays exit_severity*E*R.
+    h_exit = p.p_exit / cfg.horizon_months if cfg.horizon_months else 0.0
+    exit_amount = p.exit_severity * p.exit_months * p.rent
 
     start_reserve = cfg.n_guarantees * p.capital_locked  # fully-packed book
     apys: list[float] = []
@@ -281,6 +310,7 @@ def monte_carlo(p: Params, cfg: MCConfig) -> MCResult:
         nav = start_reserve
         months_used = [0] * cfg.n_guarantees
         in_default = [False] * cfg.n_guarantees
+        exited = [False] * cfg.n_guarantees
         defaults_paid = 0.0
         months_in_default = 0
         breached = False
@@ -301,25 +331,33 @@ def monte_carlo(p: Params, cfg: MCConfig) -> MCResult:
             coverage_required = 0.0
             in_default_now = 0
             for i in range(cfg.n_guarantees):
-                if p.months_covered - months_used[i] <= 0:
-                    continue  # guarantee exhausted -> settled
+                # DEFAULT (rent-arrears) leg — only while the eviction window remains
+                if p.months_covered - months_used[i] > 0:
+                    if in_default[i]:
+                        nav -= p.rent                 # cover_default pays one month
+                        defaults_paid += p.rent
+                        months_used[i] += 1
+                        months_in_default += 1
+                        in_default_now += 1
+                        if (p.months_covered - months_used[i]) <= 0 or rng.random() < cure_prob:
+                            in_default[i] = False
+                    else:
+                        nav += monthly_premium        # fee accrues to NAV
+                        if rng.random() < eff_lam:
+                            in_default[i] = True
 
-                if in_default[i]:
-                    nav -= p.rent                 # cover_default pays one month
-                    defaults_paid += p.rent
-                    months_used[i] += 1
-                    months_in_default += 1
-                    in_default_now += 1
-                    if (p.months_covered - months_used[i]) <= 0 or rng.random() < cure_prob:
-                        in_default[i] = False
-                else:
-                    nav += monthly_premium        # premium accrues to NAV
-                    if rng.random() < eff_lam:
-                        in_default[i] = True
+                # EXIT (property-recovery) leg — one-time draw, drops NAV and coverage in
+                # lockstep so c=1.0 stays breach-proof (coverage releases the full E*R).
+                if not exited[i] and rng.random() < h_exit:
+                    nav -= exit_amount                # cover_exit
+                    exited[i] = True
 
-                rem = p.months_covered - months_used[i]
-                if rem > 0:
-                    coverage_required += p.coverage_ratio * p.rent * rem
+                # coverage_required = remaining DEFAULT leg + remaining EXIT leg
+                default_rem = p.months_covered - months_used[i]
+                if default_rem > 0:
+                    coverage_required += p.coverage_ratio * p.rent * default_rem
+                if not exited[i]:
+                    coverage_required += p.coverage_ratio * p.rent * p.exit_months
 
             peak_stock = max(peak_stock, in_default_now / cfg.n_guarantees)
             if nav < coverage_required:
@@ -374,8 +412,8 @@ def print_report(base: Params) -> None:
     print("=" * 78)
     print("MUTAV RESERVE — ECONOMIC MODEL")
     print("=" * 78)
-    print(f"Standard product: R={base.rent:,.0f} {base.currency}/mo · N={base.months_covered} months · "
-          f"fee={base.f*100:.0f}%/period · period={base.period_days}d · "
+    print(f"Standard product: R={base.rent:,.0f} {base.currency}/mo · DEFAULT N={base.months_covered}mo "
+          f"+ EXIT E={base.exit_months}x · fee={base.f*100:.0f}%/period · period={base.period_days}d · "
           f"coverage_ratio={base.coverage_ratio:.2f}")
     print(f"Underlying yield = {base.s*100:.2f}% ({base.currency}-pegged) · "
           f"delinquency rho = {base.rho*100:.2f}% monthly stock "
@@ -400,17 +438,17 @@ def print_report(base: Params) -> None:
     print("       currency; BRL just rides a higher base (Selic/CDI ~14%) than USD (~5.5%).")
 
     # 1) Unit economics across delinquency scenarios -------------------------------
-    print(f"\n[1] UNIT ECONOMICS — one {_usd(base.rent)} / {base.months_covered}-month "
-          f"guarantee, by delinquency scenario")
+    print(f"\n[1] UNIT ECONOMICS — one {_usd(base.rent)} guarantee "
+          f"(DEFAULT {base.months_covered}mo + EXIT {base.exit_months}x), by delinquency scenario")
     print(f"    capital locked per guarantee = {_usd(base.capital_locked)}  "
-          f"(= c · R · N)")
-    hdr = f"    {'scenario':<16}{'rho':>7}{'premium':>10}{'exp.payout':>12}{'net u/w':>10}{'+DeFi':>9}{'APY':>8}{'lossratio':>11}{'cushion':>9}"
+          f"(= c · R · (N+E))")
+    hdr = f"    {'scenario':<16}{'rho':>7}{'fee':>10}{'payout(D+E)':>13}{'net u/w':>10}{'+DeFi':>9}{'APY':>8}{'lossratio':>11}{'cushion':>9}"
     print(hdr)
     print("    " + "-" * (len(hdr) - 4))
     for name, rho in DELINQUENCY.items():
         u = unit_economics(replace(base, rho=rho))
         print(f"    {name:<16}{rho*100:6.2f}%{_usd(u.annual_premium):>10}"
-              f"{_usd(u.annual_expected_payout):>12}{_usd(u.annual_net_underwriting):>10}"
+              f"{_usd(u.annual_expected_payout + u.annual_expected_exit_payout):>13}{_usd(u.annual_net_underwriting):>10}"
               f"{_usd(u.annual_defi_yield):>9}{_pct(u.apy):>8}{_pct(u.loss_ratio):>11}"
               f"{u.cushion:>8.1f}x")
 
@@ -425,7 +463,7 @@ def print_report(base: Params) -> None:
               f"{_usd(u.annual_defi_yield):>9}{_usd(u.annual_total_return):>10}{_pct(u.apy):>9}")
 
     # 3) reserve capacity & portfolio ---------------------------------------------
-    print("\n[3] RESERVE CAPACITY & PORTFOLIO APY — base delinquency, N=6, c=1.0")
+    print("\n[3] RESERVE CAPACITY & PORTFOLIO APY — base delinquency, N=3, E=6, c=1.0")
     hdr3 = f"    {'reserve':>12}{'guarantees':>12}{'coverage':>12}{'free':>10}{'premiums/yr':>13}{'payouts/yr':>12}{'APY':>8}"
     print(hdr3)
     print("    " + "-" * (len(hdr3) - 4))
@@ -436,7 +474,7 @@ def print_report(base: Params) -> None:
               f"{_usd(pe.annual_expected_payout):>12}{_pct(pe.apy):>8}")
 
     # 4) actuarial-mode leverage ---------------------------------------------------
-    print("\n[4] ACTUARIAL MODE — coverage_ratio < 1.0 levers premium-on-capital (base rho, N=6)")
+    print("\n[4] ACTUARIAL MODE — coverage_ratio < 1.0 levers fee-on-capital (base rho, N=3, E=6)")
     hdr4 = f"    {'coverage_ratio':<16}{'capital lock':>14}{'APY':>9}   {'note':<34}"
     print(hdr4)
     print("    " + "-" * (len(hdr4) - 4))
@@ -469,20 +507,22 @@ def selftest() -> None:
     p = Params()
     u = unit_economics(p)
 
-    # contract-exact premium: R * fee_bps/10000 per period
-    assert abs(p.f * p.rent - 120.0) < 1e-9, "premium per period should be $120"
-    # annual premium ~ 12.175 periods * 120
+    # contract-exact fee: R * fee_bps/10000 per period
+    assert abs(p.f * p.rent - 120.0) < 1e-9, "fee per period should be $120"
+    # annual fee ~ 12.175 periods * 120
     assert 1455 < u.annual_premium < 1465, u.annual_premium
-    # capital locked = c*R*N = 6000
-    assert abs(u.capital_locked - 6_000.0) < 1e-9
-    # expected payout = 12 * rho * R, Sul rho=0.0246 -> ~$295
+    # capital locked = c*R*(N+E) = 1*1000*(3+6) = 9000 (DEFAULT + EXIT legs)
+    assert abs(u.capital_locked - 9_000.0) < 1e-9, u.capital_locked
+    # DEFAULT payout = 12 * rho * R, Sul rho=0.0246 -> ~$295
     assert 290 < u.annual_expected_payout < 300, u.annual_expected_payout
-    # loss ratio healthy (<25%) for Sul
-    assert u.loss_ratio < 0.25, u.loss_ratio
-    # breakeven rho = periods/yr*f/12 ~ 12.175*0.12/12 ~ 0.1217
-    assert 0.118 < u.breakeven_rho < 0.124, u.breakeven_rho
-    # APY positive and sane; default currency BRL (~14% yield) -> ~33%
-    assert 0.25 < u.apy < 0.40, u.apy
+    # EXIT payout = p_exit*s_exit*E*R / lease_years = 1.0*0.15*6000 / 2.5 = 360
+    assert abs(u.annual_expected_exit_payout - 360.0) < 1e-9, u.annual_expected_exit_payout
+    # loss ratio = (default+exit)/fee ~ 655/1461 ~ 45% (the exit leg now dominates the loss)
+    assert 0.40 < u.loss_ratio < 0.50, u.loss_ratio
+    # breakeven default rho = (fee - exit)/(12*R) ~ 1101/12000 ~ 0.0918
+    assert 0.088 < u.breakeven_rho < 0.096, u.breakeven_rho
+    # APY positive and sane; BRL (~14% yield) with 9R locked -> ~23%
+    assert 0.18 < u.apy < 0.28, u.apy
 
     # currency peg: BRL rides a higher base than USD, but the underwriting SPREAD
     # (premium - payout)/capital is currency-independent.
@@ -499,10 +539,10 @@ def selftest() -> None:
     assert abs(unit_economics(replace(p, yield_override=0.20)).annual_defi_yield
                - 0.20 * u.capital_locked) < 1e-9
 
-    # capacity: $50k / $6k = 8
-    assert reserve_capacity(50_000, p) == 8
+    # capacity: $50k / $9k = 5
+    assert reserve_capacity(50_000, p) == 5
     pe = portfolio_economics(100_000, p)
-    assert pe.guarantees == 16
+    assert pe.guarantees == 11
     assert pe.apy > 0.15
 
     # N lever monotonic: lower N -> higher APY
@@ -530,7 +570,8 @@ if __name__ == "__main__":
     ap.add_argument("--scenario", default=DEFAULT_SCENARIO, choices=list(DELINQUENCY),
                     help="base delinquency scenario")
     ap.add_argument("--rent", type=float, default=1_000.0)
-    ap.add_argument("--months", type=int, default=6)
+    ap.add_argument("--months", type=int, default=3, help="DEFAULT (rent-arrears) coverage months, N")
+    ap.add_argument("--exit-months", type=int, default=6, help="EXIT (property-recovery) coverage, E (× rent)")
     ap.add_argument("--fee-bps", type=int, default=1_200)
     ap.add_argument("--coverage-ratio", type=float, default=1.0)
     ap.add_argument("--currency", default=DEFAULT_CURRENCY, choices=list(CURRENCIES),
@@ -547,6 +588,7 @@ if __name__ == "__main__":
         base = Params(
             rent=args.rent,
             months_covered=args.months,
+            exit_months=args.exit_months,
             fee_bps=args.fee_bps,
             coverage_ratio=args.coverage_ratio,
             currency=args.currency,

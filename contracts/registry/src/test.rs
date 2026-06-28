@@ -3,15 +3,20 @@ use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
 use soroban_sdk::{Address, Env};
 use interfaces::{Guarantee, RegistryError};
-use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ACTIVE_GUARANTEES, MAX_ENTRY_TTL};
+use crate::{guarantee_ttl_ledgers, DataKey, Registry, RegistryClient, CURRENT_SCHEMA_VERSION, MAX_ENTRY_TTL};
 
 fn g(_e: &Env, id: u32, landlord: &Address, active: bool) -> Guarantee {
     Guarantee {
         id,
         landlord: landlord.clone(),
         monthly_amount: 100,
+        // months_covered stays 6 here so the TTL tests (put_extends_guarantee_ttl,
+        // guarantee_ttl_clamped_to_max) keep their existing span math; the
+        // coverage tests override it to the pilot default (3) explicitly.
         months_covered: 6,
         months_used: 0,
+        exit_months: 6,
+        exit_used: 0,
         fee_bps: 1_000,
         period_secs: 2_592_000,
         paid_until: 0,
@@ -160,7 +165,7 @@ fn get_does_not_extend_guarantee_ttl() {
 }
 
 /// The WRITE path (`put`, exercised by every policy lifecycle mutation —
-/// sign_guarantee / pay_premium / cover_default / settle_guarantee re-put the full
+/// sign_guarantee / pay_fee / cover_default / cover_exit / settle_guarantee re-put the full
 /// struct) re-extends the Guarantee TTL. After advancing the ledger so the TTL
 /// decays below target, an in-range re-put bumps it back up. This is the archival
 /// defense after get() became pure.
@@ -290,7 +295,7 @@ fn put_rejects_id_on_empty_registry() {
 }
 
 /// Re-puts of an already-issued id must succeed (the `>=` boundary, not `>`).
-/// pay_premium / cover_default / settle_guarantee all re-put existing ids;
+/// pay_fee / cover_default / cover_exit / settle_guarantee all re-put existing ids;
 /// guards against an over-strict regression that would block legitimate updates.
 #[test]
 fn put_allows_reput_of_issued_id() {
@@ -365,109 +370,10 @@ fn writer_unset_returns_typed_error() {
     }
 }
 
-// ──────────────────── H3: bounded active set (coverage_required cost cap) ────────────────────
-
-/// `put` enforces MAX_ACTIVE_GUARANTEES on the branch that PUSHES a newly-active id.
-/// Filling the active set to the cap succeeds; the (cap+1)-th first-activation of a
-/// brand-new id is rejected with the typed `ActiveSetFull` error. This bounds the
-/// unbounded `Vec<u32>` that policy.coverage_required iterates (re-audit H3).
-/// RED before the fix: the cap const + the put() guard do not exist.
+/// The constructor records the current schema version (bumped 1 -> 2 for the
+/// appended RawCoverage instance entry).
 #[test]
-fn put_rejects_active_set_overflow() {
-    let e = Env::default();
-    e.mock_all_auths_allowing_non_root_auth();
-    let admin = Address::generate(&e);
-    let policy = Address::generate(&e);
-    let landlord = Address::generate(&e);
-
-    let id = e.register(Registry, (admin.clone(),));
-    let r = RegistryClient::new(&e, &id);
-    r.set_writer(&policy);
-
-    // Drive next_id for each id (put rejects fabricated ids >= NextId), then
-    // activate exactly MAX_ACTIVE_GUARANTEES distinct guarantees.
-    for i in 0..MAX_ACTIVE_GUARANTEES {
-        let issued = r.next_id();
-        assert_eq!(issued, i);
-        r.put(&g(&e, issued, &landlord, true));
-    }
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-
-    // One more brand-new id, first activation — must hit the cap.
-    let overflow_id = r.next_id();
-    assert_eq!(overflow_id, MAX_ACTIVE_GUARANTEES);
-    match r.try_put(&g(&e, overflow_id, &landlord, true)) {
-        Err(Ok(err)) => assert_eq!(err, RegistryError::ActiveSetFull.into()),
-        _ => panic!("expected ActiveSetFull at the cap boundary"),
-    }
-    // The rejected put did not grow the set.
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-}
-
-/// The cap must NOT block a re-put of an ALREADY-active id. pay_premium /
-/// cover_default re-put existing guarantees (same id, active:true); only a brand-new
-/// id's first activation can hit the cap. Behavior-preservation guard.
-#[test]
-fn put_cap_does_not_block_reput_of_existing_active_id() {
-    let e = Env::default();
-    e.mock_all_auths_allowing_non_root_auth();
-    let admin = Address::generate(&e);
-    let policy = Address::generate(&e);
-    let landlord = Address::generate(&e);
-
-    let id = e.register(Registry, (admin.clone(),));
-    let r = RegistryClient::new(&e, &id);
-    r.set_writer(&policy);
-
-    for i in 0..MAX_ACTIVE_GUARANTEES {
-        let issued = r.next_id();
-        assert_eq!(issued, i);
-        r.put(&g(&e, issued, &landlord, true));
-    }
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-
-    // Re-put id 0 (already active, still active) at the cap — must SUCCEED.
-    let mut g0 = g(&e, 0, &landlord, true);
-    g0.months_used = 1; // a real update, e.g. cover_default
-    r.put(&g0);
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-    assert_eq!(r.get(&0).months_used, 1);
-}
-
-/// The cap counts only currently-active entries. Deactivating one (settle /
-/// final cover_default) frees a slot, after which a new activating put succeeds again.
-#[test]
-fn put_cap_frees_slot_on_deactivation() {
-    let e = Env::default();
-    e.mock_all_auths_allowing_non_root_auth();
-    let admin = Address::generate(&e);
-    let policy = Address::generate(&e);
-    let landlord = Address::generate(&e);
-
-    let id = e.register(Registry, (admin.clone(),));
-    let r = RegistryClient::new(&e, &id);
-    r.set_writer(&policy);
-
-    for i in 0..MAX_ACTIVE_GUARANTEES {
-        let issued = r.next_id();
-        assert_eq!(issued, i);
-        r.put(&g(&e, issued, &landlord, true));
-    }
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-
-    // Deactivate id 0 → frees one slot.
-    r.put(&g(&e, 0, &landlord, false));
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES - 1);
-
-    // A new activating put now succeeds again (slot freed).
-    let new_id = r.next_id();
-    r.put(&g(&e, new_id, &landlord, true));
-    assert_eq!(r.active_ids().len(), MAX_ACTIVE_GUARANTEES);
-}
-
-/// The constructor records the current schema version.
-#[test]
-fn schema_version_is_one_after_construct() {
+fn schema_version_is_two_after_construct() {
     let e = Env::default();
     e.mock_all_auths_allowing_non_root_auth();
     let admin = Address::generate(&e);
@@ -475,7 +381,7 @@ fn schema_version_is_one_after_construct() {
     let id = e.register(Registry, (admin.clone(),));
     let r = RegistryClient::new(&e, &id);
     assert_eq!(r.schema_version(), CURRENT_SCHEMA_VERSION);
-    assert_eq!(r.schema_version(), 1);
+    assert_eq!(r.schema_version(), 2);
 }
 
 /// `upgrade` refuses when the on-chain schema version does not match this binary
@@ -500,5 +406,305 @@ fn upgrade_refuses_on_version_mismatch() {
     match r.try_upgrade(&bogus) {
         Err(Ok(err)) => assert_eq!(err, RegistryError::VersionMismatch.into()),
         _ => panic!("expected VersionMismatch on stale schema version"),
+    }
+}
+
+// ──────────────────── #39: O(1) RawCoverage aggregate (put-delta) ────────────────────
+
+/// Issue id 0 active with the PILOT default leg (months_covered = 3) over the
+/// helper's exit_months = 6; returns its id. Pilot contribution = 100*3 + 100*6 =
+/// 900. Used by the coverage tests below as the starting aggregate.
+fn issue_pilot(e: &Env, r: &RegistryClient, landlord: &Address) -> u32 {
+    let id0 = r.next_id();
+    let mut g0 = g(e, id0, landlord, true);
+    g0.months_covered = 3;
+    r.put(&g0);
+    id0
+}
+
+/// A fresh registry has a zero aggregate (constructor init + unwrap_or(0) belt).
+#[test]
+fn raw_coverage_zero_on_fresh_registry() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    assert_eq!(r.raw_coverage(), 0);
+}
+
+/// Activating put adds default + exit legs: 100*3 + (100*6 - 0) = 900.
+#[test]
+fn raw_coverage_activation_adds_default_plus_exit() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    issue_pilot(&e, &r, &landlord);
+    assert_eq!(r.raw_coverage(), 900);
+}
+
+/// cover_default re-put (months_used 0 -> 1) decrements the default leg by one
+/// monthly: 100*(3-1) + 600 = 800.
+#[test]
+fn raw_coverage_cover_default_decrements_by_monthly() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let id0 = issue_pilot(&e, &r, &landlord);
+    assert_eq!(r.raw_coverage(), 900);
+
+    let mut g0 = g(&e, id0, &landlord, true);
+    g0.months_covered = 3;
+    g0.months_used = 1;
+    r.put(&g0);
+    assert_eq!(r.raw_coverage(), 800);
+}
+
+/// cover_exit re-put (exit_used 0 -> 50) decrements the exit leg by the amount:
+/// 100*3 + (600 - 50) = 850.
+#[test]
+fn raw_coverage_cover_exit_decrements_by_amount() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let id0 = issue_pilot(&e, &r, &landlord);
+    assert_eq!(r.raw_coverage(), 900);
+
+    let mut g0 = g(&e, id0, &landlord, true);
+    g0.months_covered = 3;
+    g0.exit_used = 50;
+    r.put(&g0);
+    assert_eq!(r.raw_coverage(), 850);
+}
+
+/// settle (active -> false) subtracts the guarantee's entire remaining
+/// contribution: 900 -> 0.
+#[test]
+fn raw_coverage_settle_subtracts_remaining() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let id0 = issue_pilot(&e, &r, &landlord);
+    assert_eq!(r.raw_coverage(), 900);
+
+    let mut g0 = g(&e, id0, &landlord, false);
+    g0.months_covered = 3;
+    r.put(&g0);
+    assert_eq!(r.raw_coverage(), 0);
+}
+
+/// Exhausting the default leg AND deactivating contributes 0 (inactive ⇒ 0 leg,
+/// regardless of months_used == months_covered).
+#[test]
+fn raw_coverage_exhaust_default_zeroes_default_leg() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let id0 = issue_pilot(&e, &r, &landlord);
+    assert_eq!(r.raw_coverage(), 900);
+
+    let mut g0 = g(&e, id0, &landlord, false);
+    g0.months_covered = 3;
+    g0.months_used = 3; // exhausted default leg
+    r.put(&g0);
+    assert_eq!(r.raw_coverage(), 0);
+}
+
+/// First put of an id with active=false adds 0 (inactive ⇒ no contribution).
+#[test]
+fn raw_coverage_inactive_first_put_contributes_zero() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let id0 = r.next_id();
+    let mut g0 = g(&e, id0, &landlord, false);
+    g0.months_covered = 3;
+    r.put(&g0);
+    assert_eq!(r.raw_coverage(), 0);
+}
+
+/// `reconcile` recomputes the aggregate from the active set, correcting any forced
+/// drift back to the independently-summed truth.
+#[test]
+fn reconcile_corrects_forced_drift() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    // Two active guarantees with distinct params.
+    let a = r.next_id();
+    let mut ga = g(&e, a, &landlord, true);
+    ga.monthly_amount = 100;
+    ga.months_covered = 3;
+    ga.months_used = 1;
+    ga.exit_used = 50;
+    r.put(&ga); // 100*(3-1) + (100*6-50) = 200 + 550 = 750
+    let b = r.next_id();
+    let mut gb = g(&e, b, &landlord, true);
+    gb.monthly_amount = 200;
+    gb.months_covered = 3;
+    r.put(&gb); // 200*3 + 200*6 = 600 + 1200 = 1800
+
+    // Force a wrong aggregate.
+    e.as_contract(&id, || {
+        e.storage().instance().set(&DataKey::RawCoverage, &123_456i128);
+    });
+    assert_eq!(r.raw_coverage(), 123_456);
+
+    r.reconcile();
+
+    // Independently recompute over the active set.
+    let mut expected: i128 = 0;
+    for aid in r.active_ids().iter() {
+        let gg = r.get(&aid);
+        let dterm = gg.monthly_amount * (gg.months_covered - gg.months_used) as i128;
+        let eterm = gg.monthly_amount * gg.exit_months as i128 - gg.exit_used;
+        expected += dterm + eterm;
+    }
+    assert_eq!(expected, 2550);
+    assert_eq!(r.raw_coverage(), expected);
+}
+
+/// Deterministic LCG (no proptest crate) advances the registry through randomized
+/// issue/pay/cover_default/cover_exit/settle lifecycles and asserts, after EVERY
+/// step, that the stored O(1) `raw_coverage` equals the aggregate recomputed
+/// INDEPENDENTLY by re-reading every active guarantee's fields back from the
+/// registry. This is the CORE property: `put` is the sole mutator and its delta is
+/// exact at every write across arbitrary interleavings.
+fn next_rand(state: &mut u64) -> u64 {
+    *state = state
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
+    *state >> 33
+}
+
+#[test]
+fn raw_coverage_equals_sum_contribution_across_lifecycles() {
+    let e = Env::default();
+    e.mock_all_auths_allowing_non_root_auth();
+    let admin = Address::generate(&e);
+    let policy = Address::generate(&e);
+    let landlord = Address::generate(&e);
+
+    let id = e.register(Registry, (admin.clone(),));
+    let r = RegistryClient::new(&e, &id);
+    r.set_writer(&policy);
+
+    let mut s: u64 = 0x2545_F491_4F6C_DD1D;
+    let mut n: u32 = 0; // count of issued ids (ids are 0..n)
+    const CAP: u32 = 30; // bound the book so the per-step recompute stays cheap
+
+    for step in 0..3000u32 {
+        let op = next_rand(&mut s) % 5;
+        if op == 0 || n == 0 {
+            // issue: next_id() then a fresh active put with random monthly 1..=1000.
+            if n < CAP {
+                let monthly = (next_rand(&mut s) % 1000 + 1) as i128;
+                let nid = r.next_id();
+                assert_eq!(nid, n);
+                let mut gi = g(&e, nid, &landlord, true);
+                gi.monthly_amount = monthly;
+                r.put(&gi);
+                n += 1;
+            }
+        } else {
+            let pid = (next_rand(&mut s) as u32) % n;
+            match op {
+                1 => {
+                    // pay: no-op re-put of the current struct.
+                    let gx = r.get(&pid);
+                    r.put(&gx);
+                }
+                2 => {
+                    // cover_default: months_used += 1 (deactivate at == covered).
+                    let mut gx = r.get(&pid);
+                    if gx.active && gx.months_used < gx.months_covered {
+                        gx.months_used += 1;
+                        if gx.months_used == gx.months_covered {
+                            gx.active = false;
+                        }
+                        r.put(&gx);
+                    }
+                }
+                3 => {
+                    // cover_exit: draw a random amount up to the remaining cap.
+                    let mut gx = r.get(&pid);
+                    if gx.active {
+                        let cap = gx.monthly_amount * gx.exit_months as i128;
+                        let remaining = cap - gx.exit_used;
+                        if remaining > 0 {
+                            let delta = (next_rand(&mut s) as i128) % (remaining + 1);
+                            gx.exit_used += delta;
+                            r.put(&gx);
+                        }
+                    }
+                }
+                _ => {
+                    // settle: deactivate.
+                    let mut gx = r.get(&pid);
+                    gx.active = false;
+                    r.put(&gx);
+                }
+            }
+        }
+
+        // Independent recompute over the active set (re-implemented formula).
+        let mut expected: i128 = 0;
+        for aid in r.active_ids().iter() {
+            let gg = r.get(&aid);
+            let dterm = gg.monthly_amount * (gg.months_covered - gg.months_used) as i128;
+            let eterm = gg.monthly_amount * gg.exit_months as i128 - gg.exit_used;
+            expected += dterm + eterm;
+        }
+        assert_eq!(r.raw_coverage(), expected, "raw_coverage drift at step {}", step);
     }
 }

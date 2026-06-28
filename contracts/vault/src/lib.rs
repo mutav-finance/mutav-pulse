@@ -57,7 +57,7 @@ impl Vault {
         e.storage().instance().set(&DataKey::Admin, &admin);
         e.storage().instance().set(&DataKey::Underlying, &underlying);
         e.storage().instance().set(&DataKey::ReservedForClaims, &0i128);
-        e.storage().instance().set(&DataKey::PremiumIncome, &0i128);
+        e.storage().instance().set(&DataKey::FeeIncome, &0i128);
         e.storage().instance().set(&DataKey::Strategies, &Vec::<StrategyAlloc>::new(e));
         e.storage().instance().set(&DataKey::NextRequestId, &0u32);
         e.storage().instance().set(&DataKey::PendingRequests, &Vec::<u32>::new(e));
@@ -67,7 +67,7 @@ impl Vault {
     /// SEP-0056: address of the underlying asset the vault manages.
     pub fn query_asset(e: &Env) -> Address { e.storage().instance().get(&DataKey::Underlying).unwrap() }
     pub fn policy(e: &Env) -> Address { e.storage().instance().get(&DataKey::Policy).expect("policy not set") }
-    pub fn premium_income(e: &Env) -> i128 { e.storage().instance().get(&DataKey::PremiumIncome).unwrap_or(0) }
+    pub fn fee_income(e: &Env) -> i128 { e.storage().instance().get(&DataKey::FeeIncome).unwrap_or(0) }
 
     pub fn set_policy(e: &Env, policy: Address) {
         Self::admin(e).require_auth();
@@ -166,7 +166,7 @@ impl Vault {
     }
 
     /// H6: keep the instance entry alive (Strategies / ReservedForClaims /
-    /// PremiumIncome / Policy / NextRequestId / PendingRequests live here). Bumped
+    /// FeeIncome / Policy / NextRequestId / PendingRequests live here). Bumped
     /// on hot/lifecycle write paths so it never archives.
     fn bump_instance(e: &Env) {
         e.storage()
@@ -653,10 +653,10 @@ impl Vault {
 }
 
 /// Implement the interfaces::Vault trait so mock-policy can call
-/// VaultClient::disburse / VaultClient::collect_premium / VaultClient::stable_assets in tests.
+/// VaultClient::disburse / VaultClient::collect_fee / VaultClient::stable_assets in tests.
 #[contractimpl]
 impl VaultTrait for Vault {
-    fn disburse(e: Env, to: Address, amount: i128) {
+    fn disburse(e: Env, to: Address, amount: i128, coverage_after: i128) {
         // Only callable by the registered policy contract.
         let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
@@ -676,28 +676,43 @@ impl VaultTrait for Vault {
             "reentrant call"
         );
         e.storage().instance().set(&DataKey::Locked, &true);
-        // Pre-transfer snapshot: `stable_pre >= amount` prevents the vault from
-        // overdrawing its own stable balance (vault overdraft guard).  This does NOT
-        // prove `stable_assets >= coverage_required` post-payout — that solvency
-        // invariant is enforced by the policy lowering coverage_required (via
-        // months_used / active flag) BEFORE calling disburse, so the ordering is:
-        //   1. policy decrements coverage  2. vault disburses
-        // TODO(solvency-oracle): guard prevents vault overdraft, not coverage breach; coverage enforcement relies on policy ordering
+        // WITNESS-ASSERTED SOLVENCY (the redesign's #38 structural enforcement,
+        // replacing the old `TODO(solvency-oracle)` call-ordering convention):
+        // `coverage_after` is the policy-attested post-payout floor — the policy
+        // recomputes `coverage_required()` AFTER it has decremented and persisted
+        // the guarantee (months_used / exit_used / active), then passes it in. The
+        // vault enforces the floor against `stable_pre`, a value it ALREADY holds
+        // (its own stable balance), so it never re-enters the in-progress policy
+        // frame (Soroban forbids that re-entry; the witness is what lets the floor
+        // be checked without the callback). The witness rides on the
+        // `policy.require_auth()` above — only the admin-wired policy can produce a
+        // `coverage_after`. Residual (the spec's approved tradeoff): the vault
+        // trusts `coverage_after` BLINDLY — it cannot independently recompute the
+        // floor, so a buggy-but-honest policy could under-state it and the assert
+        // would still pass.
+        //
+        // Single `stable_pre` read reused by BOTH asserts: a second
+        // `stable_assets_inner` would re-run the O(strategies) cross-contract
+        // `balance()` reads and could observe a shifted balance. The overdraft
+        // guard proves `stable_pre - amount >= 0`, so the solvency subtraction is
+        // overflow-safe (`coverage_after >= 0` is a policy invariant) — bare i128,
+        // no mul_div widening needed.
         let stable_pre = Vault::stable_assets_inner(&e);
-        assert!(stable_pre >= amount, "disburse breaches solvency");
+        assert!(stable_pre >= amount, "disburse overdraft");
+        assert!(stable_pre - amount >= coverage_after, "disburse breaches solvency");
         Vault::ensure_liquidity(&e, amount);
         Vault::token_client(&e).transfer(&e.current_contract_address(), &to, &amount);
         e.storage().instance().set(&DataKey::Locked, &false);
     }
 
-    fn collect_premium(e: Env, from: Address, amount: i128) {
+    fn collect_fee(e: Env, from: Address, amount: i128) {
         // Only callable by the registered policy contract.
         let policy: Address = e.storage().instance().get(&DataKey::Policy).expect("policy not set");
         policy.require_auth();
         assert!(amount > 0, "amount must be positive");
-        // Reentrancy guard (re-audit H1, symmetry): collect_premium does ONE
-        // callout — token.transfer pulling premium IN from the immutable
-        // Underlying SAC — with its only effect (PremiumIncome += amount) AFTER
+        // Reentrancy guard (re-audit H1, symmetry): collect_fee does ONE
+        // callout — token.transfer pulling fee IN from the immutable
+        // Underlying SAC — with its only effect (FeeIncome += amount) AFTER
         // the transfer. The callee is the fixed SAC set at construction, not an
         // attacker-chosen adapter, so reentrancy risk is materially lower than
         // disburse. The guard is added anyway for uniform mutual exclusion across
@@ -709,8 +724,8 @@ impl VaultTrait for Vault {
         );
         e.storage().instance().set(&DataKey::Locked, &true);
         Vault::token_client(&e).transfer(&from, e.current_contract_address(), &amount);
-        let income = Vault::premium_income(&e) + amount;
-        e.storage().instance().set(&DataKey::PremiumIncome, &income);
+        let income = Vault::fee_income(&e) + amount;
+        e.storage().instance().set(&DataKey::FeeIncome, &income);
         e.storage().instance().set(&DataKey::Locked, &false);
     }
 

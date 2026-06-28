@@ -239,21 +239,21 @@ fn disburse_and_collect_are_policy_gated() {
     c.token_admin.mint(&agency, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice);
 
-    // collect_premium via the policy: no shares minted, NAV rises.
+    // collect_fee via the policy: no shares minted, NAV rises.
     let supply_before = c.vault.total_supply();
     c.policy.call_collect(&agency, &50);
     assert_eq!(c.vault.total_supply(), supply_before); // no new shares
-    assert_eq!(c.vault.premium_income(), 50);
+    assert_eq!(c.vault.fee_income(), 50);
     assert_eq!(c.vault.total_assets(), 1_050);
 
-    // disburse via the policy pays out.
-    c.policy.call_disburse(&landlord, &100);
+    // disburse via the policy pays out (coverage_after = 0 → no solvency floor).
+    c.policy.call_disburse(&landlord, &100, &0);
     assert_eq!(c.token.balance(&landlord), 100);
 
     // A non-policy caller cannot disburse: disable auth mocking so
     // policy.require_auth() in disburse actually enforces the caller.
     c.e.set_auths(&[]);
-    assert!(c.vault.try_disburse(&landlord, &10).is_err());
+    assert!(c.vault.try_disburse(&landlord, &10, &0).is_err());
 }
 
 /// Ported from monolith `inflation_attack_does_not_zero_out_second_depositor`.
@@ -301,7 +301,7 @@ fn cancel_redeem_returns_escrowed_shares() {
 // ───────────────────────────── invariant tests ─────────────────────────────
 
 /// Vault overdraft guard in `disburse`: paying out more stable than the vault
-/// holds must revert with "disburse breaches solvency"; paying out exactly the
+/// holds must revert with "disburse overdraft"; paying out exactly the
 /// stable balance is the inclusive boundary and must succeed.
 #[test]
 fn disburse_overdraft_guard_and_boundary() {
@@ -312,8 +312,8 @@ fn disburse_overdraft_guard_and_boundary() {
     c.token_admin.mint(&alice, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice);
     assert_eq!(c.vault.stable_assets(), 1_000);
-    // Proxy through the policy; the guard rejects the overdraw.
-    assert!(c.policy.try_call_disburse(&landlord, &1_001).is_err());
+    // Proxy through the policy; the guard rejects the overdraw (coverage_after = 0).
+    assert!(c.policy.try_call_disburse(&landlord, &1_001, &0).is_err());
     // Nothing moved.
     assert_eq!(c.token.balance(&landlord), 0);
     assert_eq!(c.vault.stable_assets(), 1_000);
@@ -324,9 +324,110 @@ fn disburse_overdraft_guard_and_boundary() {
     let landlord2 = Address::generate(&c2.e);
     c2.token_admin.mint(&alice2, &1_000);
     c2.vault.deposit(&1_000, &alice2, &alice2, &alice2);
-    c2.policy.call_disburse(&landlord2, &1_000);
+    // coverage_after = 0 so 1_000 - 1_000 >= 0 holds on the success path.
+    c2.policy.call_disburse(&landlord2, &1_000, &0);
     assert_eq!(c2.token.balance(&landlord2), 1_000);
     assert_eq!(c2.vault.stable_assets(), 0);
+}
+
+/// #38 witness assertion (RED-first): a `disburse` whose policy-attested
+/// `coverage_after` exceeds the post-payout stable balance must revert. With
+/// stable_pre = 1_000 and amount = 100, `stable_pre - amount = 900`; a
+/// `coverage_after = 950` breaches the floor (900 < 950) and the whole tx rolls
+/// back — nothing pays out. This is the structural solvency the old call-ordering
+/// TODO(solvency-oracle) only documented.
+#[test]
+fn disburse_solvency_witness_reverts() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // stable_pre - amount = 900 < coverage_after = 950 → breach.
+    assert!(c.policy.try_call_disburse(&landlord, &100, &950).is_err());
+    // Nothing moved.
+    assert_eq!(c.token.balance(&landlord), 0);
+    assert_eq!(c.vault.stable_assets(), 1_000);
+}
+
+/// #38 witness assertion (GREEN + boundary + safe-direction asymmetry): a
+/// `disburse` whose `coverage_after` exactly equals the post-payout stable balance
+/// succeeds (inclusive `>=` boundary), pays the landlord, and releases the Locked
+/// guard. Conversely a `coverage_after` set ABOVE the true floor reverts — the
+/// witness is conservative in the SAFE direction: over-stating the floor only ever
+/// blocks a payout, never allows an unsafe one.
+#[test]
+fn disburse_solvency_witness_succeeds() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    // Boundary: stable_pre - amount = 900 == coverage_after = 900 → succeeds.
+    c.policy.call_disburse(&landlord, &100, &900);
+    assert_eq!(c.token.balance(&landlord), 100);
+
+    // Lock released on the happy path (contract not wedged).
+    let locked = c.e.as_contract(&c.vault_id, || {
+        c.e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false)
+    });
+    assert!(!locked, "Locked must be cleared after a successful disburse");
+
+    // Safe-direction asymmetry: stable_pre is now 900; disbursing 100 with a
+    // coverage_after = 801 (> the true post-payout floor of 800) reverts.
+    assert!(c.policy.try_call_disburse(&landlord, &100, &801).is_err());
+    assert_eq!(c.token.balance(&landlord), 100); // unchanged — no second payout
+}
+
+/// Direct (non-try) client call proving the overdraft revert carries the DISTINCT
+/// "disburse overdraft" message (a `try_*.is_err()` cannot distinguish which of the
+/// two asserts tripped). amount = 1_001 > stable_pre = 1_000 → overdraft.
+#[test]
+#[should_panic(expected = "disburse overdraft")]
+fn disburse_overdraft_message() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    // Direct policy-authed call (auth mocked); the overdraft assert panics.
+    c.policy.call_disburse(&landlord, &1_001, &0);
+}
+
+/// Direct (non-try) client call proving the solvency revert carries the DISTINCT
+/// "disburse breaches solvency" message. amount = 100 <= stable_pre = 1_000 (so the
+/// overdraft assert passes), but stable_pre - amount = 900 < coverage_after = 950.
+#[test]
+#[should_panic(expected = "disburse breaches solvency")]
+fn disburse_breaches_solvency_message() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let landlord = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+    c.policy.call_disburse(&landlord, &100, &950);
+}
+
+/// `collect_fee` accrues to NAV (renamed from `collect_premium`): the pulled fee
+/// raises `fee_income` and `total_assets` but mints ZERO shares, so existing
+/// holders' `nav_per_share` rises (fees benefit the reserve, not new equity).
+#[test]
+fn collect_fee_accrues_to_nav() {
+    let c = setup();
+    let alice = Address::generate(&c.e);
+    let agency = Address::generate(&c.e);
+    c.token_admin.mint(&alice, &1_000);
+    c.token_admin.mint(&agency, &1_000);
+    c.vault.deposit(&1_000, &alice, &alice, &alice);
+
+    let supply_before = c.vault.total_supply();
+    let nav_before = c.vault.nav_per_share();
+    c.policy.call_collect(&agency, &50);
+    assert_eq!(c.vault.fee_income(), 50);
+    assert_eq!(c.vault.total_supply(), supply_before); // zero shares minted
+    assert!(c.vault.nav_per_share() > nav_before); // fee accrued to NAV
 }
 
 /// `process_redemptions(max_batch)` fulfils at most `max_batch` requests per call
@@ -429,7 +530,7 @@ fn process_redemptions_prices_identically_to_preview_redeem() {
     c.token_admin.mint(&alice, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice); // 1_000 shares
 
-    // Push NAV to a fractional ratio: collect a 333 premium (no shares minted),
+    // Push NAV to a fractional ratio: collect a 333 fee (no shares minted),
     // total_assets = 1_333, supply = 1_000 → shares*assets/supply is non-integer.
     let agency = Address::generate(&c.e);
     c.token_admin.mint(&agency, &1_000);
@@ -488,7 +589,7 @@ fn nav_per_share_unchanged_after_widening() {
     c.vault.deposit(&1_000, &alice, &alice, &alice);
     assert_eq!(c.vault.nav_per_share(), 10_000_000); // unit NAV at 1:1
 
-    // Non-trivial NAV: collect 333 premium → total 1_333, supply 1_000.
+    // Non-trivial NAV: collect 333 fee → total 1_333, supply 1_000.
     let agency = Address::generate(&c.e);
     c.token_admin.mint(&agency, &1_000);
     c.policy.call_collect(&agency, &333);
@@ -687,7 +788,7 @@ fn process_redemptions_keeps_fulfilled_request_alive() {
 }
 
 /// The hot deposit path bumps the instance entry (Strategies / ReservedForClaims /
-/// PremiumIncome / Policy / NextRequestId / PendingRequests) toward the max.
+/// FeeIncome / Policy / NextRequestId / PendingRequests) toward the max.
 #[test]
 fn deposit_bumps_instance_ttl() {
     let c = setup();
@@ -819,7 +920,7 @@ fn ensure_liquidity_reverts_typed_on_illiquid_shortfall() {
 
     // Drive a payout for the full deposit: ensure_liquidity can pull at most ~500
     // realized from the strategy, short of the 1_000 needed -> typed revert.
-    let res = c.policy.try_call_disburse(&landlord, &1_000);
+    let res = c.policy.try_call_disburse(&landlord, &1_000, &0);
     assert!(res.is_err(), "lossy-illiquid disburse must revert");
     // Typed: the error carries the vault contract error code 600, not a host trap.
     match res {
@@ -1035,20 +1136,20 @@ fn ensure_liquidity_re_reads_held_after_each_divest() {
 
     // Disburse 800: needs liquidity from BOTH strategies (500 from A, 300 from B).
     // The loop must re-read `held` after divesting A to know B is still needed.
-    c.policy.call_disburse(&landlord, &800);
+    c.policy.call_disburse(&landlord, &800, &0);
     assert_eq!(c.token.balance(&landlord), 800);
     assert_eq!(c.vault.total_assets(), 200);
 
     // A request exceeding total stable still reverts (the disburse overdraft
     // guard `stable_pre >= amount` trips first here; either way nothing pays out).
-    assert!(c.policy.try_call_disburse(&landlord, &10_000).is_err());
+    assert!(c.policy.try_call_disburse(&landlord, &10_000, &0).is_err());
     assert_eq!(c.token.balance(&landlord), 800); // unchanged from the prior payout
 }
 
 /// Guards the process_redemptions per-iteration `ta` hoist: two requests
 /// processed in one batch must each be priced at the NAV in effect at the moment
 /// that request is settled (later requests see post-fulfillment total_assets, not
-/// a stale batch snapshot). With premium-inflated NAV, both redeemers get strictly
+/// a stale batch snapshot). With fee-inflated NAV, both redeemers get strictly
 /// more than their nominal share count and pricing stays monotone per the
 /// shrinking pool.
 #[test]
@@ -1059,7 +1160,7 @@ fn process_redemptions_per_iteration_pricing_unchanged() {
     c.token_admin.mint(&alice, &1_000);
     c.token_admin.mint(&agency, &1_000);
     c.vault.deposit(&1_000, &alice, &alice, &alice);
-    // Inflate NAV via premium (no new shares): total_assets 1_500, supply 1_000.
+    // Inflate NAV via fee (no new shares): total_assets 1_500, supply 1_000.
     c.policy.call_collect(&agency, &500);
     assert_eq!(c.vault.total_assets(), 1_500);
     c.policy.set_coverage(&0); // ample free capital
@@ -1204,7 +1305,7 @@ fn disburse_traps_on_reentrant_divest() {
     // disburse -> ensure_liquidity -> strategy.divest -> rebalance() (re-entry).
     // The inner rebalance is rejected (disburse Locked guard + host re-entry
     // check), reverting the whole disburse.
-    let res = c.policy.try_call_disburse(&landlord, &500);
+    let res = c.policy.try_call_disburse(&landlord, &500, &0);
     assert!(res.is_err(), "re-entrant disburse must trap");
     // Whole tx rolled back: nothing paid out.
     assert_eq!(c.token.balance(&landlord), 0);
@@ -1229,7 +1330,7 @@ fn disburse_succeeds_without_reentry() {
     assert_eq!(c.vault.available_held(), 0);
 
     // No reenter target armed → plain divest path.
-    c.policy.call_disburse(&landlord, &400);
+    c.policy.call_disburse(&landlord, &400, &0);
     assert_eq!(c.token.balance(&landlord), 400);
     assert_eq!(c.vault.total_assets(), 600);
 
@@ -1243,12 +1344,12 @@ fn disburse_succeeds_without_reentry() {
     c.vault.rebalance();
 }
 
-/// collect_premium guard (symmetry): the callout is the immutable Underlying SAC
+/// collect_fee guard (symmetry): the callout is the immutable Underlying SAC
 /// pulling funds IN with the effect applied after — not attacker-reachable, so a
-/// true re-entry is not constructible. Assert release-correctness: collect_premium
+/// true re-entry is not constructible. Assert release-correctness: collect_fee
 /// still succeeds and leaves Locked == false.
 #[test]
-fn collect_premium_releases_lock() {
+fn collect_fee_releases_lock() {
     let c = setup();
     let alice = Address::generate(&c.e);
     let agency = Address::generate(&c.e);
@@ -1257,17 +1358,17 @@ fn collect_premium_releases_lock() {
     c.vault.deposit(&1_000, &alice, &alice, &alice);
 
     c.policy.call_collect(&agency, &50);
-    assert_eq!(c.vault.premium_income(), 50);
+    assert_eq!(c.vault.fee_income(), 50);
 
     let locked = c.e.as_contract(&c.vault_id, || {
         c.e.storage().instance().get::<_, bool>(&DataKey::Locked).unwrap_or(false)
     });
-    assert!(!locked, "Locked must be cleared after collect_premium");
+    assert!(!locked, "Locked must be cleared after collect_fee");
 }
 
 /// Proves the new in-contract Locked assert is load-bearing INDEPENDENT of the
 /// host's direct-frame re-entry check: with Locked pre-set to true (simulating a
-/// callout path mid-execution), disburse and collect_premium must trap on their
+/// callout path mid-execution), disburse and collect_fee must trap on their
 /// own guard. WITHOUT the added assert in disburse, the call would proceed past a
 /// stale lock — so this is the genuine RED for the fix.
 #[test]
@@ -1286,17 +1387,17 @@ fn disburse_and_collect_assert_locked_flag() {
     });
 
     // Both money-callout paths must now trap on the Locked assert.
-    assert!(c.policy.try_call_disburse(&landlord, &100).is_err(), "disburse must trap when Locked");
-    assert!(c.policy.try_call_collect(&agency, &100).is_err(), "collect_premium must trap when Locked");
+    assert!(c.policy.try_call_disburse(&landlord, &100, &0).is_err(), "disburse must trap when Locked");
+    assert!(c.policy.try_call_collect(&agency, &100).is_err(), "collect_fee must trap when Locked");
 
     // Nothing moved.
     assert_eq!(c.token.balance(&landlord), 0);
-    assert_eq!(c.vault.premium_income(), 0);
+    assert_eq!(c.vault.fee_income(), 0);
 
     // Clearing the flag restores normal operation (guard, not a permanent wedge).
     c.e.as_contract(&c.vault_id, || {
         c.e.storage().instance().set(&DataKey::Locked, &false);
     });
-    c.policy.call_disburse(&landlord, &100);
+    c.policy.call_disburse(&landlord, &100, &0);
     assert_eq!(c.token.balance(&landlord), 100);
 }
