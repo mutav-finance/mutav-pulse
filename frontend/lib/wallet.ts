@@ -39,6 +39,9 @@
  *   OR use signAndSubmit(xdr) for raw XDR signing + submission outside bindings.
  */
 
+// Must precede the kit import: neutralizes Node 25's broken server-side
+// localStorage stub so the kit's `localStorage?.getItem` SSR guard works.
+import "./ssr-localstorage-fix";
 import {
   StellarWalletsKit,
   Networks,

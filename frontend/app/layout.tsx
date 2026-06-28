@@ -31,6 +31,13 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geist.variable} h-full antialiased`}
       data-front="investidor"
+      // Stellar Wallets Kit injects `--swk-*` CSS custom properties onto
+      // document.documentElement at import time (its themeEffect runs during
+      // client bundle eval, before hydration) — see lib/wallet.ts → the kit's
+      // state/effects.js. The server never renders those, so React flags an
+      // <html> style mismatch. Suppress at this element only (one level deep,
+      // not children); the injected vars are cosmetic and self-heal post-mount.
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         <WalletProvider>
