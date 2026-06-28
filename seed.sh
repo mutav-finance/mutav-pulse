@@ -37,11 +37,11 @@ PERIOD=2592000            # 30 days
 # Deposit must exceed total reserved coverage = #guarantees × 9 × R before signing.
 # 4 × 9 × 2,000 = 72,000 cBRL; deposit 100,000 with headroom for fees.
 DEPOSIT=1000000000000     # 100,000 cBRL investor deposit
-MINT=1100000000000        # 110,000 cBRL minted to admin (deposit + fees + buffer)
 
-echo "→ minting cBRL to admin (issuer, no trustline needed)"
-inv "$BRL_SAC" "$ADMIN" mint --to "$ADMIN_ADDR" --amount "$MINT"
-
+# Admin IS the cBRL issuer, so it funds the deposit (and fees) by issuance — a
+# transfer-out from the issuer mints implicitly. Do NOT mint to the issuer: a classic
+# asset cannot mint to its own issuer (Error(Contract,#2) "operation invalid on
+# issuer"; the issuer already carries implicit infinite balance).
 echo "→ admin deposits 100,000 cBRL (SEP-0056 deposit: assets/receiver/from/operator)"
 inv "$VAULT" "$ADMIN" deposit --assets "$DEPOSIT" --receiver "$ADMIN_ADDR" --from "$ADMIN_ADDR" --operator "$ADMIN_ADDR"
 
