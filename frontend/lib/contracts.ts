@@ -121,6 +121,12 @@ export function reserveReads(c: ReserveContracts) {
       return tx.result;
     },
 
+    /** Grace window (seconds) before a missed fee counts as default. */
+    async policyGraceSecs(): Promise<bigint> {
+      const tx = await policyClient().grace_secs();
+      return tx.result;
+    },
+
     async policyGuarantee(id: bigint): Promise<Guarantee> {
       const tx = await policyClient().guarantee({ id: Number(id) });
       return tx.result;

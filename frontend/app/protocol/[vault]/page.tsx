@@ -54,6 +54,12 @@ import {
   removeStrategy,
   setMinLiquidBufferBps,
   setStrategyMaxDebtBps,
+  setVaultAdmin,
+  setPolicyAdmin,
+  setVaultPolicy,
+  setTokenMetadata,
+  setCoverageRatioBps,
+  setGraceSecs,
 } from "@/lib/admin-tx";
 import { fmtFiat, truncAddr, errMsg, parseToStroops, type Money } from "@/lib/format";
 import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
@@ -75,6 +81,8 @@ interface ProtocolData {
   availableHeld: bigint;
   /** Liquid cash-buffer target, bps of total assets (0 = deploy everything). */
   bufferBps: number;
+  /** Default grace window (seconds) before a missed fee counts as default. */
+  graceSecs: bigint;
   /** Live actual balance deployed per strategy, keyed by address. */
   strategyBalances: Record<string, bigint>;
   /** Per-strategy concentration cap, bps of total assets, keyed by address. */
@@ -94,6 +102,7 @@ const INITIAL: ProtocolData = {
   strategies: [],
   availableHeld: 0n,
   bufferBps: 0,
+  graceSecs: 0n,
   strategyBalances: {},
   strategyCaps: {},
   activeGuarantees: [],
@@ -223,6 +232,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         strategies,
         availableHeld,
         bufferBps,
+        graceSecs,
         activeIds,
       ] = await Promise.all([
         reads.vaultAdmin(),
@@ -234,6 +244,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         reads.vaultStrategies(),
         reads.vaultAvailableHeld(),
         reads.vaultMinLiquidBufferBps(),
+        reads.policyGraceSecs(),
         reads.registryActiveIds(),
       ]);
 
@@ -273,6 +284,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
         strategies,
         availableHeld,
         bufferBps,
+        graceSecs,
         strategyBalances,
         strategyCaps,
         activeGuarantees,
@@ -338,6 +350,15 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
   const [bufferInput, setBufferInput] = useState("");
   const [capStrategy, setCapStrategy] = useState("");
   const [capInput, setCapInput] = useState("");
+
+  // ── Form state: Manage (governance) ──────────────────────────────────────────
+  const [newVaultAdmin, setNewVaultAdmin] = useState("");
+  const [newPolicyAdmin, setNewPolicyAdmin] = useState("");
+  const [newPolicyAddr, setNewPolicyAddr] = useState("");
+  const [tokenName, setTokenName] = useState("");
+  const [tokenSymbol, setTokenSymbol] = useState("");
+  const [ratioInput, setRatioInput] = useState("");
+  const [graceInput, setGraceInput] = useState("");
 
   // ── Guarantee / strategy options for pickers (memoized — stable refs so the
   //    FormSelects don't re-render on unrelated form-state keystrokes) ──────────
@@ -768,6 +789,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 { id: "claims", label: "Claims" },
                 { id: "liquidity", label: "Liquidity" },
                 { id: "strategies", label: "Strategies" },
+                { id: "manage", label: "Manage" },
               ].map((s) => {
                 const active = activeSection === s.id;
                 return (
@@ -1609,6 +1631,152 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   after to redeploy. Removing the last strategy leaves all assets
                   idle in the vault.
                 </p>
+              </ProtocolActionForm>
+            </ActionGrid>
+            </>
+            )}
+
+            {/* ── Manage (governance / lifecycle) ──────────────────────── */}
+            {activeSection === "manage" && (
+            <>
+            <SectionBio>Governance and lifecycle. Transfer admin control, tune policy parameters, swap the underwriting model, and re-label shares. Contract <strong>upgrades</strong> are performed via the Stellar CLI / <code>bootstrap.sh</code> (the wasm must be installed on-chain first), not from this cockpit.</SectionBio>
+
+            {/* Roles */}
+            <SubHeading>Roles · admin</SubHeading>
+            <div style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", padding: "14px 16px", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                { label: "Vault admin", addr: data.vaultAdmin, you: isVaultAdmin },
+                { label: "Policy admin", addr: data.policyAdmin, you: isPolicyAdmin },
+              ].map((r) => (
+                <div key={r.label} style={{ display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap" }}>
+                  <span className="font-body" style={{ fontSize: "10px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-text-3)", width: "92px", flexShrink: 0 }}>{r.label}</span>
+                  <Mono style={{ fontSize: "12px", color: "var(--color-text-2)" }}>{r.addr || "—"}</Mono>
+                  {r.you && <span className="font-mono" style={{ fontSize: "10px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-accent)" }}>you</span>}
+                </div>
+              ))}
+            </div>
+            <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-3)", margin: "0 0 14px", lineHeight: 1.5, maxWidth: "760px" }}>
+              Each contract has a <strong>single</strong> admin. Transferring hands control over entirely and is <strong>irreversible</strong> unless you also control the new address — there is no multi-admin list to add to or remove from.
+            </p>
+            <ActionGrid>
+              {/* Transfer Vault Admin */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Transfer Vault Admin"
+                description="vault.set_admin"
+                actionLabel="Transfer"
+                disabled={!isVaultAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newVaultAdmin) throw new Error("new admin address is required");
+                  return setVaultAdmin(contracts, address, newVaultAdmin);
+                }}
+                onSuccess={() => { setNewVaultAdmin(""); handleSuccess(); }}
+              >
+                <FormField id="new-vault-admin" label="New Vault Admin (C…/G…)" placeholder="G… or C…" value={newVaultAdmin} onChange={setNewVaultAdmin} disabled={!isVaultAdmin} hint="Hands over vault control. Double-check the address." />
+              </ProtocolActionForm>
+
+              {/* Transfer Policy Admin */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Transfer Policy Admin"
+                description="policy.set_admin"
+                actionLabel="Transfer"
+                disabled={!isPolicyAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newPolicyAdmin) throw new Error("new admin address is required");
+                  return setPolicyAdmin(contracts, address, newPolicyAdmin);
+                }}
+                onSuccess={() => { setNewPolicyAdmin(""); handleSuccess(); }}
+              >
+                <FormField id="new-policy-admin" label="New Policy Admin (C…/G…)" placeholder="G… or C…" value={newPolicyAdmin} onChange={setNewPolicyAdmin} disabled={!isPolicyAdmin} hint="Hands over the underwriting brain's admin." />
+              </ProtocolActionForm>
+            </ActionGrid>
+
+            {/* Policy parameters */}
+            <div style={{ marginTop: "24px" }}>
+              <SubHeading>Policy parameters</SubHeading>
+            </div>
+            <ActionGrid>
+              {/* Coverage ratio */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Coverage Ratio (c)"
+                description="policy.set_coverage_ratio_bps"
+                actionLabel="Set ratio"
+                disabled={!isPolicyAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  const pct = parseFloat(ratioInput);
+                  if (isNaN(pct) || pct <= 0) throw new Error("ratio must be a positive percent");
+                  return setCoverageRatioBps(contracts, address, Math.round(pct * 100));
+                }}
+                onSuccess={() => { setRatioInput(""); handleSuccess(); }}
+              >
+                <FormField id="ratio-pct" label="Coverage ratio (%)" type="number" min="1" step="1" placeholder="100" value={ratioInput} onChange={setRatioInput} disabled={!isPolicyAdmin} hint="Solvency multiplier on raw coverage. 100% = 1.0× (hard-solvent); >100% over-collateralizes." />
+              </ProtocolActionForm>
+
+              {/* Grace window */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Grace Window"
+                description="policy.set_grace_secs"
+                actionLabel="Set grace"
+                disabled={!isPolicyAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  const days = parseFloat(graceInput);
+                  if (isNaN(days) || days < 0) throw new Error("grace must be a non-negative number of days");
+                  return setGraceSecs(contracts, address, BigInt(Math.round(days * 86400)));
+                }}
+                onSuccess={() => { setGraceInput(""); handleSuccess(); }}
+              >
+                <FormField id="grace-days" label="Grace window (days)" type="number" min="0" step="1" placeholder={(Number(data.graceSecs) / 86400).toFixed(0)} value={graceInput} onChange={setGraceInput} disabled={!isPolicyAdmin} hint={`Window after a missed fee before default. Currently ${(Number(data.graceSecs) / 86400).toFixed(1)} days.`} />
+              </ProtocolActionForm>
+            </ActionGrid>
+
+            {/* Wiring & token */}
+            <div style={{ marginTop: "24px" }}>
+              <SubHeading>Wiring &amp; share token</SubHeading>
+            </div>
+            <ActionGrid>
+              {/* Set Policy (swap the model) */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Set Policy"
+                description="vault.set_policy"
+                actionLabel="Wire policy"
+                disabled={!isVaultAdmin}
+                requireConfirm
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!newPolicyAddr) throw new Error("policy address is required");
+                  return setVaultPolicy(contracts, address, newPolicyAddr);
+                }}
+                onSuccess={() => { setNewPolicyAddr(""); handleSuccess(); }}
+              >
+                <FormField id="new-policy-addr" label="Policy Contract (C…)" placeholder="C…" value={newPolicyAddr} onChange={setNewPolicyAddr} disabled={!isVaultAdmin} hint="Swaps the underwriting model without moving funds. The new policy must be wired to this vault + registry." />
+              </ProtocolActionForm>
+
+              {/* Relabel shares */}
+              <ProtocolActionForm
+                currency={currency}
+                title="Re-label Shares"
+                description="vault.set_token_metadata"
+                actionLabel="Set metadata"
+                disabled={!isVaultAdmin}
+                onSubmit={async () => {
+                  if (!address) throw new Error("no wallet");
+                  if (!tokenName.trim() || !tokenSymbol.trim()) throw new Error("name and symbol are required");
+                  return setTokenMetadata(contracts, address, tokenName.trim(), tokenSymbol.trim());
+                }}
+                onSuccess={() => { setTokenName(""); setTokenSymbol(""); handleSuccess(); }}
+              >
+                <FormField id="token-name" label="Share token name" placeholder="Mutav USD Reserve" value={tokenName} onChange={setTokenName} disabled={!isVaultAdmin} />
+                <FormField id="token-symbol" label="Share token symbol" placeholder="MUSD" value={tokenSymbol} onChange={setTokenSymbol} disabled={!isVaultAdmin} hint="Decimals are fixed at 7. Balances and NAV are preserved." />
               </ProtocolActionForm>
             </ActionGrid>
             </>
