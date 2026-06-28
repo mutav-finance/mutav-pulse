@@ -5,6 +5,16 @@
 **/test_snapshots/
 .design/onre-ref/
 
+# Dependencies (root is not an npm package; any node_modules here is a stray cache)
+node_modules/
+
+# Agent harness — dev-only, not shipped product. Vendored skills (e.g. the
+# `impeccable` design tool) and ephemeral worktrees never belong in the repo.
+# (.claude/workflows IS tracked — our own orchestration scripts.)
+.claude/skills/
+.claude/worktrees/
+.superpowers/
+
 # Local secrets / wallet backups — NEVER commit (testnet keys; see secrets-audit #12)
 .env.local
 .env*.local

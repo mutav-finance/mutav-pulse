@@ -60,5 +60,6 @@ This mirrors the other consumers (`mutav`, `mutav-app`, `mutav-fund`, `mutav-ste
 ## Frontend (`frontend/` — Plan 3, in progress)
 
 Stellar Wallets Kit + the three brand fronts wired to the testnet deploy. Use the
-**`impeccable`** skill (installed at `.claude/skills/impeccable`) for design quality, and
-the MUTAV brand tokens above — do not invent colors/type.
+**`impeccable`** skill (an optional design-quality dev tool — install separately;
+not vendored in this repo) for design quality, and the MUTAV brand tokens above —
+do not invent colors/type.
