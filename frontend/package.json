@@ -8,24 +8,30 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.3.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@xyflow/react": "^12.11.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "faucet": "file:./bindings/faucet",
     "next": "16.2.9",
     "policy": "file:./bindings/policy",
+    "radix-ui": "^1.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "registry": "file:./bindings/registry",
     "soroswap-router": "file:./bindings/soroswap-router",
     "strategy": "file:./bindings/strategy",
+    "tailwind-merge": "^3.6.0",
     "vault": "file:./bindings/vault"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -15,6 +15,7 @@
 
 import { useWallet } from "./WalletProvider";
 import { truncAddr } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 
 export function ConnectButton() {
   const { address, connecting, error, connect, disconnect } = useWallet();
@@ -47,10 +48,13 @@ export function ConnectButton() {
           {truncAddr(address)}
         </span>
 
-        {/* Disconnect */}
-        <button
+        {/* Disconnect — Button primitive (ghost), inline styles preserve the
+            plain text-link look exactly (h-auto removes the primitive's fixed
+            height so the control stays content-sized as before). */}
+        <Button
+          variant="ghost"
           onClick={disconnect}
-          className="font-body"
+          className="font-body h-auto"
           style={{
             fontSize: "12px",
             fontWeight: 500,
@@ -64,7 +68,7 @@ export function ConnectButton() {
           aria-label="Disconnect wallet"
         >
           Disconnect
-        </button>
+        </Button>
       </div>
     );
   }
@@ -72,10 +76,15 @@ export function ConnectButton() {
   // ── Connecting / disconnected state ──────────────────────────────────────
   return (
     <div style={{ display: "inline-flex", flexDirection: "column", gap: "6px" }}>
-      <button
+      <Button
+        variant="outline"
         onClick={() => { connect().catch(() => { /* error surfaced via context */ }); }}
         disabled={connecting}
-        className="font-body connect-cta"
+        // `connect-cta` keeps the amber-fill-on-intent hover; `h-auto` removes the
+        // primitive's fixed h-9 so the button stays the same content-driven height.
+        // Inline styles below dominate the outline-variant utilities (color/bg/
+        // border/padding), so appearance is byte-equivalent to the prior <button>.
+        className="font-body connect-cta h-auto"
         aria-label="Connect Stellar wallet"
         style={{
           display: "inline-flex",
@@ -108,7 +117,7 @@ export function ConnectButton() {
           <span className="live-dot" aria-hidden="true" />
         )}
         <span>{connecting ? "Connecting…" : "Connect Wallet"}</span>
-      </button>
+      </Button>
 
       {/* Error feedback — brand-styled, shown only when a connect attempt failed */}
       {error && (

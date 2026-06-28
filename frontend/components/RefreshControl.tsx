@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 /**
  * RefreshControl — re-runs the reserve read cycle. Lives in the hub header next
  * to the Cockpit link so "refresh" reads as a page-level action, not a metric
@@ -7,6 +9,11 @@
  *
  * Design: Precision Brutalism / Investidor. Neutral border button, mono
  * timestamp underneath. Amber only via the spinning indicator while loading.
+ *
+ * Migrated onto the shared Button primitive (`outline` variant). The inline
+ * `style` below intentionally pins border/background/color/opacity/pointer-
+ * events so the variant's amber hover-fill and `disabled:opacity-40` do NOT
+ * apply — preserving this control's exact original look (no hover, no dim).
  */
 
 export function RefreshControl({
@@ -27,11 +34,12 @@ export function RefreshControl({
         gap: "6px",
       }}
     >
-      <button
+      <Button
+        variant="outline"
         onClick={onRefresh}
         disabled={loading}
         aria-label="Refresh on-chain reserve data"
-        className="font-body"
+        className="h-auto font-body"
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -44,6 +52,8 @@ export function RefreshControl({
           fontWeight: 500,
           textTransform: "uppercase",
           letterSpacing: "0.04em",
+          opacity: 1,
+          pointerEvents: "auto",
           cursor: loading ? "not-allowed" : "pointer",
         }}
       >
@@ -58,7 +68,7 @@ export function RefreshControl({
           ↻
         </span>
         {loading ? "Loading" : "Refresh"}
-      </button>
+      </Button>
       {lastRefreshed && (
         <span
           className="font-mono"

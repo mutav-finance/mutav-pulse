@@ -39,6 +39,8 @@ import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { UnverifiedReserve } from "@/components/UnverifiedReserve";
 import { Mono } from "@/components/Mono";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ProtocolActionForm,
   FormField,
@@ -577,10 +579,11 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 ADMIN
               </span>
             )}
-            <button
+            <Button
+              variant="outline"
               onClick={fetchAll}
               disabled={data.loading}
-              className="font-mono"
+              className="h-auto font-mono"
               style={{
                 border: "1px solid var(--color-border)",
                 background: "transparent",
@@ -591,10 +594,12 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 cursor: data.loading ? "not-allowed" : "pointer",
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
+                opacity: 1,
+                pointerEvents: "auto",
               }}
             >
               {data.loading ? "LOADING…" : "↻ REFRESH"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -815,51 +820,35 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
               </p>
             </div>
 
-            {/* ── Section tabs (sticky below the top NavShell) ──────── */}
-            <nav
-              aria-label="Cockpit sections"
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: "2px",
-                marginBottom: "16px",
-                borderBottom: "1px solid var(--color-border)",
-              }}
+            {/* ── Section tabs (stateful content switch — Radix Tabs) ──────── */}
+            <Tabs
+              value={activeSection}
+              onValueChange={setActiveSection}
+              className="block gap-0"
             >
-              {[
-                { id: "underwriting", label: "Underwriting" },
-                { id: "fees", label: "Fees" },
-                { id: "claims", label: "Claims" },
-                { id: "liquidity", label: "Liquidity" },
-                { id: "strategies", label: "Strategies" },
-                { id: "manage", label: "Manage" },
-              ].map((s) => {
-                const active = activeSection === s.id;
-                return (
-                  <button
+              <TabsList
+                aria-label="Cockpit sections"
+                className="flex flex-wrap"
+                style={{ gap: "2px", marginBottom: "16px" }}
+              >
+                {[
+                  { id: "underwriting", label: "Underwriting" },
+                  { id: "fees", label: "Fees" },
+                  { id: "claims", label: "Claims" },
+                  { id: "liquidity", label: "Liquidity" },
+                  { id: "strategies", label: "Strategies" },
+                  { id: "manage", label: "Manage" },
+                ].map((s) => (
+                  <TabsTrigger
                     key={s.id}
-                    type="button"
-                    onClick={() => setActiveSection(s.id)}
-                    aria-current={active ? "true" : undefined}
-                    className="font-mono section-tab"
+                    value={s.id}
+                    className="font-mono data-[state=active]:[border-bottom-color:var(--color-copper)]"
                     style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
                       fontSize: "13px",
-                      fontWeight: 500,
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
                       padding: "10px 14px",
                       cursor: "pointer",
-                      background: "transparent",
-                      border: "none",
-                      borderBottom: active
-                        ? "2px solid var(--color-copper)"
-                        : "2px solid transparent",
-                      marginBottom: "-1px",
-                      color: active ? "var(--color-text)" : undefined,
                     }}
                   >
                     {s.label}
@@ -876,14 +865,12 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     >
                       <path d="M6 9l6 6 6-6" />
                     </svg>
-                  </button>
-                );
-              })}
-            </nav>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
             {/* ── Underwriting ─────────────────────────────────────────── */}
-            {activeSection === "underwriting" && (
-            <>
+            <TabsContent value="underwriting" style={{ fontSize: "inherit" }}>
             <SectionBio>Open and close rental guarantees. Sign to start coverage and begin fee accrual; settle to close one out.</SectionBio>
             <ActionGrid>
               {/* Sign Guarantee */}
@@ -1035,12 +1022,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 )}
               </ProtocolActionForm>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
 
             {/* ── Fees ─────────────────────────────────────────────────── */}
-            {activeSection === "fees" && (
-            <>
+            <TabsContent value="fees" style={{ fontSize: "inherit" }}>
             <SectionBio>Keep guarantees covered. Paying a fee advances its paid-until date; coverage lapses if it falls behind.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
@@ -1103,12 +1088,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 </p>
               </div>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
 
             {/* ── Claims ───────────────────────────────────────────────── */}
-            {activeSection === "claims" && (
-            <>
+            <TabsContent value="claims" style={{ fontSize: "inherit" }}>
             <SectionBio>Pay out a guarantee&apos;s two legs. Cover Default disburses one monthly amount (rent-arrears leg); Cover Exit disburses an arbitrary amount up to the exit cap (property-recovery leg). Both reduce coverage before disbursing, so solvency holds.</SectionBio>
             <ActionGrid>
               <ProtocolActionForm
@@ -1298,12 +1281,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 )}
               </div>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
 
             {/* ── Liquidity ────────────────────────────────────────────── */}
-            {activeSection === "liquidity" && (
-            <>
+            <TabsContent value="liquidity" style={{ fontSize: "inherit" }}>
             <SectionBio>Fulfill queued investor exits from surplus. Rebalancing strategy allocations now lives in the <strong>Strategies</strong> tab.</SectionBio>
             <ActionGrid>
               {/* Process Redemptions */}
@@ -1336,12 +1317,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 />
               </ProtocolActionForm>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
 
             {/* ── Strategies ───────────────────────────────────────────── */}
-            {activeSection === "strategies" && (
-            <>
+            <TabsContent value="strategies" style={{ fontSize: "inherit" }}>
             <SectionBio>Where idle reserve capital earns yield. See the live allocation, point capital at venues by weight, then <strong>Apply</strong> to deploy. Weights are relative shares of the deployable pool — the contract keeps the idle buffer first, then splits the rest by weight.</SectionBio>
 
             {/* ── Allocation (live) — same actual-balance view as the investor overview ── */}
@@ -1491,14 +1470,14 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginTop: "4px" }}>
                       <a href={a.url} target="_blank" rel="noopener noreferrer" className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", textDecoration: "none" }}>↗ {a.url.replace(/^https?:\/\//, "")}</a>
                       {addable && isVaultAdmin && (
-                        <button
+                        <Button
                           type="button"
-                          className="font-mono"
+                          className="font-mono h-auto"
                           onClick={() => { setAsAddress(a.address!); document.getElementById("as-address")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
                           style={{ fontSize: "11px", color: "var(--color-canvas)", backgroundColor: "var(--color-accent)", border: "1px solid var(--color-accent)", padding: "4px 10px", cursor: "pointer", letterSpacing: "0.02em" }}
                         >
                           Add to vault
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -1680,12 +1659,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 </p>
               </ProtocolActionForm>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
 
             {/* ── Manage (governance / lifecycle) ──────────────────────── */}
-            {activeSection === "manage" && (
-            <>
+            <TabsContent value="manage" style={{ fontSize: "inherit" }}>
             <SectionBio>Governance and lifecycle. Transfer admin control, tune policy parameters, swap the underwriting model, and re-label shares. Contract <strong>upgrades</strong> are performed via the Stellar CLI / <code>bootstrap.sh</code> (the wasm must be installed on-chain first), not from this cockpit.</SectionBio>
 
             {/* Roles */}
@@ -1839,8 +1816,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 <FormField id="token-symbol" label="Share token symbol" placeholder="MUSD" value={tokenSymbol} onChange={setTokenSymbol} disabled={!isVaultAdmin} hint="Decimals are fixed at 7. Balances and NAV are preserved." />
               </ProtocolActionForm>
             </ActionGrid>
-            </>
-            )}
+            </TabsContent>
+            </Tabs>
 
             {/* ── Admin addresses ──────────────────────────────────────── */}
             {!data.loading && (

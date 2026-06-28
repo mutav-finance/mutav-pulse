@@ -17,6 +17,9 @@
 import { createContext, useContext, useState } from "react";
 import { errMsg } from "@/lib/format";
 import { Mono } from "@/components/Mono";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 /**
  * True while a consequential action is armed (confirm pending). The shared field
@@ -226,8 +229,9 @@ export function ProtocolActionForm({
 
         {/* Submit row */}
         <div style={{ padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", flexWrap: "wrap" }}>
-          <button
+          <Button
             type="submit"
+            variant="outline"
             disabled={!canSubmit}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -274,11 +278,12 @@ export function ProtocolActionForm({
               />
             )}
             {isPending ? "Submitting…" : confirming ? `Confirm ${actionLabel}` : actionLabel}
-          </button>
+          </Button>
           {confirming && !isPending && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setConfirming(false)}
                 className="font-mono"
                 style={{
@@ -295,7 +300,7 @@ export function ProtocolActionForm({
                 }}
               >
                 Cancel
-              </button>
+              </Button>
               <span
                 className="font-mono"
                 style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
@@ -340,7 +345,7 @@ export function FormField({
   const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label
+      <Label
         htmlFor={id}
         className="font-body"
         style={{
@@ -351,8 +356,8 @@ export function FormField({
         }}
       >
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={id}
         type={type}
         min={min}
@@ -371,6 +376,8 @@ export function FormField({
           fontFeatureSettings: '"tnum" 1',
           fontVariantNumeric: "tabular-nums",
           width: "100%",
+          // Preserve original non-dimmed disabled look (primitive adds disabled:opacity-40)
+          opacity: 1,
           // No border-radius — Precision Brutalism
         }}
         aria-describedby={hint ? `${id}-hint` : undefined}
@@ -468,7 +475,7 @@ export function FormSelect({
   const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label
+      <Label
         htmlFor={id}
         className="font-body"
         style={{
@@ -479,7 +486,7 @@ export function FormSelect({
         }}
       >
         {label}
-      </label>
+      </Label>
       <select
         id={id}
         value={value}

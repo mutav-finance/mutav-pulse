@@ -465,3 +465,56 @@ input[type="number"]::-webkit-outer-spin-button {
     order: -1; /* action first on mobile */
   }
 }
+
+/* ─── shadcn/ui token bridge ──────────────────────────────────────────────────
+   shadcn's Radix primitives (components/ui/*) reference semantic utility tokens
+   (bg-primary, text-muted-foreground, border-input, …). We expose them here as
+   THIN ALIASES of the MUTAV brand tokens. Because this block is `@theme inline`,
+   Tailwind substitutes each value directly into the generated utility and does
+   NOT emit a competing `:root` custom property — so the brand tokens defined in
+   `:root`/`[data-front]` above (notably amber `--color-accent: #E8A020` and
+   `--color-border`) are never shadowed or cycled. The aliases resolve at the
+   use-site through the cascade, so the primitives re-theme automatically across
+   all three `[data-front]` surfaces with no duplicated palette.
+
+   Collision handling (see spec §3): we deliberately do NOT alias `--color-accent`
+   or `--color-border` here. shadcn's amber maps to `--color-primary`; shadcn's
+   neutral hover surface is served by `--color-secondary` (our `--color-surface-2`);
+   the default element border is set by the plain-CSS `*` reset below, which reads
+   the brand `--color-border` directly. This keeps amber and the brand border as
+   their single sources of truth. */
+@theme inline {
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-text);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text);
+  --color-primary: var(--color-accent);            /* shadcn "primary" = amber */
+  --color-primary-foreground: var(--color-canvas);
+  --color-secondary: var(--color-surface-2);
+  --color-secondary-foreground: var(--color-text);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-text-2);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: var(--color-canvas);
+  --color-input: var(--color-border-input);
+  --color-ring: var(--color-accent);               /* amber focus ring color */
+
+  /* Precision Brutalism: every radius utility collapses to 0 (no rounded corners). */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+}
+
+/* Default element border color = brand border (the shadcn base reset, written as
+   plain CSS so it reads `--color-border` directly with no theme-token alias). */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}

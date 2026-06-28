@@ -26,6 +26,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
+import { Button } from "@/components/ui/button";
 import { PRIMARY_RESERVE } from "@/lib/reserves";
 
 interface NavLink {
@@ -140,8 +141,18 @@ export function NavShell() {
         {/* Right: wallet connect + mobile hamburger */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <ConnectButton />
-          <button
+          {/*
+           * Mobile hamburger — migrated to the shared <Button> primitive (ghost).
+           * Visibility (display none/inline-flex by breakpoint) is owned by the
+           * `.nav-hamburger` rule in globals.css, which is unlayered and so wins
+           * over the primitive's layered `inline-flex` utility. Inline styles
+           * reproduce the original look exactly (44px box, token border, text-2
+           * color, transparent fill, no hover change) and override the ghost
+           * variant's hover/text utilities (inline > class specificity).
+           */}
+          <Button
             type="button"
+            variant="ghost"
             className="nav-hamburger"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -158,7 +169,9 @@ export function NavShell() {
               cursor: "pointer",
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            {/* Inline 18px keeps the icon at its original size, opting out of the
+                primitive's `[&_svg:not([class*='size-'])]:size-4` (16px) default. */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" style={{ width: "18px", height: "18px" }}>
               {menuOpen ? (
                 <>
                   <path d="M5 5l14 14" />
@@ -172,7 +185,7 @@ export function NavShell() {
                 </>
               )}
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
