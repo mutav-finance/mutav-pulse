@@ -37,15 +37,15 @@ describe("computeEconomics", () => {
       },
       { delinquency: 0.0246, underlyingYield: 0.055 },
     );
-    // annual premium = 1000 * 0.12 * (365.25/30) ≈ 1,461
-    expect(e.annualPremium).toBeGreaterThan(1455);
-    expect(e.annualPremium).toBeLessThan(1465);
+    // annual fee = 1000 * 0.12 * (365.25/30) ≈ 1,461
+    expect(e.annualFee).toBeGreaterThan(1455);
+    expect(e.annualFee).toBeLessThan(1465);
     // expected payout = 0.0246 * 12 * 1000 ≈ 295
     expect(e.expectedAnnualPayout).toBeCloseTo(295.2, 1);
     // loss ratio ≈ 20.2%
     expect(e.lossRatio).toBeGreaterThan(0.19);
     expect(e.lossRatio).toBeLessThan(0.21);
-    // breakeven rho = premium / (12 * Σmonthly) ≈ 12.17%
+    // breakeven rho = fee / (12 * Σmonthly) ≈ 12.17%
     expect(e.breakevenRho).toBeGreaterThan(0.118);
     expect(e.breakevenRho).toBeLessThan(0.124);
     // cushion = breakeven / rho ≈ 4.9x
@@ -68,7 +68,7 @@ describe("computeEconomics", () => {
     expect(brl.modeledApy - usd.modeledApy).toBeCloseTo(0.14 - 0.055, 9);
   });
 
-  it("ignores lapsed (non-current) and inactive guarantees in premium income", () => {
+  it("ignores lapsed (non-current) and inactive guarantees in fee income", () => {
     const e = computeEconomics({
       guarantees: [g(), g({}, false), g({ active: false })],
       coverageRequired: 6000n * STROOP,
@@ -79,7 +79,7 @@ describe("computeEconomics", () => {
       coverageRequired: 6000n * STROOP,
       totalAssets: 6000n * STROOP,
     });
-    expect(e.annualPremium).toBeCloseTo(one.annualPremium, 6);
+    expect(e.annualFee).toBeCloseTo(one.annualFee, 6);
   });
 
   it("standardProductEconomics matches the two-leg model per currency peg", () => {
@@ -108,12 +108,12 @@ describe("computeEconomics", () => {
     expect(e.underwritingSpread).toBe(0);
     expect(e.modeledApy).toBe(assumptions.underlyingYield);
     expect(Number.isFinite(e.modeledApy)).toBe(true);
-    expect(e.annualPremium).toBeGreaterThan(0);
+    expect(e.annualFee).toBeGreaterThan(0);
   });
 
   it("is safe on an empty book", () => {
     const e = computeEconomics({ guarantees: [], coverageRequired: 0n, totalAssets: 0n });
-    expect(e.annualPremium).toBe(0);
+    expect(e.annualFee).toBe(0);
     expect(e.lossRatio).toBe(0);
     expect(e.modeledApy).toBe(MODEL_ASSUMPTIONS.underlyingYield);
   });

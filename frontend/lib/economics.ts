@@ -5,7 +5,7 @@
  * NOT to a per-browser localStorage guess.
  *
  *   Investor APY = underlying yield + underwriting spread
- *   underwriting spread = (annual premium − expected annual payout) / total assets
+ *   underwriting spread = (annual fee − expected annual payout) / total assets
  *
  * The underwriting spread is the protocol's edge over the local risk-free rate; the
  * base `underlyingYield` pegs to the guarantee currency (BRL Selic ~14% vs USD DeFi
@@ -41,13 +41,13 @@ export interface BookInput {
 }
 
 export interface ModeledEconomics {
-  annualPremium: number; // contracted premium run-rate, currency/yr
+  annualFee: number; // contracted fee run-rate, currency/yr
   expectedAnnualPayout: number; // delinquency × 12 × Σ monthly_amount
-  netUnderwriting: number; // premium − payout
+  netUnderwriting: number; // fee − payout
   capitalLocked: number; // = coverage_required
   underwritingSpread: number; // netUnderwriting / totalAssets (APY contribution)
   modeledApy: number; // underlyingYield + underwritingSpread
-  lossRatio: number; // expectedPayout / premium
+  lossRatio: number; // expectedPayout / fee
   breakevenRho: number; // delinquency at which underwriting = 0
   cushion: number; // breakevenRho / delinquency
   // echoed assumptions (for honest labeling)
@@ -57,7 +57,7 @@ export interface ModeledEconomics {
 
 /**
  * Compute the modeled economics of the current book. Only **active and
- * premium-current** guarantees earn premium / lock capital — exactly the set the
+ * fee-current** guarantees earn fees / lock capital — exactly the set the
  * contract's `coverage_required` counts.
  */
 export function computeEconomics(
@@ -66,29 +66,29 @@ export function computeEconomics(
 ): ModeledEconomics {
   const { delinquency: rho, underlyingYield } = assumptions;
 
-  let annualPremium = 0;
+  let annualFee = 0;
   let monthlySum = 0; // Σ monthly_amount over active & current
   for (const { guarantee: g, isCurrent } of input.guarantees) {
     if (!g.active || !isCurrent) continue;
     const monthly = fromStroops(g.monthly_amount);
     const periodsPerYear = SECONDS_PER_YEAR / Number(g.period_secs);
-    annualPremium += monthly * (g.fee_bps / 10_000) * periodsPerYear;
+    annualFee += monthly * (g.fee_bps / 10_000) * periodsPerYear;
     monthlySum += monthly;
   }
 
   const expectedAnnualPayout = rho * 12 * monthlySum;
-  const netUnderwriting = annualPremium - expectedAnnualPayout;
+  const netUnderwriting = annualFee - expectedAnnualPayout;
   const capitalLocked = fromStroops(input.coverageRequired);
   const totalAssets = fromStroops(input.totalAssets);
 
   const underwritingSpread = totalAssets > 0 ? netUnderwriting / totalAssets : 0;
   const modeledApy = underlyingYield + underwritingSpread;
-  const lossRatio = annualPremium > 0 ? expectedAnnualPayout / annualPremium : 0;
-  const breakevenRho = monthlySum > 0 ? annualPremium / (12 * monthlySum) : 0;
+  const lossRatio = annualFee > 0 ? expectedAnnualPayout / annualFee : 0;
+  const breakevenRho = monthlySum > 0 ? annualFee / (12 * monthlySum) : 0;
   const cushion = rho > 0 ? breakevenRho / rho : Infinity;
 
   return {
-    annualPremium,
+    annualFee,
     expectedAnnualPayout,
     netUnderwriting,
     capitalLocked,

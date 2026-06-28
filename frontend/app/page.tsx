@@ -120,7 +120,7 @@ export default function Home() {
           style={{ fontSize: "18px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 36px", maxWidth: "54ch" }}
         >
           A solvency-gated on-chain reserve that backs real rental guarantees and turns
-          their premiums into yield.
+          their fees into yield.
         </p>
 
         {/* CTAs — exactly one amber */}
@@ -313,7 +313,7 @@ export default function Home() {
         >
           {[
             { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …) — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
-            { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a premium on every active, premium-current policy." },
+            { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a fee on every active, fee-current guarantee." },
             { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus — solvency comes first, always." },
           ].map((s) => (
             <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
