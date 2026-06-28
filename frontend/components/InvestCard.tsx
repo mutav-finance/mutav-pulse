@@ -5,7 +5,8 @@
  *
  * Stacks: position summary (NAV / my shares / value) → three tabs:
  *   Invest (deposit) · Withdraw (redeem) · Fund (acquire the deposit token —
- *   Buy TESOURO via SDEX swap, or the testnet faucet; only shown when one exists).
+ *   a testnet faucet, and for cTSR also a cUSD→cTSR Soroswap swap; only shown
+ *   when one exists).
  * Invest is the default; when the wallet holds no deposit token the Invest tab
  * shows a small link to Fund. Owns the position data fetch + refresh-on-tx.
  *
@@ -22,9 +23,10 @@ import { DepositWidget } from "@/components/DepositWidget";
 import { RedeemPanel } from "@/components/RedeemPanel";
 import { UsdcFaucet } from "@/components/UsdcFaucet";
 import { CbrlFaucet } from "@/components/CbrlFaucet";
+import { TesouroFaucet } from "@/components/TesouroFaucet";
 import { BuyTesouro } from "@/components/BuyTesouro";
 import { Mono } from "@/components/Mono";
-import { faucetEnabled, cbrlFaucetEnabled, config } from "@/lib/config";
+import { faucetEnabled, cbrlFaucetEnabled, tesouroFaucetEnabled, tesouroSwapEnabled, config } from "@/lib/config";
 import { getUsdcInfo, getCbrlInfo } from "@/lib/faucet";
 import { getTesouroInfo } from "@/lib/buy-tesouro";
 import { fmtNav, fmtFiat, fmtAmount, fmtUnitPrice, fmtShares4, errMsg } from "@/lib/format";
@@ -72,15 +74,20 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
   const handleSuccess = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   // Whether this reserve offers a way to acquire the deposit token (Fund tab):
-  // TESOURO is swappable on the SDEX; the demo USDC only via the testnet faucet.
-  // A reserve whose deposit token is neither (e.g. a future MARS/ARS) has no
-  // faucet here — show no Fund tab rather than the WRONG (USDC) faucet.
+  // each demo token has a testnet faucet, and cTSR additionally a cUSD→cTSR
+  // Soroswap swap. A reserve whose deposit token has neither (e.g. a future
+  // MARS/ARS) shows no Fund tab rather than the WRONG (USDC) faucet.
   const isTesouro = reserve.depositToken === config.tesouro.code;
   const isUsdc = reserve.depositToken === config.usdc.code;
   const isCbrl = reserve.depositToken === config.cbrl.code;
   const canFaucet = faucetEnabled && isUsdc;
   const canCbrl = cbrlFaucetEnabled && isCbrl;
-  const hasFund = isTesouro || canFaucet || canCbrl;
+  // cTSR can be acquired two ways: the instant faucet, or the cUSD→cTSR AMM swap
+  // on Soroswap. The MTESOURO Fund tab offers both (faucet first — instant), each
+  // gated on its own config so a missing piece simply hides that one option.
+  const canTesouroFaucet = tesouroFaucetEnabled && isTesouro;
+  const canTesouroSwap = tesouroSwapEnabled && isTesouro;
+  const hasFund = canFaucet || canCbrl || canTesouroFaucet || canTesouroSwap;
 
   useEffect(() => {
     let cancelled = false;
@@ -295,7 +302,15 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
             ) : (
               /* Fund — acquire the deposit token */
               isTesouro ? (
-                <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
+                /* cTSR: instant faucet + cUSD→cTSR Soroswap swap, stacked. */
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {canTesouroFaucet && (
+                    <TesouroFaucet address={address} onSuccess={handleSuccess} />
+                  )}
+                  {canTesouroSwap && (
+                    <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} />
+                  )}
+                </div>
               ) : canFaucet ? (
                 <UsdcFaucet address={address} onSuccess={handleSuccess} />
               ) : canCbrl ? (

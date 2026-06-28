@@ -21,6 +21,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "registry": "file:./bindings/registry",
+    "soroswap-router": "file:./bindings/soroswap-router",
     "strategy": "file:./bindings/strategy",
     "vault": "file:./bindings/vault"
   },

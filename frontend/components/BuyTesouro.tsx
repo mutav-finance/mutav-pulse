@@ -1,18 +1,18 @@
 "use client";
 
 /**
- * BuyTesouro — acquire TESOURO for the MBRL reserve via a client-side SDEX swap.
+ * BuyTesouro — acquire cTSR for the MTESOURO reserve via a client-side Soroswap swap.
  *
- * Two steps: (1) add the TESOURO trustline (permissionless — auth_required=false),
- * (2) swap USDC → TESOURO with a strict-send path payment on the classic SDEX.
- * No KYC, no backend; the user then deposits the TESOURO into the reserve.
+ * Two steps: (1) add the cTSR trustline (permissionless — auth_required=false),
+ * (2) swap cUSD → cTSR on the Soroswap AMM (cUSD→cTSR pool). No KYC, no backend;
+ * the user then deposits the cTSR into the reserve.
  *
  * Design: Precision Brutalism, Investidor front (dark/amber).
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { getTesouroInfo, addTesouroTrustline, buyTesouro, type AssetInfo } from "@/lib/buy-tesouro";
-import { config, tesouroConfigured } from "@/lib/config";
+import { config, tesouroSwapEnabled } from "@/lib/config";
 import { errMsg, fmtUnitPrice, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
@@ -71,9 +71,9 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
   const isPending = status === "pending";
   const canBuy = !!info?.hasTrustline && parseFloat(amount) > 0 && !isPending;
 
-  // The TESOURO issuer isn't configured in this deploy — the trustline/swap
-  // would throw on Asset construction, so surface that up front instead.
-  if (!tesouroConfigured) {
+  // The swap isn't available in this deploy — missing cTSR issuer or Soroswap
+  // router id. The trustline/swap would throw, so surface that up front instead.
+  if (!tesouroSwapEnabled) {
     return (
       <section
         aria-label={`Buy ${code}`}
@@ -87,9 +87,9 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
           className="font-body"
           style={{ fontSize: "13px", color: "var(--color-text-2)", margin: 0, lineHeight: 1.5 }}
         >
-          {code} is not configured in this environment. Set{" "}
-          <Mono style={{ fontSize: "12px" }}>NEXT_PUBLIC_TESOURO_ISSUER</Mono> to
-          enable the on-chain swap.
+          The {code} swap is not configured in this environment. Set{" "}
+          <Mono style={{ fontSize: "12px" }}>NEXT_PUBLIC_SOROSWAP_ROUTER_ID</Mono>{" "}
+          (and the {code} issuer) to enable the on-chain swap.
         </p>
       </section>
     );
@@ -119,10 +119,10 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
           SWAP
         </p>
         <h2 className="font-display" style={{ fontSize: "18px", color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
-          Buy {code} — swap USDC on-chain
+          Buy {code} — swap cUSD on Soroswap
         </h2>
         <p className="font-body" style={{ fontSize: "13px", color: "var(--color-text-2)", marginTop: "4px", lineHeight: 1.5 }}>
-          {code} is tokenized Brazilian treasury. Acquire it with a client-signed SDEX swap (no KYC), then deposit it into the reserve.
+          {code} is tokenized Brazilian treasury. Acquire it with a client-signed Soroswap AMM swap (no KYC), then deposit it into the reserve.
         </p>
         <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "8px" }}>
           1 {code} ≈ {fmtUnitPrice(money)} · indicative — {code} is yield-bearing, not 1:1 with BRL
@@ -166,7 +166,7 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
           noValidate
         >
           <label htmlFor="buy-amount" className="font-body" style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--color-text-2)", marginBottom: "6px" }}>
-            USDC to spend
+            cUSD to spend
           </label>
           <div style={{ position: "relative", marginBottom: "16px" }}>
             <input
@@ -193,10 +193,10 @@ export function BuyTesouro({ address, money, onSuccess }: BuyTesouroProps) {
                 fontVariantNumeric: "tabular-nums",
                 outline: "none",
               }}
-              aria-label="USDC amount to swap for TESOURO"
+              aria-label="cUSD amount to swap for cTSR"
             />
             <span className="font-body" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: "var(--color-text-3)", pointerEvents: "none" }}>
-              USDC
+              cUSD
             </span>
           </div>
           <button

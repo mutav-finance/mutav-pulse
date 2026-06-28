@@ -119,6 +119,14 @@ echo "  MUSD: $MUSD_CODE / $MUSD_ISSUER"
 echo "  MTESOURO: $MTESOURO_CODE / $MTESOURO_ISSUER"
 echo "  MBRL: $MBRL_CODE / $MBRL_ISSUER"
 
+# Platform integrations (access layer — NOT reserve contracts). Optional: a
+# Soroswap AMM router backing the cUSD→cTSR swap on the MTESOURO Fund tab. Read
+# from the deploy record; empty is fine (the swap UI just stays hidden). It is a
+# fixed external Soroswap deployment, not a per-deploy reserve contract, so it is
+# not on-chain validated here the way the reserve vaults are.
+SOROSWAP_ROUTER="$(get SOROSWAP_ROUTER)"
+[ -n "$SOROSWAP_ROUTER" ] && echo "  Soroswap router: $SOROSWAP_ROUTER"
+
 # ── Generate frontend/.env.example ────────────────────────────────────────────
 cat > "$ROOT/frontend/.env.example" <<EOF
 # Mutav Pulse — frontend env. Pre-filled with the LIVE testnet deploy, so a fresh
@@ -150,6 +158,10 @@ NEXT_PUBLIC_TESOURO_CODE=$MTESOURO_CODE
 NEXT_PUBLIC_TESOURO_ISSUER=$MTESOURO_ISSUER
 NEXT_PUBLIC_TESOURO_PRICE_BRL=$TESOURO_PRICE_BRL
 NEXT_PUBLIC_TESOURO_FAUCET_ID=$MTESOURO_FAUCET
+# Platform integration (access layer — not a reserve contract): Soroswap testnet
+# AMM Router backing the cUSD→cTSR swap on the MTESOURO Fund tab. Empty hides the
+# swap (the faucet still works). See docs/concepts/funding-and-access.md.
+NEXT_PUBLIC_SOROSWAP_ROUTER_ID=$SOROSWAP_ROUTER
 
 # ── MBRL reserve (BRL-native · $MBRL_CODE) ──
 NEXT_PUBLIC_MBRL_VAULT_ID=$MBRL_VAULT
@@ -162,6 +174,13 @@ EOF
 
 # ── Generate docs/reference/deployments.md ────────────────────────────────────
 row() { printf '| %s | [`%s`](%s/contract/%s) | %s |\n' "$1" "$2" "$EXPLORER_BASE" "$2" "$3"; }
+# Platform-integrations row — a linked row when the Soroswap router is configured,
+# else a plain "not configured" row (built here, where row() is in scope).
+if [ -n "$SOROSWAP_ROUTER" ]; then
+  SOROSWAP_ROW="$(row 'Soroswap Router (cUSD→cTSR swap)' "$SOROSWAP_ROUTER" '`NEXT_PUBLIC_SOROSWAP_ROUTER_ID`')"
+else
+  SOROSWAP_ROW='| Soroswap Router (cUSD→cTSR swap) | — (not configured) | `NEXT_PUBLIC_SOROSWAP_ROUTER_ID` |'
+fi
 {
 cat <<EOF
 # Testnet deployments
@@ -232,6 +251,16 @@ canonical contract deterministically derived from that \`CODE:ISSUER\`.
 | MUSD | \`$MUSD_CODE\` | \`$MUSD_ISSUER\` |
 | MTESOURO | \`$MTESOURO_CODE\` | \`$MTESOURO_ISSUER\` |
 | MBRL | \`$MBRL_CODE\` | \`$MBRL_ISSUER\` |
+
+## Platform integrations
+
+Access-layer integrations — **client-signed, outside the vault's custody** (not
+reserve contracts, not on-chain validated here). These improve how an investor
+funds a position; see [funding & access](../concepts/funding-and-access.md).
+
+| Integration | Address | Env var |
+|---|---|---|
+$SOROSWAP_ROW
 
 ## Notes
 

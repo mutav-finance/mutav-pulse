@@ -51,8 +51,8 @@ export function stroopsToInput(v: bigint): string {
 
 /**
  * Reserve money presentation. Every on-chain amount is denominated in the
- * reserve's DEPOSIT TOKEN (USDC for MUSD, TESOURO for MBRL) — not dollars. A
- * yield-bearing underlying like TESOURO is not 1:1 with its fiat (1 TESOURO ≈
+ * reserve's DEPOSIT TOKEN (cUSD for MUSD, cTSR for MTESOURO) — not dollars. A
+ * yield-bearing underlying like cTSR is not 1:1 with its fiat (1 cTSR ≈
  * R$1.22), so we render an INDICATIVE fiat value via `unitPriceFiat`. This is a
  * pure display concern; the contract accounts in token units and needs no price.
  *
