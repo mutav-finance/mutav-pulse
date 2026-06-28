@@ -70,6 +70,14 @@ h1.display { font-family: var(--font-display); font-weight: 700; line-height: 1.
 h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06; letter-spacing: -.005em; font-size: 46px; max-width: 20ch; text-transform: uppercase; }
 .lead { font-size: 20px; line-height: 1.5; color: var(--color-text-2); max-width: 56ch; margin-top: 20px; }
 
+/* ── Centered slide variant ──────────────────────────────────────────────── */
+.slide.centered .body { align-items: center; text-align: center; }
+.slide.centered .title { max-width: 24ch; }
+.slide.centered .lead { margin-left: auto; margin-right: auto; }
+.slide.centered .pillars { width: 100%; }
+.slide.centered .pillar { text-align: left; }
+.slide.centered .points { width: 100%; text-align: left; }
+
 /* ── Minimal point list (one idea, few points) ───────────────────────────── */
 .points { display: flex; flex-direction: column; gap: 0; margin-top: 36px; max-width: 70ch; }
 .point { display: flex; gap: 18px; align-items: baseline; border-top: 1px solid var(--color-border); padding: 16px 0; }
@@ -81,7 +89,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 /* ── Two minimal pillars ─────────────────────────────────────────────────── */
 .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
 .pillar { border: 1px solid var(--color-border); background: var(--color-surface); padding: 24px; }
-.pillar h4 { font-family: var(--font-display); font-weight: 700; font-size: 20px; }
+.pillar h4 { font-family: var(--font-display); font-weight: 700; font-size: 19px; text-transform: uppercase; letter-spacing: .01em; line-height: 1.1; }
 .pillar p { font-size: 13.5px; color: var(--color-text-2); line-height: 1.5; margin-top: 10px; }
 .pillar ul { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
 .pillar li { position: relative; padding-left: 16px; font-size: 13.5px; color: var(--color-text-2); line-height: 1.4; }
@@ -102,12 +110,13 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
 /* ── Stellar slide: embedded vault-flow diagram ──────────────────────────── */
-.slide.stellar .pad { padding: 50px 60px; }
+.slide.stellar .pad { padding: 50px 40px; }
 .stellar-head { margin-top: 38px; }
 .stellar-head .title { margin-top: 6px; }
 .stellar-sub { font-size: 20px; line-height: 1.5; color: var(--color-text-2); margin-top: 10px; max-width: 70ch; }
 .vault-flow { position: relative; width: 1160px; height: 380px; margin: -8px auto 0; }
-.slide.stellar .vault-flow { margin: 34px auto 0; }
+.slide.stellar .vault-flow { margin: 0 auto; transform: scale(0.9); transform-origin: center center; }
+.slide.stellar .diagram-frame { position: relative; margin: 28px auto 0; border: 1px solid var(--color-border); background: #0A0B0D; padding: 14px 18px 18px; }
 .vwires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .vnode { position: absolute; border: 1px solid var(--color-border); background: var(--color-surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
 .vnode .nt { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1; }
@@ -178,16 +187,21 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .gcard p { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.45; color: var(--color-text-2); }
 
 /* ── Cover ───────────────────────────────────────────────────────────────── */
-#cover .content { position: absolute; inset: 0; padding: 60px 76px; display: flex; flex-direction: column; justify-content: space-between; }
-#cover .cover-top { display: flex; align-items: center; justify-content: space-between; }
-#cover h1 { font-size: 62px; max-width: 17ch; }
+#cover .cover-art { position: absolute; top: 0; right: 0; height: 100%; width: auto; object-fit: contain; object-position: right center; opacity: .7; z-index: 0; pointer-events: none; user-select: none; }
+#cover .content { position: absolute; inset: 0; z-index: 1; padding: 60px 76px; display: flex; flex-direction: column; justify-content: space-between; }
+#cover .cover-top { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; }
+#cover .cover-headline { margin: auto 0; }
+#cover h1 { font-size: 58px; max-width: 17ch; }
+#cover .cover-rule { width: 570px; max-width: 100%; height: 1px; margin-top: 26px; background: var(--color-accent); opacity: .85; }
 #cover .tagline { margin-top: 22px; font-size: 21px; color: var(--color-text); max-width: 42ch; line-height: 1.45; }
 #cover .tagline b { color: var(--color-accent); font-weight: 600; }
 
 /* ── Team (minimal) ──────────────────────────────────────────────────────── */
 .team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 36px; }
+.member { display: flex; flex-direction: column; }
 .member .photo { width: 90%; aspect-ratio: 5/4; object-fit: cover; filter: grayscale(1) contrast(1.05); border: 1px solid var(--color-border); display: block; }
-.member .role { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); margin-top: 14px; }
+.member .member-info { width: 90%; flex: 1 1 auto; border: 1px solid var(--color-border); padding: 14px 16px; margin-top: 14px; }
+.member .role { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); margin-top: 0; }
 .member .name { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin-top: 4px; }
 .member .bio { font-size: 13px; color: var(--color-text-2); line-height: 1.45; margin-top: 8px; }
 .member.advisor { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; border: 1px solid var(--color-accent); padding: 20px 26px; margin-block: 30px; }
@@ -196,9 +210,19 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .member.advisor .adv-num { font-family: var(--font-display); font-weight: 700; font-size: 132px; line-height: .85; color: var(--color-accent); margin-top: 18px; }
 .member.advisor .adv-lbl { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-2); line-height: 1.4; margin-top: 10px; }
 
+/* ── Ecosystem (slide 7) ─────────────────────────────────────────────────── */
+#ecosystem { background-image: none; }
+#ecosystem .eco-art { position: absolute; top: 0; left: 0; height: 100%; width: auto; object-fit: cover; object-position: left center; opacity: .04; filter: grayscale(1); z-index: 0; pointer-events: none; user-select: none; -webkit-mask-image: linear-gradient(to right, #000 45%, transparent 92%); mask-image: linear-gradient(to right, #000 45%, transparent 92%); }
+#ecosystem .pad { z-index: 1; }
+
 /* ── Thank you ───────────────────────────────────────────────────────────── */
+#thanks { background-image: none; }
+#thanks .thanks-art { position: absolute; top: 0; right: 0; height: 100%; width: auto; object-fit: cover; object-position: right center; opacity: .06; filter: grayscale(1); z-index: 0; pointer-events: none; user-select: none; }
+#thanks .pad { z-index: 1; }
 #thanks h1 { font-size: 92px; line-height: .98; }
-#thanks .contact { margin-top: 28px; font-family: var(--font-mono); font-size: 16px; color: var(--color-text-2); }
+#thanks .thanks-head { display: inline-block; }
+#thanks .thanks-rule { width: 100%; height: 1px; margin: 14px 0 0; background: var(--color-text-3); }
+#thanks .contact { margin-top: 14px; font-family: var(--font-mono); font-size: 20px; color: var(--color-text-2); }
 #thanks .contact b { color: var(--color-accent); font-weight: 500; }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
@@ -218,38 +242,55 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 
   <!-- COVER ──────────────────────────────────────────────────────────────── -->
   <section class="slide active" id="cover">
+    <img class="cover-art" src="assets/cover-art.png" alt="" aria-hidden="true" />
     <div class="content">
       <div class="cover-top">
         <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
         <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · 2026</span>
       </div>
-      <div>
-        <h1 class="display">Rental agencies finally have a rent guarantor <span class="amber">on their side</span></h1>
+      <div class="cover-headline">
+        <h1 class="display">Rental agencies finally have a <span style="white-space:nowrap">rent guarantor</span><br><span class="amber">on their side</span></h1>
+        <div class="cover-rule"></div>
         <p class="tagline">Onchain Rental Guarantee to take over Brazil.</p>
       </div>
     </div>
   </section>
 
   <!-- a · PROBLEM ────────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="01 · PROBLEM">
+  <section class="slide centered" data-eyebrow="01 · PROBLEM">
     <div class="pad"><div class="body">
       <div class="kicker">The problem</div>
-      <h2 class="title">Rental agencies are <span class="amber">absorbing the risk</span>.</h2>
-      <p class="lead">Every existing guarantee modality is <b style="color:var(--color-text);font-weight:600">hard to approve, bureaucratic or opaque</b>, leaving agencies and landlords exposed.</p>
-      <p class="lead" style="font-family:var(--font-display);font-weight:600;max-width:none;margin-top:18px">The modality we'll provide: the Institutional Guarantor.</p>
+      <h2 class="title">Rental agencies are<br><span class="amber">absorbing the risk</span>.</h2>
+      <div class="pillars">
+        <div class="pillar"><h4 class="amber">The risk falls on the agency</h4><ul>
+          <li>Agencies &amp; landlords absorb every tenant default</li>
+          <li>No guarantor is truly on their side</li>
+          <li>They carry the risk alone</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">An opaque promise</h4><ul>
+          <li>Existing guarantors are a black box</li>
+          <li>No way to verify the reserve is solvent</li>
+          <li>Trust without proof</li>
+        </ul></div>
+        <div class="pillar"><h4 class="amber">Bureaucratic &amp; closed</h4><ul>
+          <li>Hard to approve, slow to settle</li>
+          <li>Backing capital locked to a few institutions</li>
+          <li>Closed to outside capital</li>
+        </ul></div>
+      </div>
     </div></div>
   </section>
 
   <!-- b · SOLUTION ───────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="02 · SOLUTION">
+  <section class="slide centered" data-eyebrow="02 · SOLUTION">
     <div class="pad"><div class="body">
       <div class="kicker">The solution</div>
-      <h2 class="title">An institutional guarantor, backed onchain.</h2>
+      <h2 class="title" style="max-width:none">An institutional guarantor,<br><span style="text-decoration:underline;text-decoration-color:var(--color-accent);text-underline-offset:6px;text-decoration-thickness:2px">backed onchain</span>.</h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Institutional guarantor</h4><ul>
+        <div class="pillar"><h4 class="amber">Agency-first guarantor</h4><ul>
           <li>We become the rent guarantor</li>
-          <li>Tenant defaults, we cover</li>
-          <li>Agency-first approach</li>
+          <li>We take on the risk agencies &amp; landlords have been absorbing</li>
+          <li>Tenant defaults, we settle</li>
         </ul></div>
         <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><ul>
           <li>Transparent technical reserve on Stellar</li>
@@ -293,10 +334,11 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="stellar-head">
         <div class="kicker">Built on Stellar</div>
         <h2 class="title">Modular Architecture</h2>
-        <p class="stellar-sub">One immutable vault. Swappable policy, pluggable yield adapters. Money moves only through the vault.</p>
+        <p class="stellar-sub">One immutable vault. Swappable guarantee logic, pluggable yield adapters.<br>Money moves only through the vault.</p>
       </div>
 
-      <div class="vault-flow" style="height:352px">
+      <div class="diagram-frame">
+        <div class="vault-flow" style="height:352px">
         <svg class="vwires" viewBox="0 0 1160 352" preserveAspectRatio="none">
           <defs>
             <marker id="aArr" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#6b6b6b"/></marker>
@@ -305,9 +347,9 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <path d="M180,90 H380" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
           <!-- redeem: reserve -> investor (gate 1) -->
           <path d="M380,110 H180" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- premium: guarantees -> reserve (gate 2) -->
+          <!-- fee: guarantees -> reserve (gate 2) -->
           <path d="M980,104 H780" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- cover: reserve -> partner agencies (gate 2) -->
+          <!-- settle: reserve -> partner agencies (gate 2) -->
           <path d="M580,224 V292" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
         </svg>
 
@@ -337,18 +379,20 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 
         <div class="vnode leaf" style="left:980px;top:56px;width:180px;height:84px;">
           <span class="nt">GUARANTEES</span>
-          <span class="ns mono">tenant fee · policy</span>
+          <span class="ns mono">tenant fee · terms</span>
         </div>
 
         <div class="vnode leaf" style="left:480px;top:292px;width:200px;height:60px;">
           <span class="nt">PARTNER AGENCIES</span>
-          <span class="ns mono">default payout</span>
+          <span class="ns mono">default settlement</span>
         </div>
 
         <div class="vchip" style="left:280px;top:70px;">deposit USDC</div>
         <div class="vchip" style="left:280px;top:130px;">async redeem</div>
-        <div class="vchip" style="left:880px;top:84px;">premium → NAV</div>
-        <div class="vchip" style="left:580px;top:258px;">cover_default</div>
+        <div class="vchip" style="left:880px;top:84px;">fee → NAV</div>
+        <div class="vchip" style="left:580px;top:258px;">settle_default</div>
+        </div>
+        <div class="live-tag" style="position:absolute;top:-22px;right:0;margin-top:0;font-size:10px">Live on Stellar testnet</div>
       </div>
     </div>
   </section>
@@ -356,32 +400,31 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   <!-- e · YIELD via DEFINDEX ──────────────────────────────────────────────── -->
   <section class="slide" data-eyebrow="05 · INTEGRATIONS">
     <div class="pad"><div class="body">
-      <div class="kicker">DeFindex integration · yield engine</div>
+      <div class="kicker">Yield engine · modular adapters</div>
       <h2 class="title" style="max-width:28ch">The reserve is a modular<br>yield&nbsp;generator</h2>
 
       <div class="alloc-bar">
         <div class="alloc-seg live">DeFindex · 100%</div>
-        <div class="alloc-seg planned">Future integrations</div>
-        <div class="alloc-seg planned">Future integrations</div>
+        <div class="alloc-seg planned">Soroswap · Soon</div>
+        <div class="alloc-seg planned">Blend · Soon</div>
       </div>
 
       <div class="pillars" style="margin-top:22px">
-        <div class="pillar"><h4 class="amber">DeFindex Adapter</h4><p>Reserve capital earns yield through the DeFindex adapter wired to the MUTAV vault.</p></div>
+        <div class="pillar"><h4 class="amber">DeFindex Adapter</h4><p>Reserve capital earns yield through the DeFindex adapter wired to the MUTAV vault — live on testnet.</p></div>
         <div class="pillar"><h4 class="amber">Diversified by design</h4><p>Capital is spread across strategies by target weights and auto-rebalanced. Never concentrated in one venue.</p></div>
-        <div class="pillar"><h4 class="amber">Multi-strategy vault allocator</h4><p>Room to plug in more yield adapters as new venues go live.</p></div>
+        <div class="pillar"><h4 class="amber">One interface, many venues</h4><p>Soroswap (swap &amp; rebalance) and Blend (lending) plug into the same Strategy adapter interface as they go live.</p></div>
       </div>
-
-      <div class="live-tag" style="margin-top:24px">Live on Stellar testnet</div>
     </div></div>
   </section>
 
   <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="06 · Ecosystem">
+  <section class="slide" id="ecosystem" data-eyebrow="06 · Ecosystem">
+    <img class="eco-art" src="assets/ecosystem-art.jpg" alt="" aria-hidden="true" />
     <div class="pad"><div class="body" style="align-items:center;text-align:center">
       <div class="kicker">Real Asset · Real Yield</div>
       <h2 class="title">Real-world cashflows <span class="amber">on Stellar</span></h2>
       <div class="points">
-        <div class="point"><span class="pk mono">→</span><span class="pt">Real world yield</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, premiums accruing to NAV.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Real world yield</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, guarantee fees accruing to NAV.</span></div>
         <div class="point"><span class="pk mono">→</span><span class="pt">Energizing Stellar's ecosystem</span><span class="pd">Real RWA value and liquidity into Stellar, deployed across native yield protocols.</span></div>
         <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated to crypto</span><span class="pd">Reserve value tracks rents and real cashflows.</span></div>
       </div>
@@ -416,15 +459,19 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="team">
         <div class="member">
           <img class="photo" src="assets/team-draau.png" alt="Matheus de Pauli" />
-          <div class="role">Cofounder · CEO</div>
-          <div class="name">Matheus "Draau" de Pauli</div>
-          <div class="bio">5 years building brands &amp; blockchain products. Direct line into the Southern-Brazil real-estate network.</div>
+          <div class="member-info">
+            <div class="role">Cofounder · CEO</div>
+            <div class="name">Matheus "Draau" de Pauli</div>
+            <div class="bio">5 years building brands &amp; blockchain products. Direct line into the Southern-Brazil real-estate network.</div>
+          </div>
         </div>
         <div class="member">
           <img class="photo" src="assets/team-julia.png" alt="Julia Hoffmann Buratto" />
-          <div class="role">Cofounder · CTO</div>
-          <div class="name">Julia Hoffmann Buratto</div>
-          <div class="bio">Built Brazilian onchain financial infra (RWA / CVM-88). Chainless 0 → 30k users.</div>
+          <div class="member-info">
+            <div class="role">Cofounder · CTO</div>
+            <div class="name">Julia Hoffmann Buratto</div>
+            <div class="bio">Built Brazilian onchain financial infra (RWA / CVM-88). Chainless 0 → 30k users.</div>
+          </div>
         </div>
         <div class="member advisor">
           <div class="role">Strategic Advisor</div>
@@ -437,15 +484,23 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- THANK YOU ──────────────────────────────────────────────────────────── -->
-  <section class="slide" id="thanks">
+  <section class="slide centered" id="thanks">
+    <img class="thanks-art" src="assets/thanks-art.jpg" alt="" aria-hidden="true" />
     <div class="pad">
       <div class="topbar">
         <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
         <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · BRAZIL · 2026</span>
       </div>
       <div class="body">
-        <h1 class="display amber">Thank you!</h1>
-        <div class="contact">CONTACT US · <b>mutav.finance@gmail.com</b> · www.mutav.finance</div>
+        <div class="brand" style="justify-content:center;gap:0;margin-bottom:6px">
+          <img src="assets/logo-mark.png" alt="MUTAV" style="height:78px" />
+          <span class="wm" style="font-size:30px">MUTAV</span>
+        </div>
+        <div class="thanks-head">
+          <h1 class="display amber">Thank you!</h1>
+          <div class="thanks-rule"></div>
+        </div>
+        <div class="contact">CONTACT US<br><span style="font-size:16px"><b>mutav.finance@gmail.com</b><br>www.mutav.finance</span></div>
       </div>
     </div>
   </section>
