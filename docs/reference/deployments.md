@@ -56,20 +56,21 @@ Stellar Expert.
 ## Deposit assets
 
 All three deposit tokens are **mock classic assets** on testnet. Each vault's
-`underlying` is the asset's Stellar Asset Contract (SAC) above.
+`underlying` is the asset's Stellar Asset Contract (SAC) above. The codes and
+issuers below are read live from each SAC's on-chain `name()` — never copied by
+hand (re-run `make sync-deploy` to refresh).
 
-| Asset | Code | Issuer |
+| Reserve | Deposit token | Issuer |
 |---|---|---|
-| MUSD deposit | `cUSD` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
-| MTESOURO deposit | `cTSR` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
-| MBRL deposit | `cBRL` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
-
-(cTSR is yield-bearing ≈ R$1.22, not 1:1; cUSD/cBRL are 1:1-pegged.)
+| MUSD | `cUSD` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
+| MTESOURO | `cTSR` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
+| MBRL | `cBRL` | `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO` |
 
 ## Notes
 
 - All addresses are **testnet-only**; a redeploy via `bootstrap.sh` changes every
-  contract ID. Re-run `make sync-deploy` to regenerate this file + `.env.example`.
+  contract ID. Re-run `make sync-deploy` to regenerate this file, `.env.example`,
+  and the README block.
 - The two-leg fiança policy is live: each reserve's `policy` exposes `cover_default`,
   `cover_exit`, `grace_secs`, and `set_coverage_ratio_bps`.
 - For the per-method contract surface, see [`./contracts/vault.md`](./contracts/vault.md);

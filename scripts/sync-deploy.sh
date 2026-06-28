@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 #
-# sync-deploy.sh — regenerate the committed deploy config from a single source.
+# sync-deploy.sh — regenerate the committed deploy config from one source.
 #
-# The reserve contract addresses live in ONE place: the operator deploy env that
-# bootstrap.sh writes (repo-root .env.local by default). This script reads those
-# addresses, resolves each deposit asset's code + issuer ON-CHAIN (from the SAC's
-# `name()`), and regenerates the two committed copies so they can never drift:
+# The reserve contract addresses live in ONE place: the operator deploy record
+# (repo-root .env.local by default) — a file YOU populate from bootstrap.sh's
+# output after each deploy (bootstrap echoes raw IDs; you map them onto the
+# MUSD_/MTESOURO_/MBRL_ prefixed keys here). This script reads those addresses,
+# VALIDATES each vault on-chain (its underlying must match the configured SAC, so
+# a stale id is caught, not laundered), resolves each deposit asset's code +
+# issuer from the SAC's on-chain name(), and regenerates the THREE committed
+# copies so they can't drift:
 #
 #   - frontend/.env.example          (the NEXT_PUBLIC_* the frontend reads)
 #   - docs/reference/deployments.md  (the docs reference table)
+#   - README.md                      (the "Live on testnet" block, between
+#                                      <!-- deploy:start --> / <!-- deploy:end -->)
 #
-# Resolving codes/issuers from the chain — not from the deploy env — is the part
-# that catches a stale/wrong issuer (the class of bug this guards against).
+# Resolving codes/issuers from the chain — not from the deploy record — is the
+# part that catches a stale/wrong issuer (the class of bug this guards against).
 #
 # Usage:
 #   make sync-deploy                       # uses ./.env.local
@@ -35,37 +41,55 @@ TESOURO_PRICE_BRL="${TESOURO_PRICE_BRL:-1.22107}"
 [ -f "$DEPLOY_ENV" ] || { echo "✗ deploy env not found: $DEPLOY_ENV" >&2; exit 1; }
 command -v stellar >/dev/null || { echo "✗ stellar CLI required (brew install stellar-cli)" >&2; exit 1; }
 
-# Read a KEY=value (public address) from the deploy env; ignores secrets/comments.
-get() { grep -E "^$1=" "$DEPLOY_ENV" | head -1 | cut -d= -f2- | tr -d '"' | xargs; }
+# Read a KEY=value (public address) from the deploy env. Never aborts (set -e
+# safe): returns empty on no-match so the explicit require() can report it.
+# Strips one surrounding quote pair and trims whitespace — no `xargs` (which would
+# mangle values containing quotes/backslashes).
+get() {
+  local v
+  v=$(grep -E "^$1=" "$DEPLOY_ENV" | head -1 | cut -d= -f2- || true)
+  v="${v%\"}"; v="${v#\"}"
+  v="${v#"${v%%[![:space:]]*}"}"   # ltrim
+  v="${v%"${v##*[![:space:]]}"}"   # rtrim
+  printf '%s' "$v"
+}
 
-# Resolve a SAC's "CODE:ISSUER" via its on-chain name(). The chain is the source
-# of truth for the asset behind the vault — never the deploy env's issuer field.
-sac_name() { stellar contract invoke --network "$NET" --source-account "$SRC" --id "$1" -- name 2>/dev/null | tr -d '"'; }
+# Invoke a read-only contract method; empty + non-fatal on failure (set -e safe).
+invoke() { stellar contract invoke --network "$NET" --source-account "$SRC" --id "$1" -- "$2" 2>/dev/null | tr -d '"' || true; }
 
-require() { [ -n "$2" ] || { echo "✗ missing $1 in $DEPLOY_ENV" >&2; exit 1; }; }
+die() { echo "✗ $*" >&2; exit 1; }
 
-# ── Reserve addresses (the single source: the deploy env) ─────────────────────
-MUSD_VAULT=$(get MUSD_VAULT);       MUSD_POLICY=$(get MUSD_POLICY)
-MUSD_REGISTRY=$(get MUSD_REGISTRY); MUSD_SAC=$(get MUSD_SAC); MUSD_FAUCET=$(get MUSD_FAUCET)
-MTESOURO_VAULT=$(get MTESOURO_VAULT);       MTESOURO_POLICY=$(get MTESOURO_POLICY)
-MTESOURO_REGISTRY=$(get MTESOURO_REGISTRY); MTESOURO_SAC=$(get MTESOURO_SAC); MTESOURO_FAUCET=$(get MTESOURO_FAUCET)
-MBRL_VAULT=$(get MBRL_VAULT);       MBRL_POLICY=$(get MBRL_POLICY)
-MBRL_REGISTRY=$(get MBRL_REGISTRY); MBRL_SAC=$(get MBRL_SAC); MBRL_FAUCET=$(get MBRL_FAUCET)
+# Read + validate one reserve's contract set. Sets <PFX>_{VAULT,POLICY,REGISTRY,
+# SAC,FAUCET,CODE,ISSUER}. Validates the vault is live and its underlying matches
+# the configured SAC (catches a stale/wrong id), then resolves the asset's
+# CODE:ISSUER from the SAC's on-chain name().
+load_reserve() {
+  local pfx="$1" k val sac_name ua
+  for k in VAULT POLICY REGISTRY SAC FAUCET; do
+    val="$(get "${pfx}_${k}")"
+    [ -n "$val" ] || die "missing ${pfx}_${k} in $DEPLOY_ENV"
+    eval "${pfx}_${k}=\$val"
+  done
+  local vname="${pfx}_VAULT" sname="${pfx}_SAC"
+  local vault="${!vname}" sac="${!sname}"
+  # Vault must be live AND settle in the configured SAC — else the deploy env is stale.
+  ua="$(invoke "$vault" query_asset)"
+  [ -n "$ua" ] || die "${pfx}_VAULT $vault is not reachable on $NET (dead id, missing '$SRC' identity, or RPC down)"
+  [ "$ua" = "$sac" ] || die "${pfx}_VAULT $vault underlying ($ua) != ${pfx}_SAC $sac — stale/wrong deploy env"
+  # Asset code:issuer from the SAC's on-chain name() — the source of truth.
+  sac_name="$(invoke "$sac" name)"
+  [ -n "$sac_name" ] || die "could not read name() of ${pfx}_SAC $sac on $NET"
+  case "$sac_name" in
+    *:*) : ;;
+    *)   die "${pfx}_SAC $sac name() = '$sac_name' is not CODE:ISSUER" ;;
+  esac
+  eval "${pfx}_CODE=\${sac_name%%:*}; ${pfx}_ISSUER=\${sac_name##*:}"
+}
 
-for v in MUSD_VAULT MUSD_POLICY MUSD_REGISTRY MUSD_SAC MUSD_FAUCET \
-         MTESOURO_VAULT MTESOURO_POLICY MTESOURO_REGISTRY MTESOURO_SAC MTESOURO_FAUCET \
-         MBRL_VAULT MBRL_POLICY MBRL_REGISTRY MBRL_SAC MBRL_FAUCET; do
-  require "$v" "$(eval echo \"\$$v\")"
-done
-
-# ── Asset code + issuer, resolved on-chain from each SAC ──────────────────────
-echo "→ resolving asset metadata on-chain ($NET)…"
-musd_n="$(sac_name "$MUSD_SAC")";         [ -n "$musd_n" ] || { echo "✗ name() failed for MUSD SAC $MUSD_SAC" >&2; exit 1; }
-mtesouro_n="$(sac_name "$MTESOURO_SAC")"; [ -n "$mtesouro_n" ] || { echo "✗ name() failed for MTESOURO SAC $MTESOURO_SAC" >&2; exit 1; }
-mbrl_n="$(sac_name "$MBRL_SAC")";         [ -n "$mbrl_n" ] || { echo "✗ name() failed for MBRL SAC $MBRL_SAC" >&2; exit 1; }
-MUSD_CODE="${musd_n%%:*}";         MUSD_ISSUER="${musd_n##*:}"
-MTESOURO_CODE="${mtesouro_n%%:*}"; MTESOURO_ISSUER="${mtesouro_n##*:}"
-MBRL_CODE="${mbrl_n%%:*}";         MBRL_ISSUER="${mbrl_n##*:}"
+echo "→ reading $DEPLOY_ENV + validating reserves on-chain ($NET)…"
+load_reserve MUSD
+load_reserve MTESOURO
+load_reserve MBRL
 echo "  MUSD: $MUSD_CODE / $MUSD_ISSUER"
 echo "  MTESOURO: $MTESOURO_CODE / $MTESOURO_ISSUER"
 echo "  MBRL: $MBRL_CODE / $MBRL_ISSUER"
@@ -76,8 +100,8 @@ cat > "$ROOT/frontend/.env.example" <<EOF
 # clone just needs \`cp .env.example .env.local\`. All values are public testnet
 # contract/asset IDs (no secrets). Three reserves live: MUSD · MTESOURO · MBRL.
 #
-# GENERATED by scripts/sync-deploy.sh from the deploy env — do not edit by hand;
-# re-run \`make sync-deploy\` after a redeploy.
+# GENERATED by scripts/sync-deploy.sh — do not edit by hand; re-run
+# \`make sync-deploy\` after a redeploy.
 
 # ── Stellar network (testnet) ──
 NEXT_PUBLIC_RPC_URL=$RPC_URL
@@ -112,9 +136,7 @@ NEXT_PUBLIC_CBRL_FAUCET_ID=$MBRL_FAUCET
 EOF
 
 # ── Generate docs/reference/deployments.md ────────────────────────────────────
-row() { # contract-label  address  env-var-cell
-  printf '| %s | [`%s`](%s/contract/%s) | %s |\n' "$1" "$2" "$EXPLORER_BASE" "$2" "$3"
-}
+row() { printf '| %s | [`%s`](%s/contract/%s) | %s |\n' "$1" "$2" "$EXPLORER_BASE" "$2" "$3"; }
 {
 cat <<EOF
 # Testnet deployments
@@ -175,20 +197,21 @@ $(row faucet "$MBRL_FAUCET" '`NEXT_PUBLIC_CBRL_FAUCET_ID`')
 ## Deposit assets
 
 All three deposit tokens are **mock classic assets** on testnet. Each vault's
-\`underlying\` is the asset's Stellar Asset Contract (SAC) above.
+\`underlying\` is the asset's Stellar Asset Contract (SAC) above. The codes and
+issuers below are read live from each SAC's on-chain \`name()\` — never copied by
+hand (re-run \`make sync-deploy\` to refresh).
 
-| Asset | Code | Issuer |
+| Reserve | Deposit token | Issuer |
 |---|---|---|
-| MUSD deposit | \`$MUSD_CODE\` | \`$MUSD_ISSUER\` |
-| MTESOURO deposit | \`$MTESOURO_CODE\` | \`$MTESOURO_ISSUER\` |
-| MBRL deposit | \`$MBRL_CODE\` | \`$MBRL_ISSUER\` |
-
-(cTSR is yield-bearing ≈ R\$1.22, not 1:1; cUSD/cBRL are 1:1-pegged.)
+| MUSD | \`$MUSD_CODE\` | \`$MUSD_ISSUER\` |
+| MTESOURO | \`$MTESOURO_CODE\` | \`$MTESOURO_ISSUER\` |
+| MBRL | \`$MBRL_CODE\` | \`$MBRL_ISSUER\` |
 
 ## Notes
 
 - All addresses are **testnet-only**; a redeploy via \`bootstrap.sh\` changes every
-  contract ID. Re-run \`make sync-deploy\` to regenerate this file + \`.env.example\`.
+  contract ID. Re-run \`make sync-deploy\` to regenerate this file, \`.env.example\`,
+  and the README block.
 - The two-leg fiança policy is live: each reserve's \`policy\` exposes \`cover_default\`,
   \`cover_exit\`, \`grace_secs\`, and \`set_coverage_ratio_bps\`.
 - For the per-method contract surface, see [\`./contracts/vault.md\`](./contracts/vault.md);
@@ -196,7 +219,34 @@ All three deposit tokens are **mock classic assets** on testnet. Each vault's
 EOF
 } > "$ROOT/docs/reference/deployments.md"
 
+# ── Regenerate the README "Live on testnet" block (between sentinels) ──────────
+README="$ROOT/README.md"
+if grep -q '<!-- deploy:start' "$README" && grep -q '<!-- deploy:end' "$README"; then
+  blk="$(mktemp)"
+  cat > "$blk" <<EOF
+Primary reserve (MUSD) below; the full address set for all three reserves + their assets is in [\`docs/reference/deployments.md\`](docs/reference/deployments.md).
+
+| Contract | Address | Verify |
+|---|---|---|
+| vault | \`$MUSD_VAULT\` | [stellar.expert]($EXPLORER_BASE/contract/$MUSD_VAULT) |
+| policy | \`$MUSD_POLICY\` | [stellar.expert]($EXPLORER_BASE/contract/$MUSD_POLICY) |
+| registry | \`$MUSD_REGISTRY\` | [stellar.expert]($EXPLORER_BASE/contract/$MUSD_REGISTRY) |
+
+The MUSD vault settles in the $MUSD_CODE SAC \`$MUSD_SAC\`. The three deposit tokens ($MUSD_CODE / $MTESOURO_CODE / $MBRL_CODE) are mock testnet assets issued by \`$MUSD_ISSUER\`.
+EOF
+  awk -v blockfile="$blk" '
+    index($0,"<!-- deploy:start")>0 { print; while ((getline l < blockfile) > 0) print l; close(blockfile); skip=1; next }
+    index($0,"<!-- deploy:end")>0   { skip=0; print; next }
+    !skip { print }
+  ' "$README" > "$README.new" && mv "$README.new" "$README"
+  rm -f "$blk"
+  README_NOTE="    README.md (deploy block)"
+else
+  README_NOTE="    README.md — SKIPPED (no <!-- deploy:start/end --> sentinels found)"
+fi
+
 echo "✓ regenerated:"
 echo "    frontend/.env.example"
 echo "    docs/reference/deployments.md"
-echo "  review with: git diff -- frontend/.env.example docs/reference/deployments.md"
+echo "$README_NOTE"
+echo "  review with: git diff -- frontend/.env.example docs/reference/deployments.md README.md"
