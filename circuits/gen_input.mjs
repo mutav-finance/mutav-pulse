@@ -11,7 +11,7 @@ import fs from "fs";
 
 const [vault = "0", ratio = "10000", bank = "0", mode = ""] = process.argv.slice(2);
 const NONCE = "1";
-const TREE_DEPTH = 5;
+const TREE_DEPTH = 7;
 
 const poseidon = await buildPoseidon();
 const eddsa = await buildEddsa();
@@ -19,7 +19,7 @@ const F = poseidon.F;
 const h2 = (a, b) => F.toObject(poseidon([a, b])); // -> bigint, same as prover/registry
 
 // --- guarantees (2 active) ---
-const N = 32;
+const N = 1 << TREE_DEPTH;
 const id = Array(N).fill("0");
 const ob = Array(N).fill("0");
 const ac = Array(N).fill("0");

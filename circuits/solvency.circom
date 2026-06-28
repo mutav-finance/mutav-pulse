@@ -146,4 +146,8 @@ template Solvency(depth) {
     ge.out === 1;
 }
 
-component main { public [guarantees_root, vault_stable_assets, ratio_bps, nonce, oracle_Ax, oracle_Ay] } = Solvency(5);
+// Depth 7 (2^7 = 128 leaves) — sized to hold the registry's full active set
+// (MAX_ACTIVE_GUARANTEES = 90 <= 128). MUST match `TREE_DEPTH` in the registry
+// contract; changing it requires regenerating the zkey + verification key and
+// rebuilding/redeploying the attestor (the embedded VK is a pair with the zkey).
+component main { public [guarantees_root, vault_stable_assets, ratio_bps, nonce, oracle_Ax, oracle_Ay] } = Solvency(7);

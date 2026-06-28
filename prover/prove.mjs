@@ -72,7 +72,7 @@ async function main() {
   const stableAssets = BigInt(read(VAULT, "stable_assets")); // "504200000000"
 
   const guarantees = activeIds.map((id) => read(REGISTRY, "get", "--id", String(id)));
-  const N = 1 << TREE_DEPTH; // 32
+  const N = 1 << TREE_DEPTH; // 128 (depth 7)
   if (activeIds.length > N) throw new Error(`guarantees (${activeIds.length}) > tree capacity (${N})`);
 
   // obligation = monthly_amount * (months_covered - months_used), saturated to >=0 —
@@ -84,7 +84,7 @@ async function main() {
     return ob > 0n ? ob : 0n;
   };
 
-  // --- piece B: real leaves in active_ids order, padded to 32 ---
+  // --- piece B: real leaves in active_ids order, padded to N (= 2^TREE_DEPTH) ---
   const id = Array(N).fill("0");
   const obligation = Array(N).fill("0");
   const active = Array(N).fill("0");

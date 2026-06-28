@@ -18,7 +18,9 @@
 
 import { buildPoseidon } from "circomlibjs";
 
-export const TREE_DEPTH = 5;
+// MUST match `TREE_DEPTH` in the registry contract and `Solvency(depth)` in
+// solvency.circom. Depth 7 (128 leaves) holds the full active set (cap 90).
+export const TREE_DEPTH = 7;
 
 /** Builds the Poseidon hasher (t=3 / 2 inputs). Returns h2(a,b) -> bigint. */
 export async function makeHasher() {
