@@ -75,7 +75,7 @@ export function AllocationDonut({
   }, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", gap: "28px" }}>
+    <div style={{ display: "flex", flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "28px" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" }}>
         <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={ariaLabel}>
           <g transform={`rotate(-90 ${CENTER} ${CENTER})`}>

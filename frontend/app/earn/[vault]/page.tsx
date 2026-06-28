@@ -70,11 +70,12 @@ function VerifiedHub({
         color: "var(--color-text)",
       }}
     >
-      <div style={{ maxWidth: "1440px", margin: "0 auto", padding: "32px 32px 64px" }}>
+      <div style={{ width: "100%", padding: "32px var(--page-pad) 64px" }}>
         {/* ── Reserve header (full width) ─────────────────────────────────── */}
         <header
           style={{
             display: "flex",
+            flexWrap: "wrap",
             alignItems: "flex-start",
             justifyContent: "space-between",
             gap: "24px",
@@ -92,7 +93,7 @@ function VerifiedHub({
                 letterSpacing: "0.08em",
                 color: "var(--color-text-2)",
                 textTransform: "uppercase",
-                margin: "0 0 6px",
+                margin: "0 0 8px",
               }}
             >
               Mutav Pulse Protocol

@@ -88,6 +88,9 @@
   /* ── Border radius — always 0 (Precision Brutalism) ── */
   --radius: 0px;
 
+  /* ── Shared full-bleed horizontal padding (layout token, front-agnostic) ── */
+  --page-pad: 32px;
+
   /* ── Spacing scale (8px base grid) ── */
   --spacing-0: 0px;
   --spacing-1: 8px;
@@ -370,7 +373,7 @@ input:disabled {
     display: inline-flex;
   }
   :root {
-    --nav-pad: 16px;
+    --page-pad: 16px;
   }
 }
 

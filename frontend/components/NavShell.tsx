@@ -106,7 +106,7 @@ export function NavShell() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 var(--nav-pad, 32px)",
+          padding: "0 var(--page-pad, 32px)",
         }}
       >
         {/* Left: logo + desktop nav links */}
@@ -182,7 +182,7 @@ export function NavShell() {
           className="nav-mobile-panel"
           style={{
             margin: 0,
-            padding: "8px var(--nav-pad, 32px) 16px",
+            padding: "8px var(--page-pad, 32px) 16px",
             borderTop: "1px solid var(--color-border)",
             backgroundColor: "var(--color-canvas)",
           }}

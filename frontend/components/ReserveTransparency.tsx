@@ -193,7 +193,7 @@ function Section({
             {intro}
           </p>
         </div>
-        {aside && <div style={{ flexShrink: 0 }}>{aside}</div>}
+        {aside && <div style={{ flexShrink: 0, maxWidth: "100%", minWidth: 0 }}>{aside}</div>}
       </div>
       {children}
     </section>
@@ -212,8 +212,8 @@ function ChartRow({ donut, cards }: { donut: React.ReactNode; cards: React.React
         marginBottom: "28px",
       }}
     >
-      <div style={{ flex: "0 0 auto", paddingTop: "4px" }}>{donut}</div>
-      <div style={{ flex: "1 1 320px", ...hairlineGrid(160) }}>
+      <div style={{ flex: "0 0 auto", maxWidth: "100%", minWidth: 0, paddingTop: "4px" }}>{donut}</div>
+      <div style={{ flex: "1 1 320px", minWidth: 0, ...hairlineGrid(160) }}>
         {cards}
       </div>
     </div>

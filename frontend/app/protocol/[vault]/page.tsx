@@ -482,9 +482,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
       {/* ── Page content ────────────────────────────────────────────────── */}
       <div
         style={{
-          maxWidth: "1400px",
-          margin: "0 auto",
-          padding: "28px 28px 64px",
+          width: "100%",
+          padding: "28px var(--page-pad) 64px",
         }}
       >
         {/* ── Page header ───────────────────────────────────────────────── */}
@@ -495,7 +494,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: "12px",
-            marginBottom: "20px",
+            marginBottom: "24px",
           }}
         >
           <div>
@@ -637,7 +636,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
               padding: "10px 16px",
               backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-error)",
-              marginBottom: "20px",
+              marginBottom: "24px",
             }}
           >
             <p

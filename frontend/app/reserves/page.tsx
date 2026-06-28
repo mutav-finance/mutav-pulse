@@ -19,8 +19,6 @@ import { useLiveAum } from "@/lib/use-live-aum";
 import { CurrencyLogo } from "@/components/CurrencyLogo";
 import { LockIcon } from "@/components/LockIcon";
 
-const MAX_W = "1280px";
-
 export default function ReservesPage() {
   const router = useRouter();
   const reserves = getReserves();
@@ -31,7 +29,7 @@ export default function ReservesPage() {
 
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
-      <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "56px 32px 80px" }}>
+      <div style={{ width: "100%", padding: "56px var(--page-pad) 80px" }}>
         {/* Header */}
         <p
           className="font-body"
@@ -54,7 +52,7 @@ export default function ReservesPage() {
         </h1>
         <p
           className="font-body"
-          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 10px", maxWidth: "62ch" }}
+          style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 8px", maxWidth: "62ch" }}
         >
           Every currency gets its own Mutav reserve: solvency-gated, independently capitalized, and
           never cross-subsidized.
@@ -66,7 +64,7 @@ export default function ReservesPage() {
             alignItems: "baseline",
             justifyContent: "space-between",
             gap: "16px",
-            margin: "0 0 28px",
+            margin: "0 0 32px",
           }}
         >
           <p

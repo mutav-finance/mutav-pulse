@@ -28,7 +28,7 @@ import { ReserveCard } from "@/components/ReserveCard";
 import { ProtocolDiagram } from "@/components/ProtocolDiagram";
 import { ConnectButton } from "@/components/ConnectButton";
 
-const MAX_W = "1280px";
+const MAX_W = "100%";
 
 /** Section label — Inter, ALL CAPS (Explanation layer). */
 function SectionLabel({
@@ -94,7 +94,7 @@ export default function Home() {
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "88px 32px 72px",
+          padding: "88px var(--page-pad) 72px",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
@@ -171,7 +171,7 @@ export default function Home() {
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "72px 32px",
+          padding: "72px var(--page-pad)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
@@ -258,7 +258,7 @@ export default function Home() {
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "72px 32px",
+          padding: "72px var(--page-pad)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -296,7 +296,7 @@ export default function Home() {
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "72px 32px",
+          padding: "72px var(--page-pad)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -352,7 +352,7 @@ export default function Home() {
         style={{
           maxWidth: MAX_W,
           margin: "0 auto",
-          padding: "72px 32px",
+          padding: "72px var(--page-pad)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -376,7 +376,7 @@ export default function Home() {
       </section>
 
       {/* ── ONBOARD ──────────────────────────────────────────────────────── */}
-      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "72px 32px 96px" }}>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "72px var(--page-pad) 96px" }}>
         <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
