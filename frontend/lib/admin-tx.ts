@@ -158,3 +158,33 @@ export async function removeStrategy(
   const tx = await client.remove_strategy({ address });
   return submit(tx);
 }
+
+/**
+ * Set the liquid-cash-buffer target — the fraction of total assets (in bps) the
+ * vault retains idle; `rebalance` deploys only the surplus above it. 0 = deploy
+ * everything. Admin only.
+ */
+export async function setMinLiquidBufferBps(
+  contracts: ReserveContracts,
+  caller: string,
+  bps: number,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_min_liquid_buffer_bps({ bps });
+  return submit(tx);
+}
+
+/**
+ * Set a strategy's concentration cap — the max fraction of total assets (in bps)
+ * `rebalance` will deploy to it. 10000 = uncapped. Admin only.
+ */
+export async function setStrategyMaxDebtBps(
+  contracts: ReserveContracts,
+  caller: string,
+  strategy: string,
+  bps: number,
+): Promise<string> {
+  const client = vaultWriter(caller, contracts.vault);
+  const tx = await client.set_strategy_max_debt_bps({ strategy, bps });
+  return submit(tx);
+}
