@@ -219,7 +219,7 @@ export default function Home() {
           {[
             {
               icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="square" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-2)" strokeWidth="1.5" strokeLinecap="square" aria-hidden="true">
                   <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
@@ -229,7 +229,7 @@ export default function Home() {
             },
             {
               icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-2)" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
                   <path d="M9 3h6" />
                   <path d="M10 3v5L5.5 18A1.5 1.5 0 0 0 7 20.2h10A1.5 1.5 0 0 0 18.5 18L14 8V3" />
                   <path d="M7.5 14h9" />

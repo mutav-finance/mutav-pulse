@@ -162,13 +162,14 @@
   --color-copper:     oklch(0.610 0.132 65.34);
   --color-copper-dim: oklch(0.420 0.091 65.34);
   --color-border:     #2A2D33;
+  --color-border-input: #484D58; /* form-field boundary — ≥3:1 on canvas (WCAG 1.4.11) */
   --color-text:       #F0F0EE;
   --color-text-2:     #8A8F99;
-  --color-text-3:     #555B66;
+  --color-text-3:     #7C828D; /* dim label — raised to ≥4.5:1 on canvas (WCAG 1.4.3) */
   --color-accent:     #E8A020;
   --color-accent-dim: #9E6A10;
   --color-success:    #3DAB72;
-  --color-error:      #C94040;
+  --color-error:      #D85555; /* ≥4.5:1 at body-text sizes on canvas (WCAG 1.4.3) */
 }
 
 /* Dashboard Imobiliárias (light, warm neutral) */
@@ -177,6 +178,7 @@
   --color-surface:    #FFFFFF;
   --color-surface-2:  #EEEDEA;
   --color-border:     #D9D7D2;
+  --color-border-input: #B5B2AC; /* form-field boundary — ≥3:1 on light canvas (WCAG 1.4.11) */
   --color-text:       #1A1A1A;
   --color-text-2:     #6B6860;
   --color-text-3:     #9E9C98;
@@ -193,16 +195,17 @@
   --color-surface-2:  #181B1F;
   --color-surface-3:  #1F2226;
   --color-border:     #2A2D33;
+  --color-border-input: #484D58; /* form-field boundary — ≥3:1 on canvas (WCAG 1.4.11) */
   --color-text:       #E8E4DC;
-  --color-text-2:     #7A7870;
-  --color-text-3:     #4A4844;
+  --color-text-2:     #908C82; /* raised to clear 4.5:1 and stay above text-3 (WCAG 1.4.3) */
+  --color-text-3:     #847F74; /* dim label — raised to ≥4.5:1 on the darker terminal canvas (WCAG 1.4.3) */
   --color-accent:     #E8A020;
   --color-accent-dim: #B87010;
   /* copper = the terminal's primary OPS accent (#B87010) */
   --color-copper:     oklch(0.610 0.132 65.34);
   --color-copper-dim: oklch(0.420 0.091 65.34);
   --color-success:    #3DAB72;
-  --color-error:      #C94040;
+  --color-error:      #D85555; /* ≥4.5:1 at body-text sizes on canvas (WCAG 1.4.3) */
 }
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
@@ -336,10 +339,20 @@ input:disabled {
   cursor: not-allowed;
 }
 
-/* ── Focus: border color only — no ring, no glow, no box-shadow ── */
+/* ── Focus: a visible amber outline (offset so it reads even on amber-bordered
+   controls). Outline is not a ring/glow/box-shadow, so it honors the brand
+   constraint while satisfying WCAG 2.4.7 (the old `outline:none` left keyboard
+   focus invisible on the primary CTA). ── */
 :focus-visible {
-  outline: none;
-  border-color: var(--color-accent) !important;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+/* ── Connect CTA — amber outline at rest, fills amber on hover (intent only) ── */
+.connect-cta:not(:disabled):hover {
+  background-color: var(--color-accent);
+  color: var(--color-canvas);
 }
 
 /* ── Section tabs (protocol cockpit) — underline-style, copper active ── */

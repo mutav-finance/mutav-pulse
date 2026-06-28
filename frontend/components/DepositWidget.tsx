@@ -169,13 +169,13 @@ export function DepositWidget({
               style={{
                 width: "100%",
                 backgroundColor: "transparent",
-                border: "1px solid var(--color-border)",
+                border: "1px solid var(--color-border-input)",
                 color: "var(--color-text)",
                 fontSize: "14px",
                 padding: "10px 52px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
-                outline: "none",
+                // focus ring comes from the global :focus-visible rule
                 // Dark native controls (number spinner) instead of the light default.
                 colorScheme: "dark",
                 // No border-radius (Precision Brutalism)
