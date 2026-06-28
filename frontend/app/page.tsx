@@ -86,7 +86,11 @@ export default function Home() {
   const { primaryLabel, aumFor } = useLiveAum();
 
   return (
-    <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
+    <main
+      data-front="terminal"
+      className="texture-terminal"
+      style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}
+    >
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
         style={{
