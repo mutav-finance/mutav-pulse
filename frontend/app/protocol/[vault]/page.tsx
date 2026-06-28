@@ -1310,6 +1310,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* Current vs target table */}
             {!data.loading && data.strategies.length > 0 && (
               <div
+                className="scroll-fade-x"
                 style={{
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",

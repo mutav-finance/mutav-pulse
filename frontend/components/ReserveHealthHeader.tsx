@@ -219,7 +219,7 @@ export function ReserveHealthHeader({
             >
               Strategy Allocs
             </span>
-            <div className="scroll-dark" style={{ overflow: "auto", maxHeight: "152px" }}>
+            <div className="scroll-dark scroll-fade-y" style={{ overflow: "auto", maxHeight: "152px" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFeatureSettings: '"tnum" 1' }}>
               <thead>
                 <tr>

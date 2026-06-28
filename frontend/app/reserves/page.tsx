@@ -92,7 +92,7 @@ export default function ReservesPage() {
         </div>
 
         {/* Reserve comparison table */}
-        <div style={{ overflowX: "auto", border: "1px solid var(--color-border)" }}>
+        <div className="scroll-fade-x" style={{ overflowX: "auto", border: "1px solid var(--color-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "880px" }}>
             <thead>
               <tr>

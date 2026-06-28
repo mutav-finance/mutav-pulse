@@ -355,6 +355,39 @@ input:disabled {
   color: var(--color-canvas);
 }
 
+/* ── Responsive nav: desktop links inline, collapse to a hamburger < 768px ── */
+.nav-links-desktop {
+  display: flex;
+}
+.nav-hamburger {
+  display: none;
+}
+@media (max-width: 767px) {
+  .nav-links-desktop {
+    display: none;
+  }
+  .nav-hamburger {
+    display: inline-flex;
+  }
+  :root {
+    --nav-pad: 16px;
+  }
+}
+
+/* ── Scroll-fade affordance for clipped scroll containers ──────────────────
+   Signals "there's more" at the edge a table scrolls toward. The element must
+   set overflow-x/y:auto; the mask fades the last 16px so clipped columns/rows
+   read as scrollable rather than silently cut off (WCAG 1.4.10 reflow cue). */
+.scroll-fade-x {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 16px), transparent 100%);
+          mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 16px), transparent 100%);
+}
+.scroll-fade-y {
+  /* bottom-only: a sticky header keeps its full opacity at the top */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
+}
+
 /* ── Section tabs (protocol cockpit) — underline-style, copper active ── */
 .section-tab {
   color: var(--color-text-2);

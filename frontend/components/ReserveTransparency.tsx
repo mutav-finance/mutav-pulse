@@ -670,7 +670,7 @@ export function ReserveTransparency({
         <AllocationBar loading={loading} segments={allocationSegments} />
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
-        <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
+        <div className="scroll-fade-x" style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "680px" }}>
             <thead>
               <tr style={{ backgroundColor: "var(--color-surface-2)" }}>

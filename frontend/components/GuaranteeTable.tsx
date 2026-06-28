@@ -154,7 +154,7 @@ export function GuaranteeTable({ guarantees, money, loading = false, error }: Gu
 
   return (
     <div
-      className="scroll-dark"
+      className="scroll-dark scroll-fade-y"
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
