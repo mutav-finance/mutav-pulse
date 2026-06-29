@@ -18,6 +18,7 @@ import { createContext, useContext, useState } from "react";
 import { errMsg } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -433,19 +434,12 @@ export function FormCheckbox({
         cursor: isDisabled ? "not-allowed" : "pointer",
       }}
     >
-      {/* eslint-disable-next-line no-restricted-syntax -- no shadcn Checkbox primitive installed; raw checkbox is intentional */}
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onCheckedChange={(v) => onChange(v === true)}
         disabled={isDisabled}
-        style={{
-          width: "14px",
-          height: "14px",
-          accentColor: "var(--color-copper)",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-        }}
+        style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
       />
       <span
         className="font-body"
