@@ -78,7 +78,7 @@ const HEADER_STYLE: React.CSSProperties = {
   fontSize: "9px",
   fontWeight: 500,
   letterSpacing: "0.08em",
-  color: "var(--color-text-3)",
+  color: "var(--color-text-2)", // text-2, not text-3: small label on surface-2 needs AA
   fontFamily: "var(--font-body)",
   textTransform: "uppercase",
   borderBottom: "1px solid var(--color-border)",

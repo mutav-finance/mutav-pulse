@@ -659,25 +659,8 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
           })}
         </div>
 
-        {/* ── Error banner ──────────────────────────────────────────────── */}
-        {data.error && (
-          <div
-            role="alert"
-            style={{
-              padding: "10px 16px",
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-error)",
-              marginBottom: "24px",
-            }}
-          >
-            <p
-              className="font-mono"
-              style={{ fontSize: "11px", color: "var(--color-error)", margin: 0 }}
-            >
-              {data.error}
-            </p>
-          </div>
-        )}
+        {/* Load error is surfaced once, by ReserveHealthHeader below (it receives
+            `error` and renders the single role="alert"). No duplicate banner here. */}
 
         {/* ── Reserve Health Header ──────────────────────────────────────── */}
         <div style={{ marginBottom: "24px" }}>

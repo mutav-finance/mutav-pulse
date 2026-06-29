@@ -739,18 +739,19 @@ export function ReserveTransparency({
         }
         asideSplit
         aside={
-          /* Allocation across each venue + the in-vault asset, summing to total. */
-          <AllocationBar loading={loading} segments={allocationSegments} />
+          <div>
+            {/* "Allocation" label + wired count sit directly on top of the bar. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              <h3 className="font-display" style={SUBHEAD}>Allocation</h3>
+              <span className="font-mono" style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
+                {loading ? "…" : `${data.strategies.length} wired`}
+              </span>
+            </div>
+            {/* Allocation across each venue + the in-vault asset, summing to total. */}
+            <AllocationBar loading={loading} segments={allocationSegments} />
+          </div>
         }
       >
-        {/* Table heading — mirrors the Policy "Guarantee Registry" row: the wired
-            count sits right-aligned directly above its table. */}
-        <div style={{ margin: "20px 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <h3 className="font-display" style={SUBHEAD}>Allocation</h3>
-          <span className="font-mono" style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${data.strategies.length} wired`}
-          </span>
-        </div>
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
         <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
@@ -768,7 +769,7 @@ export function ReserveTransparency({
                       fontWeight: 600,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      color: "var(--color-text-3)",
+                      color: "var(--color-text-2)", // text-2, not text-3: AA on surface-2
                       borderBottom: "1px solid var(--color-border)",
                       whiteSpace: "nowrap",
                     }}
