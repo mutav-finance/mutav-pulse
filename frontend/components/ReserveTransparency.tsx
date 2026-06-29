@@ -273,12 +273,21 @@ function MetricGroup({
       >
         {hint}
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "12px" }}>
-        {children}
-      </div>
+      <div style={metricGrid(190)}>{children}</div>
     </div>
   );
 }
+
+/**
+ * Standard metric-card grid — the cross-page default for any cluster of metric
+ * cards. Transparent gaps (each card carries its own border), so a short final
+ * row leaves NO empty bordered cell — unlike the hairline shared-border grid.
+ */
+const metricGrid = (minPx = 200): React.CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(auto-fill, minmax(${minPx}px, 1fr))`,
+  gap: "12px",
+});
 
 /** Brutalist hairline grid — 1px gaps over the border color, no radius/shadow. */
 const hairlineGrid = (minPx: number): React.CSSProperties => ({
@@ -549,7 +558,8 @@ export function ReserveTransparency({
           </>
         }
       >
-        <div style={{ marginBottom: "28px" }}>
+        {/* Solvency — full-width status banner: the reserve's core promise up top. */}
+        <div style={{ marginBottom: "20px" }}>
           <SolvencyChip
             stableAssets={data.stableAssets}
             coverageRequired={data.coverageRequired}
@@ -558,7 +568,8 @@ export function ReserveTransparency({
             error={error ?? undefined}
           />
         </div>
-        <div style={hairlineGrid(170)}>
+        {/* Headline metrics — the standard transparent metric grid. */}
+        <div style={metricGrid(180)}>
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
