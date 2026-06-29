@@ -106,6 +106,7 @@ export default function Home() {
           src="/brand/hero-6.png"
           alt=""
           aria-hidden="true"
+          className="hero-backdrop"
           style={{
             position: "absolute",
             top: 0,

@@ -429,6 +429,11 @@ input:disabled {
   :root {
     --page-pad: 16px;
   }
+  /* Decorative hero backdrop crowds the headline on phones — drop it below the
+     mobile breakpoint (it carries no information; alt="" / aria-hidden). */
+  .hero-backdrop {
+    display: none;
+  }
 }
 
 /* ── Scroll-fade affordance for clipped scroll containers ──────────────────
