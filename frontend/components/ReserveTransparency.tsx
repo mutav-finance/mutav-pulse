@@ -153,6 +153,7 @@ function Section({
   children,
   first = false,
   introMaxWidth = "62ch",
+  asideSplit = false,
 }: {
   id: string;
   title: string;
@@ -163,6 +164,8 @@ function Section({
   first?: boolean;
   /** Max width of the title + intro column — widen to control intro line count. */
   introMaxWidth?: string;
+  /** Split the header row 50/50 (title+body | aside), tops aligned. */
+  asideSplit?: boolean;
 }) {
   return (
     <section
@@ -173,17 +176,11 @@ function Section({
         marginBottom: "56px",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "20px",
-          flexWrap: "wrap",
-          margin: "20px 0 24px",
-        }}
-      >
-        <div style={{ maxWidth: introMaxWidth }}>
+      {asideSplit && aside ? (
+        // Split header: the title spans the top, then body + aside sit in a
+        // 50/50 row below it — so the aside's top aligns with the BODY text,
+        // not the title.
+        <div style={{ margin: "20px 0 24px" }}>
           <h2
             className="font-display"
             style={{
@@ -196,15 +193,50 @@ function Section({
           >
             {title}
           </h2>
-          <p
-            className="font-body"
-            style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
-          >
-            {intro}
-          </p>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "56px", flexWrap: "wrap" }}>
+            <p
+              className="font-body"
+              style={{ flex: "1 1 0", minWidth: 0, fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
+            >
+              {intro}
+            </p>
+            <div style={{ flex: "1 1 0", minWidth: 0 }}>{aside}</div>
+          </div>
         </div>
-        {aside && <div style={{ flexShrink: 0, maxWidth: "100%", minWidth: 0 }}>{aside}</div>}
-      </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "20px",
+            flexWrap: "wrap",
+            margin: "20px 0 24px",
+          }}
+        >
+          <div style={{ maxWidth: introMaxWidth }}>
+            <h2
+              className="font-display"
+              style={{
+                fontSize: "20px",
+                letterSpacing: "0.01em",
+                textTransform: "uppercase",
+                color: "var(--color-text)",
+                margin: "0 0 10px",
+              }}
+            >
+              {title}
+            </h2>
+            <p
+              className="font-body"
+              style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
+            >
+              {intro}
+            </p>
+          </div>
+          {aside && <div style={{ flexShrink: 0, maxWidth: "100%", minWidth: 0 }}>{aside}</div>}
+        </div>
+      )}
       {children}
     </section>
   );
@@ -308,7 +340,7 @@ function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
     <tr
       style={{
         borderTop: "1px solid var(--color-border)",
-        verticalAlign: "top",
+        verticalAlign: "middle",
         backgroundColor: row.status === "liquid" ? "var(--color-surface)" : undefined,
       }}
     >
@@ -705,10 +737,12 @@ export function ReserveTransparency({
             rest liquid in the vault. Everything below is read live on-chain.
           </>
         }
+        asideSplit
+        aside={
+          /* Allocation across each venue + the in-vault asset, summing to total. */
+          <AllocationBar loading={loading} segments={allocationSegments} />
+        }
       >
-        {/* Chart — allocation across each venue + the asset held in-vault, summing to total. */}
-        <AllocationBar loading={loading} segments={allocationSegments} />
-
         {/* Table heading — mirrors the Policy "Guarantee Registry" row: the wired
             count sits right-aligned directly above its table. */}
         <div style={{ margin: "20px 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>

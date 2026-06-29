@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="pt-BR"
+      lang="en"
       className={`${geist.variable} h-full antialiased`}
       data-front="investidor"
       // Stellar Wallets Kit injects `--swk-*` CSS custom properties onto
