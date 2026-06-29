@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AssetInfo } from "@/lib/trustline";
+import { treatTxError } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Button } from "@/components/ui/button";
 
@@ -88,7 +89,8 @@ export function FaucetCard({
         await refresh();
         onSuccess();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        const t = treatTxError(err, action === "drip" ? "faucet-drip" : "trustline");
+        setError(t.action ? `${t.message} ${t.action}` : t.message);
       } finally {
         setPending(null);
       }

@@ -878,6 +878,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Sign Guarantee"
                 description="policy.sign_guarantee"
+                txContext="sign-guarantee"
                 actionLabel="Sign"
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
@@ -991,6 +992,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Settle Guarantee"
                 description="policy.settle_guarantee"
+                txContext="settle"
                 actionLabel="Settle"
                 disabled={!isPolicyAdmin}
                 onSubmit={async () => {
@@ -1032,6 +1034,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Pay Fee"
                 description="policy.pay_fee"
+                txContext="pay-fee"
                 actionLabel="Pay"
                 disabled={!isAdmin}
                 onSubmit={async () => {
@@ -1098,6 +1101,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Cover Default"
                 description="policy.cover_default"
+                txContext="cover-default"
                 actionLabel="Cover Default"
                 disabled={!isPolicyAdmin}
                 requireConfirm
@@ -1146,6 +1150,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Cover Exit"
                 description="policy.cover_exit"
+                txContext="cover-exit"
                 actionLabel="Cover Exit"
                 disabled={!isPolicyAdmin}
                 requireConfirm
@@ -1292,6 +1297,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Process Redemptions"
                 description="vault.process_redemptions"
+                txContext="process-redemptions"
                 actionLabel="Process"
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
@@ -1435,6 +1441,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Apply allocations ▸ Rebalance"
                 description="vault.rebalance"
+                txContext="rebalance"
                 actionLabel="Apply"
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
@@ -1493,6 +1500,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Add Strategy"
                 description="vault.add_strategy"
+                txContext="strategy-admin"
                 actionLabel="Add"
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
@@ -1543,6 +1551,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Liquid Buffer"
                 description="vault.set_min_liquid_buffer_bps"
+                txContext="strategy-admin"
                 actionLabel="Set buffer"
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
@@ -1575,6 +1584,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Strategy Cap"
                 description="vault.set_strategy_max_debt_bps"
+                txContext="strategy-admin"
                 actionLabel="Set cap"
                 disabled={!isVaultAdmin}
                 onSubmit={async () => {
@@ -1618,6 +1628,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Remove Strategy"
                 description="vault.remove_strategy"
+                txContext="strategy-admin"
                 actionLabel="Remove"
                 disabled={!isVaultAdmin}
                 requireConfirm
@@ -1688,6 +1699,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Transfer Vault Admin"
                 description="vault.set_admin"
+                txContext="strategy-admin"
                 actionLabel="Transfer"
                 disabled={!isVaultAdmin}
                 requireConfirm
@@ -1706,6 +1718,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 currency={currency}
                 title="Transfer Policy Admin"
                 description="policy.set_admin"
+                txContext="strategy-admin"
                 actionLabel="Transfer"
                 disabled={!isPolicyAdmin}
                 requireConfirm

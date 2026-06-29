@@ -352,6 +352,7 @@ export default function AdminPage() {
           <ProtocolActionForm
             title="Add signer"
             description="grant admin to a wallet"
+            txContext="add-signer"
             actionLabel="Add Signer"
             disabled={!canManage}
             onSubmit={async () => {
@@ -389,6 +390,7 @@ export default function AdminPage() {
           <ProtocolActionForm
             title="Remove signer"
             description="revoke admin from a wallet"
+            txContext="remove-signer"
             actionLabel="Remove Signer"
             disabled={!canManage || removable.length === 0}
             requireConfirm

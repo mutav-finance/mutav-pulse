@@ -17,7 +17,7 @@
 import { useState } from "react";
 import { deposit as txDeposit } from "@/lib/tx";
 import type { ReserveContracts } from "@/lib/contracts";
-import { fmtNav, parseToStroops, errMsg } from "@/lib/format";
+import { fmtNav, parseToStroops, treatTxError } from "@/lib/format";
 import { sharesFor } from "@/lib/economics";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
@@ -81,7 +81,8 @@ export function DepositWidget({
       setLastHash(hash);
       onSuccess(hash);
     } catch (err) {
-      setErrorMsg(errMsg(err));
+      const t = treatTxError(err, "deposit");
+      setErrorMsg(t.action ? `${t.message} ${t.action}` : t.message);
       setStatus("error");
     }
   }

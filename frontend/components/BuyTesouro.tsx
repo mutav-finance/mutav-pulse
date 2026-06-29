@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTesouroInfo, addTesouroTrustline, buyTesouro, type AssetInfo } from "@/lib/buy-tesouro";
 import { config, tesouroSwapEnabled } from "@/lib/config";
-import { errMsg, fmtUnitPrice, parseToStroops, type Money } from "@/lib/format";
+import { treatTxError, fmtUnitPrice, parseToStroops, type Money, type TxContext } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
   }, [refresh, refreshSignal]);
 
   const run = useCallback(
-    async (action: () => Promise<string>) => {
+    async (action: () => Promise<string>, ctx: TxContext) => {
       setStatus("pending");
       setError(null);
       setLastHash(null);
@@ -70,7 +70,8 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
         await refresh();
         onSuccess(hash);
       } catch (err) {
-        setError(errMsg(err, "Transaction failed"));
+        const t = treatTxError(err, ctx);
+        setError(t.action ? `${t.message} ${t.action}` : t.message);
         setStatus("error");
       }
     },
@@ -156,7 +157,7 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
       {info && !info.hasTrustline ? (
         <Button
           variant="outline"
-          onClick={() => run(() => addTesouroTrustline(address))}
+          onClick={() => run(() => addTesouroTrustline(address), "trustline")}
           disabled={isPending}
           // Resting/disabled look is driven by inline style (amber outline, transparent);
           // neutralize the outline variant's amber hover-fill to preserve the original
@@ -181,7 +182,7 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (canBuy) void run(() => buyTesouro(address, amount));
+            if (canBuy) void run(() => buyTesouro(address, amount), "swap");
           }}
           noValidate
         >

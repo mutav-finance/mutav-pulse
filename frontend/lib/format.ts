@@ -4,13 +4,10 @@ export const STROOP_SCALE_NUM = 1e7;
 /** Clamp a fraction into [0, 1] — used for allocation/gauge segment sizing. */
 export const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
-export function errMsg(e: unknown, fallback = "Transaction failed"): string {
-  if (e instanceof Error) return e.message;
-  // Soroban contracts revert with bare strings (e.g. "invalid guarantee ID"),
-  // so surface those verbatim rather than the generic fallback.
-  if (typeof e === "string") return e;
-  return fallback;
-}
+// Transaction-error treatment lives in ./errors (single source of truth). These
+// re-exports keep every existing `from "@/lib/format"` import compiling.
+export { errMsg, friendlyTxError, isFaucetCooldown, treatTxError } from "./errors";
+export type { TreatedError, TxContext, ErrorCategory } from "./errors";
 
 export function fromStroops(v: bigint): number {
   return Number(v) / STROOP_SCALE_NUM;
