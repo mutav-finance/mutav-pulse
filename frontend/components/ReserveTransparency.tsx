@@ -29,7 +29,7 @@ import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
-import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr, clamp01 } from "@/lib/format";
+import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtBps, truncAddr, clamp01 } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
 import { resolveProvider, venueName } from "@/lib/providers";
 import { config, contractUrl } from "@/lib/config";
@@ -287,15 +287,6 @@ const metricGrid = (minPx = 200): React.CSSProperties => ({
   display: "grid",
   gridTemplateColumns: `repeat(auto-fill, minmax(${minPx}px, 1fr))`,
   gap: "12px",
-});
-
-/** Brutalist hairline grid — 1px gaps over the border color, no radius/shadow. */
-const hairlineGrid = (minPx: number): React.CSSProperties => ({
-  display: "grid",
-  gridTemplateColumns: `repeat(auto-fit, minmax(${minPx}px, 1fr))`,
-  gap: "1px",
-  backgroundColor: "var(--color-border)",
-  border: "1px solid var(--color-border)",
 });
 
 const SUBHEAD: React.CSSProperties = {
@@ -568,8 +559,9 @@ export function ReserveTransparency({
             error={error ?? undefined}
           />
         </div>
-        {/* Headline metrics — the standard transparent metric grid. */}
-        <div style={metricGrid(180)}>
+        {/* Headline metrics — size, return, share price. Standard transparent
+            grid (same min as the economics groups) so the three sit on one row. */}
+        <div style={metricGrid(190)}>
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
@@ -590,13 +582,6 @@ export function ReserveTransparency({
             label={`NAV / ${reserve.currency}`}
             value={loading ? "—" : fmtNav(data.navPerShare)}
             unit={`${reserve.depositToken} per share`}
-            loading={loading}
-            error={error ?? undefined}
-          />
-          <MetricCard
-            label="Shares Outstanding"
-            value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit={`${reserve.currency} issued`}
             loading={loading}
             error={error ?? undefined}
           />
@@ -821,7 +806,7 @@ export function ReserveTransparency({
           </>
         }
       >
-        <div style={hairlineGrid(280)}>
+        <div style={metricGrid(190)}>
           {contractRows().map(({ role, id, desc }) => (
             <a
               key={role}
@@ -836,6 +821,7 @@ export function ReserveTransparency({
                 gap: "8px",
                 padding: "18px 18px",
                 backgroundColor: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
                 textDecoration: "none",
                 color: "inherit",
               }}
