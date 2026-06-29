@@ -10,6 +10,8 @@ pub mod types;
 use types::{DataKey, RedeemRequest, StrategyAlloc, BPS_DENOM, MAX_ENTRY_TTL, NAV_SCALE, REQUEST_TTL_LEDGERS, VIRTUAL_OFFSET};
 
 mod test;
+mod test_adversarial;
+mod test_invariants;
 
 /// Vault-side errors surfaced as stable `#[contracterror]` codes. Numbered in the
 /// `6xx` band to stay clear of the interfaces `2xx`, policy `3xx`, strategy `4xx`,

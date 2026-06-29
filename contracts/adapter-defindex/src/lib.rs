@@ -243,3 +243,5 @@ impl Strategy for AdapterDefindex {
 }
 
 mod test;
+#[cfg(test)]
+mod test_adversarial;
