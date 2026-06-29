@@ -356,6 +356,36 @@ input:disabled {
   color: var(--color-canvas);
 }
 
+/* ── Home sections: full-bleed border/background, content centered to ~1280px.
+   Used as the section's horizontal padding so the element stays width:100%
+   (border-bottoms bleed edge-to-edge) while content never sprawls on wide
+   displays. Collapses to --page-pad once the viewport drops below the max. ── */
+:root {
+  --section-pad-x: max(var(--page-pad), calc((100% - 1280px) / 2));
+}
+
+/* ── Inline-anchor CTAs — anchors miss the button:active rule, so add explicit
+   hover + press feedback. No new colors; radius stays 0. ── */
+.cta-fill {
+  transition: opacity 150ms ease-out;
+}
+.cta-fill:hover {
+  opacity: 0.88;
+}
+.cta-fill:active {
+  opacity: 0.8;
+}
+.cta-outline {
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+.cta-outline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+.cta-outline:active {
+  opacity: 0.85;
+}
+
 /* ── Responsive nav: desktop links inline, collapse to a hamburger < 768px ── */
 .nav-links-desktop {
   display: flex;
@@ -395,6 +425,20 @@ input:disabled {
   /* bottom-only: a sticky header keeps its full opacity at the top */
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
           mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 14px), transparent 100%);
+}
+
+/* ── ProtocolDiagram: the fixed-coordinate React Flow canvas scales sub-pixel
+   below ~768px, so swap it for a readable stacked flow on phones. ── */
+.diagram-mobile {
+  display: none;
+}
+@media (max-width: 767px) {
+  .diagram-canvas {
+    display: none;
+  }
+  .diagram-mobile {
+    display: flex;
+  }
 }
 
 /* ── Section tabs (protocol cockpit) — underline-style, copper active ── */

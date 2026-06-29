@@ -97,7 +97,7 @@ export default function Home() {
           position: "relative",
           overflow: "hidden",
           width: "100%",
-          padding: "88px var(--page-pad) 72px",
+          padding: "88px var(--section-pad-x) 72px",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
@@ -151,7 +151,7 @@ export default function Home() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
           <Link
             href="/reserves"
-            className="font-body"
+            className="font-body cta-fill"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -170,7 +170,7 @@ export default function Home() {
           </Link>
           <a
             href="#how-it-works"
-            className="font-body"
+            className="font-body cta-outline"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -195,7 +195,7 @@ export default function Home() {
       <section
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
@@ -281,7 +281,7 @@ export default function Home() {
         id="reserves"
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -318,7 +318,7 @@ export default function Home() {
         id="how-it-works"
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -335,7 +335,7 @@ export default function Home() {
         >
           {[
             { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …), your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
-            { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a fee on every active, fee-current guarantee." },
+            { n: "02", t: "Reserve backs rental guarantees", d: "The reserve underwrites rental guarantees (fianças in Brazil), earning a fee on every active, fee-current guarantee. The PoC demos the mechanic on Stellar testnet." },
             { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus. Solvency comes first, always." },
           ].map((s) => (
             <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -373,7 +373,7 @@ export default function Home() {
         id="protocol-flow"
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -397,7 +397,7 @@ export default function Home() {
       </section>
 
       {/* ── ONBOARD ──────────────────────────────────────────────────────── */}
-      <section style={{ width: "100%", padding: "72px var(--page-pad) 96px" }}>
+      <section style={{ width: "100%", padding: "72px var(--section-pad-x) 96px" }}>
         <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
@@ -409,7 +409,7 @@ export default function Home() {
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Connect a wallet to deposit and drive the full cycle yourself, or explore an active
+          Connect a wallet to deposit and drive the full cycle yourself, or explore the live
           reserve first.
         </p>
 
@@ -417,7 +417,7 @@ export default function Home() {
           <ConnectButton />
           <Link
             href="/reserves"
-            className="font-body"
+            className="font-body cta-outline"
             style={{
               display: "inline-flex",
               alignItems: "center",
