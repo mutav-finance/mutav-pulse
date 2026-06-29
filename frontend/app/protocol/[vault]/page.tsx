@@ -1315,7 +1315,10 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             {/* ── Allocation (live) — same actual-balance view as the investor overview ── */}
             <SubHeading>Allocation (live)</SubHeading>
             {data.strategies.length > 0 || data.availableHeld > 0n ? (
-              <AllocationBar segments={alloc.segments} loading={data.loading} />
+              // Cap the bar to ~1/3 of the page instead of stretching full-width.
+              <div style={{ maxWidth: "33%" }}>
+                <AllocationBar segments={alloc.segments} loading={data.loading} />
+              </div>
             ) : null}
 
             {/* Current vs target table */}
