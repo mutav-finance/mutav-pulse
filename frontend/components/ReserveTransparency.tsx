@@ -543,9 +543,12 @@ export function ReserveTransparency({
           <>
             The <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> reserve is a
             solvency-gated, tokenized vault that backs Brazilian rental guarantees and turns their
-            fees into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
-            NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept: values are
-            live on-chain reads, not a production reserve.
+            fees into yield. Deposit {reserve.depositToken} and receive {reserve.currency} shares at
+            NAV. Withdrawals are <strong style={{ color: "var(--color-text-2)" }}>asynchronous</strong>:
+            you request a redemption and claim it as the reserve&apos;s liquidity buffer frees up. The
+            queue is paid from surplus over committed coverage, so redemptions never force the reserve
+            below solvency. Running on Stellar testnet as a proof of concept: values are live on-chain
+            reads, not a production reserve.
           </>
         }
       >
