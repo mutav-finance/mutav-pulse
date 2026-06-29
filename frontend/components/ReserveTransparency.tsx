@@ -705,14 +705,18 @@ export function ReserveTransparency({
             rest liquid in the vault. Everything below is read live on-chain.
           </>
         }
-        aside={
-          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${data.strategies.length} wired`}
-          </span>
-        }
       >
         {/* Chart — allocation across each venue + the asset held in-vault, summing to total. */}
         <AllocationBar loading={loading} segments={allocationSegments} />
+
+        {/* Table heading — mirrors the Policy "Guarantee Registry" row: the wired
+            count sits right-aligned directly above its table. */}
+        <div style={{ margin: "20px 0 12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <h3 className="font-display" style={SUBHEAD}>Allocation</h3>
+          <span className="font-mono" style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
+            {loading ? "…" : `${data.strategies.length} wired`}
+          </span>
+        </div>
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
         <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
