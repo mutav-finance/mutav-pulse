@@ -260,7 +260,7 @@ export default function Home() {
                 </svg>
               ),
               title: "Testnet today, pilot Q3 2026",
-              body: "Testnet only, no real funds, not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
+              body: "Testnet only. No real funds. Not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
             },
           ].map((c) => (
             <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "26px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -268,7 +268,7 @@ export default function Home() {
               <h3 className="font-body" style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text)", margin: 0 }}>
                 {c.title}
               </h3>
-              <p className="font-mono" style={{ fontSize: "12px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
+              <p className="font-body" style={{ fontSize: "14px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
                 {c.body}
               </p>
             </div>
@@ -299,9 +299,9 @@ export default function Home() {
           }}
         >
           {liveCount} live · {plannedCount} coming · live AUM{" "}
-          <span style={{ color: "var(--color-text)" }}>{primaryLabel}</span>
+          <span aria-live="polite" style={{ color: "var(--color-text)" }}>{primaryLabel}</span>
         </p>
-        <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
+        <div className="scroll-fade-x scroll-dark" style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
           {reserves.map((r) => (
             <div key={r.id} style={{ flex: "1 1 0", minWidth: "240px" }}>
               <ReserveCard
@@ -339,7 +339,7 @@ export default function Home() {
             { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus. Solvency comes first, always." },
           ].map((s) => (
             <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-accent)", fontFeatureSettings: '"tnum" 1' }}>
+              <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-text-2)", fontFeatureSettings: '"tnum" 1' }}>
                 {s.n}
               </span>
               <h3 className="font-display" style={{ fontSize: "19px", letterSpacing: "0.01em", textTransform: "uppercase", margin: 0, color: "var(--color-text)" }}>
@@ -409,7 +409,7 @@ export default function Home() {
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Connect a wallet to deposit and drive the full cycle yourself, or explore the live
+          Deposit and drive the full cycle yourself, or explore the live
           reserve first.
         </p>
 

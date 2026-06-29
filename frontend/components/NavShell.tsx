@@ -22,7 +22,7 @@
  * Design: Precision Brutalism — 56px height, border-bottom only, no shadows.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -52,6 +52,20 @@ export function NavShell() {
   const pathname = usePathname();
   const terminal = isTerminalFront(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // When the mobile panel is open, Escape closes it and returns focus to the
+  // hamburger (queried by class so it works regardless of Button ref-forwarding).
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        (document.querySelector(".nav-hamburger") as HTMLElement | null)?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   /** True when this link is the current page */
   function isActive(link: NavLink): boolean {
