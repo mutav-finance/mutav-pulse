@@ -117,6 +117,8 @@ export default function Home() {
             maxWidth: "48%",
             objectFit: "contain",
             objectPosition: "right center",
+            transform: "scale(2)",
+            transformOrigin: "right center",
             opacity: 0.7,
             pointerEvents: "none",
             zIndex: 0,
@@ -318,12 +320,40 @@ export default function Home() {
       <section
         id="how-it-works"
         style={{
+          position: "relative",
+          overflow: "hidden",
           width: "100%",
           padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
       >
+        {/* Faint amber backdrop, right-aligned, behind the content. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/how-8.jpg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "auto",
+            maxWidth: "48%",
+            objectFit: "contain",
+            objectPosition: "right center",
+            transform: "translateY(40%) scale(4)",
+            transformOrigin: "right center",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 60%)",
+            maskImage: "linear-gradient(to right, transparent 0%, #000 60%)",
+            opacity: 0.06,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel as="h2" display size={17} color="var(--color-text)">How it works</SectionLabel>
         <div
           style={{
@@ -367,6 +397,7 @@ export default function Home() {
         >
           <span style={{ color: "var(--color-accent)" }}>solvency-gated:</span> stable assets ≥ guarantee coverage, always.
         </p>
+        </div>
       </section>
 
       {/* ── PROTOCOL FLOW (diagram + gates) ──────────────────────────────── */}
@@ -398,7 +429,38 @@ export default function Home() {
       </section>
 
       {/* ── ONBOARD ──────────────────────────────────────────────────────── */}
-      <section style={{ width: "100%", padding: "72px var(--section-pad-x) 96px" }}>
+      <section style={{ position: "relative", overflow: "hidden", width: "100%", padding: "72px var(--section-pad-x) 96px" }}>
+        {/* CTA block — the backdrop is clipped to this block so it stops at the
+            footer divider below (overflow:hidden cuts the 2x-scaled image). The
+            negative top margin pulls it up to the section's top edge so the image
+            reaches the top divider; paddingTop restores the content spacing. */}
+        <div style={{ position: "relative", overflow: "hidden", marginTop: "-72px", paddingTop: "72px" }}>
+        {/* Faint grayscale backdrop, right-aligned, 2x zoom, behind the content. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/cta-mtvh.jpg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "48%",
+            objectFit: "cover",
+            objectPosition: "right center",
+            transform: "translateY(-30%) scale(2)",
+            transformOrigin: "right top",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 55%)",
+            maskImage: "linear-gradient(to right, transparent 0%, #000 55%)",
+            filter: "grayscale(1)",
+            opacity: 0.06,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
@@ -442,6 +504,8 @@ export default function Home() {
         >
           Testnet demo · no real funds
         </p>
+        </div>
+        </div>
 
         {/* ── Footer ── */}
         <SiteFooter />
