@@ -23,6 +23,9 @@ interface MetricCardProps {
   accentValue?: boolean;
   /** quieter borderless variant (smaller value, no box) — supporting metrics */
   compact?: boolean;
+  /** keeps the box but shrinks padding + value — for secondary metric grids
+   *  that should sit visually below a primary chart. */
+  dense?: boolean;
   /** loading skeleton */
   loading?: boolean;
   /** error message */
@@ -36,6 +39,7 @@ export function MetricCard({
   tooltip,
   accentValue = false,
   compact = false,
+  dense = false,
   loading = false,
   error,
 }: MetricCardProps) {
@@ -44,11 +48,11 @@ export function MetricCard({
       style={{
         backgroundColor: compact ? "transparent" : "var(--color-surface)",
         border: compact ? "none" : "1px solid var(--color-border)",
-        padding: compact ? 0 : "20px 24px",
+        padding: compact ? 0 : dense ? "9px 11px" : "20px 24px",
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        gap: "8px",
+        gap: dense ? "10px" : "8px",
         // Become a sizing container + allow the grid item to shrink, so the
         // value below can scale to the card width (long R$ figures overflowed).
         containerType: "inline-size",
@@ -74,7 +78,7 @@ export function MetricCard({
             color: "var(--color-text-2)",
             textTransform: "uppercase",
             margin: 0,
-            lineHeight: 1,
+            lineHeight: dense ? 1.4 : 1,
           }}
         >
           {label}
@@ -117,7 +121,9 @@ export function MetricCard({
             // the original size; floor keeps it legible on the narrowest card.
             fontSize: compact
               ? "clamp(13px, 8cqi, 22px)"
-              : "clamp(14px, 9cqi, 28px)",
+              : dense
+                ? "clamp(16px, 7cqi, 21px)"
+                : "clamp(14px, 9cqi, 28px)",
             color: accentValue ? "var(--color-accent)" : "var(--color-text)",
             letterSpacing: "-0.02em",
             lineHeight: 1,
@@ -139,7 +145,7 @@ export function MetricCard({
             fontFamily: "var(--font-mono)",
             fontFeatureSettings: '"tnum" 1',
             margin: 0,
-            lineHeight: 1,
+            lineHeight: dense ? 1.5 : 1,
           }}
         >
           {unit}
