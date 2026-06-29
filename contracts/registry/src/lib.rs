@@ -343,3 +343,5 @@ impl RegistryTrait for Registry {
 }
 
 mod test;
+#[cfg(test)]
+mod test_adversarial;

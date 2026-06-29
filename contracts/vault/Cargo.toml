@@ -19,3 +19,4 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 mock-strategy = { path = "../mocks/mock-strategy" }
 mock-tesouro = { path = "../mocks/mock-tesouro" }
 mock-policy = { path = "../mocks/mock-policy" }
+proptest = "1"
