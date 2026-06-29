@@ -6,9 +6,20 @@
  * away methodology/assumption notes next to a section heading.
  *
  * Design: Precision Brutalism — square trigger, hairline border, no shadow.
+ *
+ * Internals migrated onto the shared Radix Tooltip primitive
+ * (`@/components/ui/tooltip`); the public props (`children`, `label`, `width`)
+ * are preserved exactly so MetricCard / ReserveTransparency need no changes.
  */
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function InfoTooltip({
   children,
@@ -19,57 +30,61 @@ export function InfoTooltip({
   label?: string;
   width?: number;
 }) {
-  const [show, setShow] = useState(false);
-
   return (
-    <span style={{ position: "relative", display: "inline-flex" }}>
-      <span
-        role="button"
-        aria-label={label}
-        tabIndex={0}
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-        onFocus={() => setShow(true)}
-        onBlur={() => setShow(false)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "16px",
-          height: "16px",
-          backgroundColor: "var(--color-surface-3)",
-          border: "1px solid var(--color-border)",
-          color: "var(--color-text-2)",
-          fontSize: "10px",
-          fontFamily: "var(--font-body)",
-          fontWeight: 500,
-          cursor: "default",
-          flexShrink: 0,
-          lineHeight: 1,
-        }}
-      >
-        ?
-      </span>
-      {show && (
-        <div
-          role="tooltip"
+    // delayDuration 0 preserves the original immediate hover/focus reveal.
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            aria-label={label}
+            tabIndex={0}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "16px",
+              height: "16px",
+              backgroundColor: "var(--color-surface-3)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-2)",
+              fontSize: "10px",
+              fontFamily: "var(--font-body)",
+              fontWeight: 500,
+              cursor: "default",
+              flexShrink: 0,
+              lineHeight: 1,
+            }}
+          >
+            ?
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          // Match the legacy bubble exactly: surface-2 fill, 10/14 padding,
+          // fixed `width` (capped to viewport), overriding the primitive's
+          // popover bg / max-w-xs / px-3 py-1.5 defaults.
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            left: 0,
-            zIndex: 20,
             backgroundColor: "var(--color-surface-2)",
-            border: "1px solid var(--color-border)",
             padding: "10px 14px",
             width: `${width}px`,
             maxWidth: "90vw",
           }}
         >
-          <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-2)", lineHeight: 1.5, margin: 0 }}>
+          <p
+            className="font-body"
+            style={{
+              fontSize: "11px",
+              color: "var(--color-text-2)",
+              lineHeight: 1.5,
+              margin: 0,
+            }}
+          >
             {children}
           </p>
-        </div>
-      )}
-    </span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

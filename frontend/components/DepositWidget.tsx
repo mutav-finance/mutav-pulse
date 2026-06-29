@@ -21,6 +21,9 @@ import { fmtNav, parseToStroops, errMsg } from "@/lib/format";
 import { sharesFor } from "@/lib/economics";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface DepositWidgetProps {
   /** Connected wallet public key */
@@ -49,7 +52,6 @@ export function DepositWidget({
   const [status, setStatus] = useState<"idle" | "pending" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastHash, setLastHash] = useState<string | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
 
   // Parse USDC input to stroops (bigint) — exact decimal-string parse, no float.
   const usdcStroops: bigint | null = parseToStroops(rawInput);
@@ -137,7 +139,7 @@ export function DepositWidget({
       <form onSubmit={handleDeposit} noValidate>
         {/* Amount input */}
         <div style={{ marginBottom: "16px" }}>
-          <label
+          <Label
             htmlFor="deposit-amount"
             className="font-body"
             style={{
@@ -150,9 +152,9 @@ export function DepositWidget({
             }}
           >
             {depositToken} Amount
-          </label>
+          </Label>
           <div style={{ position: "relative" }}>
-            <input
+            <Input
               id="deposit-amount"
               type="number"
               min="0"
@@ -165,19 +167,15 @@ export function DepositWidget({
                 if (lastHash) setLastHash(null);
               }}
               disabled={isPending}
-              className="font-mono"
               style={{
-                width: "100%",
-                backgroundColor: "transparent",
-                border: "1px solid var(--color-border-input)",
-                color: "var(--color-text)",
-                fontSize: "14px",
+                // Override the primitive's h-9 / px-3 py-1 to preserve the
+                // original natural-height + suffix-room padding (52px right).
+                height: "auto",
                 padding: "10px 52px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
-                fontVariantNumeric: "tabular-nums",
-                // focus ring comes from the global :focus-visible rule
-                // Dark native controls (number spinner) instead of the light default.
-                colorScheme: "dark",
+                // focus ring comes from the global :focus-visible rule.
+                // Native control scheme (number spinner) comes from the front's
+                // `color-scheme` in globals.css — no per-input override needed.
                 // No border-radius (Precision Brutalism)
               }}
               aria-label={`${depositToken} amount to deposit`}
@@ -267,29 +265,20 @@ export function DepositWidget({
           </div>
         </div>
 
-        {/* Primary CTA — always-clickable solid amber button */}
-        <button
+        {/* Primary CTA — always-clickable solid amber button.
+            `default` variant = amber fill + canvas text; override to the original
+            full-width 40px size, 8px gap, amber border, and the darker amber-600
+            hover (vs the variant's default bg-primary/90). */}
+        <Button
           type="submit"
+          variant="default"
           disabled={isPending}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className="font-body"
+          className="font-body w-full h-10 gap-2 border-[var(--color-accent)] hover:bg-[var(--color-amber-600)]"
           style={{
-            width: "100%",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            fontSize: "14px",
-            fontWeight: 500,
             letterSpacing: "0.01em",
             cursor: isPending ? "not-allowed" : "pointer",
-            // Always-prominent, always-clickable solid amber CTA.
-            backgroundColor: !isPending && isHovered ? "var(--color-amber-600)" : "var(--color-accent)",
-            color: "var(--color-canvas)",
-            border: "1px solid var(--color-accent)",
-            // No border-radius
+            // Preserve the original 0.6 pending opacity over the primitive's
+            // disabled:opacity-40.
             opacity: isPending ? 0.6 : 1,
             transition: "color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out",
           }}
@@ -297,7 +286,7 @@ export function DepositWidget({
         >
           {isPending && <span className="live-dot" aria-hidden="true" />}
           {isPending ? "Depositing…" : "Deposit"}
-        </button>
+        </Button>
 
         {/* Error feedback — space is always reserved so the box never shifts. */}
         <p

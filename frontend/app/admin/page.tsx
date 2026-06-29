@@ -22,6 +22,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useWallet } from "@/components/WalletProvider";
 import { ConnectButton } from "@/components/ConnectButton";
+import { Button } from "@/components/ui/button";
 import { Mono } from "@/components/Mono";
 import { ProtocolActionForm, FormField, FormSelect } from "@/components/ProtocolActionForm";
 import { reserveReads } from "@/lib/contracts";
@@ -190,10 +191,11 @@ export default function AdminPage() {
                 SIGNER
               </span>
             )}
-            <button
+            <Button
+              variant="outline"
               onClick={fetchAll}
               disabled={loading}
-              className="font-mono"
+              className="font-mono h-auto disabled:opacity-100 disabled:pointer-events-auto"
               style={{
                 border: "1px solid var(--color-border)",
                 background: "transparent",
@@ -207,7 +209,7 @@ export default function AdminPage() {
               }}
             >
               {loading ? "LOADING…" : "↻ REFRESH"}
-            </button>
+            </Button>
           </div>
         </div>
 

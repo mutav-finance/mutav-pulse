@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/components/WalletProvider";
 import { NavShell } from "@/components/NavShell";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Geist Bold (700) only — the Declaration layer font.
 // Never load other weights; MUTAV uses Bold exclusively for headings.
@@ -41,9 +42,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <WalletProvider>
-          {/* Shared top nav — rendered on all pages */}
-          <NavShell />
-          {children}
+          {/* Single app-wide Radix TooltipProvider (see components/ui/tooltip). */}
+          <TooltipProvider>
+            {/* Shared top nav — rendered on all pages */}
+            <NavShell />
+            {children}
+          </TooltipProvider>
         </WalletProvider>
       </body>
     </html>
