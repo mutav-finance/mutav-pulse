@@ -15,7 +15,7 @@
  */
 
 import { createContext, useContext, useState } from "react";
-import { errMsg } from "@/lib/format";
+import { treatTxError, type TxContext } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 
 /**
@@ -44,6 +44,8 @@ interface ProtocolActionFormProps {
   disabled?: boolean;
   /** Require a second "confirm" click before executing (consequential actions). */
   requireConfirm?: boolean;
+  /** Flow tag for the error-treatment layer (disambiguates the WasmVm trap). */
+  txContext?: TxContext;
   children?: React.ReactNode;
 }
 
@@ -56,6 +58,7 @@ export function ProtocolActionForm({
   onSuccess,
   disabled = false,
   requireConfirm = false,
+  txContext,
   children,
 }: ProtocolActionFormProps) {
   const [status, setStatus] = useState<"idle" | "pending" | "success" | "error">(
@@ -89,8 +92,10 @@ export function ProtocolActionForm({
       setLastHash(hash);
       onSuccess?.(hash);
     } catch (err) {
-      // Surface contract assertion strings verbatim (errMsg handles bare strings).
-      setErrorMsg(errMsg(err));
+      // Known codes get friendly copy; unmapped errors fall back to the
+      // unknown-fallback message (the verbatim string is logged for the team).
+      const t = treatTxError(err, txContext);
+      setErrorMsg(t.action ? `${t.message} ${t.action}` : t.message);
       setStatus("error");
     }
   }

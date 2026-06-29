@@ -18,7 +18,7 @@ import { useState } from "react";
 import { requestRedeem as txRequestRedeem, claim as txClaim, cancelRedeem as txCancelRedeem } from "@/lib/tx";
 import type { ReserveContracts } from "@/lib/contracts";
 import { classifyRequest, type RequestStatus } from "@/lib/queue";
-import { fmtNav, fromStroops, stroopsToInput, parseToStroops, fmtShares4, errMsg } from "@/lib/format";
+import { fmtNav, fromStroops, stroopsToInput, parseToStroops, fmtShares4, treatTxError } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
 import type { RedeemRequest } from "vault";
@@ -128,7 +128,8 @@ export function RedeemPanel({
       setLastLabel("Redemption requested");
       onSuccess(hash);
     } catch (err) {
-      setRedeemError(errMsg(err));
+      const t = treatTxError(err, "redeem-request");
+      setRedeemError(t.action ? `${t.message} ${t.action}` : t.message);
       setRedeemStatus("error");
     }
   }
@@ -151,7 +152,8 @@ export function RedeemPanel({
       setLastLabel(`Claimed #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = errMsg(err, "Failed");
+      const t = treatTxError(err, "claim");
+      const msg = t.action ? `${t.message} ${t.action}` : t.message;
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
@@ -175,7 +177,8 @@ export function RedeemPanel({
       setLastLabel(`Cancelled #${id}`);
       onSuccess(hash);
     } catch (err) {
-      const msg = errMsg(err, "Failed");
+      const t = treatTxError(err, "cancel-redeem");
+      const msg = t.action ? `${t.message} ${t.action}` : t.message;
       setActionState((prev) => new Map(prev).set(id, "error"));
       setActionErrors((prev) => new Map(prev).set(id, msg));
     }
