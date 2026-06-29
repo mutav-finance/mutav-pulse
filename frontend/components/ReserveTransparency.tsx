@@ -48,7 +48,7 @@ const SECTIONS = [
 ] as const;
 const SECTION_IDS = SECTIONS.map((s) => s.id);
 
-const DONUT_SIZE = 256;
+const DONUT_SIZE = 200;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,24 +149,22 @@ function Section({
   id,
   title,
   intro,
-  aside,
   children,
   first = false,
-  introMaxWidth = "62ch",
-  asideSplit = false,
+  introMaxWidth = "75ch",
 }: {
   id: string;
   title: string;
   intro: React.ReactNode;
-  aside?: React.ReactNode;
   children: React.ReactNode;
   /** First section — skip the top hairline (the SubNav already draws one). */
   first?: boolean;
-  /** Max width of the title + intro column — widen to control intro line count. */
+  /** Max width of the description paragraph. Content below is always full width. */
   introMaxWidth?: string;
-  /** Split the header row 50/50 (title+body | aside), tops aligned. */
-  asideSplit?: boolean;
 }) {
+  // Invariant: every section reads top-to-bottom as Title → Description →
+  // Content. The content (children) is always full width and never sits beside
+  // the description — group it with <SubBlock> for sub-headed pieces.
   return (
     <section
       id={id}
@@ -176,105 +174,107 @@ function Section({
         marginBottom: "56px",
       }}
     >
-      {asideSplit && aside ? (
-        // Split header: the title spans the top, then body + aside sit in a
-        // 50/50 row below it — so the aside's top aligns with the BODY text,
-        // not the title.
-        <div style={{ margin: "20px 0 24px" }}>
-          <h2
-            className="font-display"
-            style={{
-              fontSize: "20px",
-              letterSpacing: "0.01em",
-              textTransform: "uppercase",
-              color: "var(--color-text)",
-              margin: "0 0 10px",
-            }}
-          >
-            {title}
-          </h2>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "56px", flexWrap: "wrap" }}>
-            <p
-              className="font-body"
-              style={{ flex: "1 1 0", minWidth: 0, fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
-            >
-              {intro}
-            </p>
-            <div style={{ flex: "1 1 0", minWidth: 0 }}>{aside}</div>
-          </div>
-        </div>
-      ) : (
-        <div
+      <div style={{ margin: "20px 0 24px" }}>
+        <h2
+          className="font-display"
           style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "20px",
-            flexWrap: "wrap",
-            margin: "20px 0 24px",
+            fontSize: "20px",
+            letterSpacing: "0.01em",
+            textTransform: "uppercase",
+            color: "var(--color-text)",
+            margin: "0 0 10px",
           }}
         >
-          <div style={{ maxWidth: introMaxWidth }}>
-            <h2
-              className="font-display"
-              style={{
-                fontSize: "20px",
-                letterSpacing: "0.01em",
-                textTransform: "uppercase",
-                color: "var(--color-text)",
-                margin: "0 0 10px",
-              }}
-            >
-              {title}
-            </h2>
-            <p
-              className="font-body"
-              style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
-            >
-              {intro}
-            </p>
-          </div>
-          {aside && <div style={{ flexShrink: 0, maxWidth: "100%", minWidth: 0 }}>{aside}</div>}
-        </div>
-      )}
+          {title}
+        </h2>
+        <p
+          className="font-body"
+          style={{ maxWidth: introMaxWidth, fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
+        >
+          {intro}
+        </p>
+      </div>
       {children}
     </section>
   );
 }
 
 /**
- * Donut on the left, a metric grid filling the rest — separated, big-screen safe.
- * `cols` fixes the card grid to that many columns (so N cards wrap into rows);
- * omit it to keep the responsive auto-fit flow.
+ * SubBlock — a labeled content group inside a Section: a sub-heading (with an
+ * optional tooltip and right-aligned meta count) above full-width content. Keeps
+ * every content group — donut, metrics, allocation, tables — structured the same
+ * way, so a section is just a stack of these.
  */
-function ChartRow({ donut, cards, cols }: { donut: React.ReactNode; cards: React.ReactNode; cols?: number }) {
+function SubBlock({
+  title,
+  meta,
+  tooltip,
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  tooltip?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "28px",
-        // In `cols` mode, vertically center the card grid against the (taller)
-        // donut column instead of pinning it to the top.
-        alignItems: cols ? "center" : "flex-start",
-        // Center the donut + cards group when the cards are pinned to a fixed
-        // width (otherwise they hug the left and leave a lopsided gap).
-        justifyContent: cols ? "center" : "flex-start",
-        marginBottom: "28px",
-      }}
-    >
-      <div style={{ flex: "0 0 auto", maxWidth: "100%", minWidth: 0, paddingTop: "4px" }}>{donut}</div>
-      <div
+    <div style={{ marginBottom: "28px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+        <h3 className="font-display" style={SUBHEAD}>
+          {title}
+        </h3>
+        {tooltip}
+        {meta != null && (
+          <span
+            className="font-mono"
+            style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+          >
+            {meta}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * MetricGroup — a labeled cluster of metric cards with a plain one-line gloss.
+ * Cards are capped to ~Overview width (the `minmax` ceiling), so the value type
+ * renders at the same standard scale no matter how many cards the group holds —
+ * and trailing tracks stay transparent, so a short group leaves no border cells.
+ */
+function MetricGroup({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: "24px" }}>
+      <p
+        className="font-body"
         style={{
-          minWidth: 0,
-          // `cols` mode: pin the grid to a compact fixed width (so the boxes stay
-          // small and hug the chart, left-aligned) instead of stretching to fill.
-          ...(cols
-            ? { flex: "0 0 auto", width: `${cols * 246}px`, maxWidth: "100%", ...hairlineGridCols(cols) }
-            : { flex: "1 1 320px", ...hairlineGrid(160) }),
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--color-text-2)",
+          margin: "0 0 3px",
         }}
       >
-        {cards}
+        {label}
+      </p>
+      <p
+        className="font-body"
+        style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--color-text-3)", margin: "0 0 12px", maxWidth: "70ch" }}
+      >
+        {hint}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "12px" }}>
+        {children}
       </div>
     </div>
   );
@@ -284,15 +284,6 @@ function ChartRow({ donut, cards, cols }: { donut: React.ReactNode; cards: React
 const hairlineGrid = (minPx: number): React.CSSProperties => ({
   display: "grid",
   gridTemplateColumns: `repeat(auto-fit, minmax(${minPx}px, 1fr))`,
-  gap: "1px",
-  backgroundColor: "var(--color-border)",
-  border: "1px solid var(--color-border)",
-});
-
-/** Same hairline grid, but pinned to a fixed column count (cards wrap into rows). */
-const hairlineGridCols = (cols: number): React.CSSProperties => ({
-  display: "grid",
-  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
   gap: "1px",
   backgroundColor: "var(--color-border)",
   border: "1px solid var(--color-border)",
@@ -327,7 +318,10 @@ interface AllocRow {
   /** Adapter address to show as an "Adapter … ↗" sub-line (venues only). */
   adapterAddr?: string;
   type: string;
+  /** Allocator intent — the target weight the allocator aims to hold (bps). */
   targetBps: number;
+  /** Actual on-chain allocation: this venue's share of total assets (0..1). */
+  allocFraction: number;
   /** Live amount; undefined renders "—". */
   amount?: bigint;
   yieldPct: number;
@@ -375,24 +369,16 @@ function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
       <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
         {fmtBps(row.targetBps)}
       </td>
-      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)" }}>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)", fontWeight: 600 }}>
+        {`${(row.allocFraction * 100).toFixed(1)}%`}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
         {row.amount === undefined ? "—" : fmtFiat(row.amount, reserve)}
       </td>
       <td className="font-mono" style={{ ...numCell, color: row.yieldModeled ? "var(--color-accent)" : "var(--color-text-3)" }}>
         {fmtPct2(row.yieldPct)}
         {row.yieldModeled && (
           <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
-        )}
-      </td>
-      <td style={{ padding: "14px" }}>
-        {row.status === "live" ? (
-          <span className="font-mono" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-            <span className="live-dot" aria-hidden="true" /> Live
-          </span>
-        ) : (
-          <span className="font-mono" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>
-            Liquid
-          </span>
         )}
       </td>
     </tr>
@@ -494,6 +480,7 @@ export function ReserveTransparency({
   const allocRows: AllocRow[] = [
     ...data.strategies.map((s) => {
       const provider = resolveProvider(s.address);
+      const bal = data.strategyBalances[s.address];
       return {
         key: s.address,
         name: provider?.name ?? venueName(s.address),
@@ -502,7 +489,8 @@ export function ReserveTransparency({
         adapterAddr: s.address,
         type: s.volatile ? "Volatile yield" : "Stable yield",
         targetBps: s.weight_bps,
-        amount: data.strategyBalances[s.address],
+        allocFraction: totalNum > 0 && bal !== undefined ? Number(bal) / totalNum : 0,
+        amount: bal,
         yieldPct: econ.underlyingYield,
         yieldModeled: true,
         status: "live" as const,
@@ -517,6 +505,7 @@ export function ReserveTransparency({
         : "Held directly in the vault, not deployed to any venue. Liquid for operations and redemptions.",
       type: heldYieldBearing ? "Yield-bearing asset" : "Cash · underlying",
       targetBps: idleBps,
+      allocFraction: idleFrac,
       amount: data.availableHeld,
       yieldPct: heldYieldBearing ? reserve.assumptions.underlyingYield : 0,
       yieldModeled: heldYieldBearing,
@@ -549,7 +538,6 @@ export function ReserveTransparency({
       <Section
         first
         id="overview"
-        first
         title="Overview"
         intro={
           <>
@@ -560,7 +548,8 @@ export function ReserveTransparency({
             live on-chain reads, not a production reserve.
           </>
         }
-        aside={
+      >
+        <div style={{ marginBottom: "28px" }}>
           <SolvencyChip
             stableAssets={data.stableAssets}
             coverageRequired={data.coverageRequired}
@@ -568,8 +557,7 @@ export function ReserveTransparency({
             loading={loading}
             error={error ?? undefined}
           />
-        }
-      >
+        </div>
         <div style={hairlineGrid(170)}>
           <MetricCard
             label="Reserve Value"
@@ -617,9 +605,9 @@ export function ReserveTransparency({
           </>
         }
       >
-        <ChartRow
-          cols={2}
-          donut={
+        {/* Reserve allocation — donut in its own block, centered and compact. */}
+        <SubBlock title="Reserve allocation">
+          <div style={{ display: "flex", justifyContent: "center" }}>
             <AllocationDonut
               loading={loading}
               size={DONUT_SIZE}
@@ -643,84 +631,107 @@ export function ReserveTransparency({
                 },
               ]}
             />
-          }
-          cards={
-            <>
-              <MetricCard
-                label="Underlying Yield"
-                value={fmtPct2(econ.underlyingYield)}
-                dense
-                accentValue
-                unit="modeled base rate"
-                tooltip="Base return on the reserve's capital before underwriting, set by the currency's reference rate. A stated assumption, not an on-chain reading."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Underwriting Spread"
-                value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
-                dense
-                accentValue
-                unit="fees − expected defaults"
-                tooltip="Extra return from underwriting: annual fees minus expected default payouts, over total assets. From the live book."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Loss Ratio"
-                value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
-                dense
-                accentValue
-                unit="expected payout ÷ fees"
-                tooltip="Expected annual default payouts as a share of fee income. Below 100% means fees cover expected losses."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Cushion"
-                value={hasBook ? fmtMult(econ.cushion) : "—"}
-                dense
-                accentValue
-                unit="vs break-even delinquency"
-                tooltip={`How far monthly defaults can rise before fees stop covering payouts. Break-even ${fmtPct2(econ.breakevenRho)} vs ${fmtPct2(econ.rho)} modeled.`}
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Fees Collected"
-                value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
-                dense
-                unit={`cumulative · indicative ${reserve.fiatSymbol}`}
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Coverage Required"
-                value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
-                dense
-                unit="committed to active guarantees"
-                loading={loading}
-                error={error ?? undefined}
-              />
-            </>
-          }
-        />
+          </div>
+        </SubBlock>
 
-        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <h3 className="font-display" style={SUBHEAD}>Guarantee Registry</h3>
-          <InfoTooltip label="Guarantee registry">
-            Active guarantees underwritten by this reserve, read live from the registry contract.
-          </InfoTooltip>
-          <span className="font-mono" style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${data.guarantees.length} active`}
-          </span>
+        {/* Economics — grouped so the numbers read as a story: what the reserve
+            earns, then the margin that keeps it solvent. Plain labels lead; the
+            precise term sits in each card's subtitle, with a tooltip on every
+            metric. Cards cap to the standard (Overview) width via MetricGroup. */}
+        <div style={{ marginBottom: "28px" }}>
+          <h3 className="font-display" style={{ ...SUBHEAD, marginBottom: "4px" }}>
+            Economics
+          </h3>
+          <p
+            className="font-body"
+            style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--color-text-2)", margin: "0 0 20px", maxWidth: "75ch" }}
+          >
+            How the reserve makes its return and stays solvent — what the capital earns, and the
+            margin that protects depositors when tenants default.
+          </p>
+
+          <MetricGroup
+            label="What it earns"
+            hint="Return on the reserve's capital — on its own, and from writing guarantees."
+          >
+            <MetricCard
+              label="Base Yield"
+              value={fmtPct2(econ.underlyingYield)}
+              accentValue
+              unit="underlying rate · modeled"
+              tooltip="What the reserve's own capital earns before any guarantee income — a modeled assumption from the currency's reference rate, not a live on-chain reading."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Guarantee Spread"
+              value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
+              accentValue
+              unit="underwriting · fees − expected defaults"
+              tooltip="The extra return from writing guarantees: annual fees minus expected default payouts, measured over total assets. Read from the live book."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Fees Earned"
+              value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
+              unit={`cumulative · indicative ${reserve.fiatSymbol}`}
+              tooltip="Total guarantee fees the reserve has collected so far. Fees lift the share price (NAV) rather than minting new shares."
+              loading={loading}
+              error={error ?? undefined}
+            />
+          </MetricGroup>
+
+          <MetricGroup
+            label="How it stays solvent"
+            hint="The margin between what the reserve owes on defaults and the fees backing it."
+          >
+            <MetricCard
+              label="Defaults vs Fees"
+              value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
+              accentValue
+              unit="loss ratio · payouts ÷ fees"
+              tooltip="Expected annual default payouts as a share of fee income. Under 100% means fees more than cover expected losses."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Safety Margin"
+              value={hasBook ? fmtMult(econ.cushion) : "—"}
+              accentValue
+              unit="cushion vs break-even"
+              tooltip={`How far defaults can rise before fees stop covering payouts — delinquency could run several times the modeled ${fmtPct2(econ.rho)} monthly rate before the reserve operates at a loss (break-even ${fmtPct2(econ.breakevenRho)}).`}
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Obligations"
+              value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
+              unit="coverage committed to active guarantees"
+              tooltip="What the reserve is currently committed to cover across all active guarantees. The solvency rule keeps this at or below stable assets, always."
+              loading={loading}
+              error={error ?? undefined}
+            />
+          </MetricGroup>
         </div>
-        <GuaranteeTable
-          guarantees={data.guarantees}
-          money={reserve}
-          loading={loading}
-          error={error ?? undefined}
-        />
+
+        {/* Guarantee registry — the live underwriting book. */}
+        <SubBlock
+          title="Guarantee Registry"
+          tooltip={
+            <InfoTooltip label="Guarantee registry">
+              Active guarantees underwritten by this reserve, read live from the registry contract.
+            </InfoTooltip>
+          }
+          meta={loading ? "…" : `${data.guarantees.length} active`}
+        >
+          <GuaranteeTable
+            guarantees={data.guarantees}
+            money={reserve}
+            loading={loading}
+            error={error ?? undefined}
+          />
+        </SubBlock>
       </Section>
 
       {/* ══ STRATEGY ════════════════════════════════════════════════════ */}
@@ -737,33 +748,24 @@ export function ReserveTransparency({
             rest liquid in the vault. Everything below is read live on-chain.
           </>
         }
-        asideSplit
-        aside={
-          <div>
-            {/* "Allocation" label + wired count sit directly on top of the bar. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-              <h3 className="font-display" style={SUBHEAD}>Allocation</h3>
-              <span className="font-mono" style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-                {loading ? "…" : `${data.strategies.length} wired`}
-              </span>
-            </div>
-            {/* Allocation across each venue + the in-vault asset, summing to total. */}
-            <AllocationBar loading={loading} segments={allocationSegments} />
-          </div>
-        }
       >
+        {/* Allocation — full width, above the table. */}
+        <SubBlock title="Allocation" meta={loading ? "…" : `${data.strategies.length} wired`}>
+          {/* Allocation across each venue + the in-vault asset, summing to total. */}
+          <AllocationBar loading={loading} segments={allocationSegments} />
+        </SubBlock>
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
         <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "680px" }}>
             <thead>
               <tr style={{ backgroundColor: "var(--color-surface-2)" }}>
-                {["Provider", "Type", "Target", "Amount", "Yield", "Status"].map((h, i) => (
+                {["Provider", "Type", "Target", "Allocation", "Amount", "Yield"].map((h, i) => (
                   <th
                     key={h}
                     className="font-body"
                     style={{
-                      textAlign: i >= 2 && i <= 4 ? "right" : "left",
+                      textAlign: i >= 2 && i <= 5 ? "right" : "left",
                       padding: "10px 14px",
                       fontSize: "10px",
                       fontWeight: 600,
@@ -793,7 +795,7 @@ export function ReserveTransparency({
           </table>
         </div>
         <p className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-3)", margin: 0, letterSpacing: "0.02em", lineHeight: 1.5 }}>
-          Target = allocator intent (weight). Amount = live on-chain balance. Yield = modeled annual rate, not realized. Idle {reserve.depositToken} earns no yield on this reserve.
+          Allocation = actual on-chain share of total assets. Target = allocator intent (weight). Amount = live on-chain balance. Yield = modeled annual rate, not realized. Idle {reserve.depositToken} earns no yield on this reserve.
         </p>
       </Section>
 
