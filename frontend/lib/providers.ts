@@ -8,7 +8,6 @@
  */
 
 import { config } from "./config";
-import { truncAddr } from "./format";
 
 export interface StrategyProvider {
   name: string;
@@ -25,18 +24,29 @@ const DEFINDEX: StrategyProvider = {
   url: "https://defindex.io",
 };
 
-/** Address → provider metadata for every adapter we can name. */
+/** Address → provider metadata for explicitly-named adapters (env override). */
 const PROVIDERS: Record<string, StrategyProvider> = {};
 if (config.contracts.adapter) PROVIDERS[config.contracts.adapter] = DEFINDEX;
 
-/** Provider metadata for a strategy address, or null when unknown. */
-export function resolveProvider(addr: string): StrategyProvider | null {
-  return PROVIDERS[addr] ?? null;
+/**
+ * Provider metadata for a strategy adapter address.
+ *
+ * `adapter-defindex` is the protocol's ONLY real strategy adapter (see the
+ * workspace CLAUDE.md), so every wired strategy adapter is a DeFindex adapter —
+ * we default to DeFindex rather than showing a raw contract address. Each reserve
+ * has a DISTINCT adapter address that also rotates on redeploy, and
+ * `sync-deploy.sh` doesn't emit adapter IDs, so per-reserve env wiring would be
+ * both incomplete and fragile. The explicit `PROVIDERS` registry still wins when
+ * a `NEXT_PUBLIC_ADAPTER_ID` is set (and is where a non-DeFindex venue would be
+ * registered once one ships).
+ */
+export function resolveProvider(addr: string): StrategyProvider {
+  return PROVIDERS[addr] ?? DEFINDEX;
 }
 
-/** Friendly venue name for a strategy address; truncated address when unknown. */
+/** Friendly venue name for a strategy adapter address. */
 export function venueName(addr: string): string {
-  return resolveProvider(addr)?.name ?? truncAddr(addr);
+  return resolveProvider(addr).name;
 }
 
 /**

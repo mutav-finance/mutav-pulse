@@ -146,21 +146,23 @@ function Section({
   intro,
   aside,
   children,
+  first = false,
 }: {
   id: string;
   title: string;
   intro: React.ReactNode;
   aside?: React.ReactNode;
   children: React.ReactNode;
+  /** First section — skip the top hairline (the SubNav already draws one). */
+  first?: boolean;
 }) {
   return (
     <section
       id={id}
       style={{
         scrollMarginTop: `${ANCHOR_OFFSET}px`,
-        paddingTop: "8px",
+        ...(first ? null : { paddingTop: "8px", borderTop: "1px solid var(--color-border)" }),
         marginBottom: "56px",
-        borderTop: "1px solid var(--color-border)",
       }}
     >
       <div
@@ -478,6 +480,7 @@ export function ReserveTransparency({
 
       {/* ══ OVERVIEW ════════════════════════════════════════════════════ */}
       <Section
+        first
         id="overview"
         title="Overview"
         intro={

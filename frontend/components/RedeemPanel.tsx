@@ -21,6 +21,9 @@ import { classifyRequest, type RequestStatus } from "@/lib/queue";
 import { fmtNav, fromStroops, stroopsToInput, parseToStroops, fmtShares4, treatTxError } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
 import { Mono } from "@/components/Mono";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { RedeemRequest } from "vault";
 
 interface RedeemPanelProps {
@@ -240,7 +243,7 @@ export function RedeemPanel({
       {/* Request form */}
       <form onSubmit={handleRequestRedeem} noValidate style={{ marginBottom: "28px" }}>
         <div style={{ marginBottom: "16px" }}>
-          <label
+          <Label
             htmlFor="redeem-shares"
             className="font-body"
             style={{
@@ -253,7 +256,7 @@ export function RedeemPanel({
             }}
           >
             Shares to redeem
-          </label>
+          </Label>
 
           {/* Balance hint */}
           <p style={{ fontSize: "11px", color: "var(--color-text-3)", marginBottom: "6px" }}>
@@ -263,7 +266,7 @@ export function RedeemPanel({
           </p>
 
           <div style={{ position: "relative" }}>
-            <input
+            <Input
               id="redeem-shares"
               type="number"
               min="0"
@@ -276,7 +279,7 @@ export function RedeemPanel({
                 if (lastHash) setLastHash(null);
               }}
               disabled={redeemStatus === "pending" || balance === 0n}
-              className="font-mono"
+              className="h-auto disabled:opacity-100 disabled:pointer-events-auto"
               style={{
                 width: "100%",
                 backgroundColor: "transparent",
@@ -286,7 +289,7 @@ export function RedeemPanel({
                 padding: "10px 56px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
-                colorScheme: "dark",
+                // native control scheme comes from the front's color-scheme (globals.css)
               }}
               aria-label={`${shareSymbol} shares to redeem`}
             />
@@ -329,10 +332,11 @@ export function RedeemPanel({
 
         {/* Max button — fill input with full balance */}
         {balance > 0n && (
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => setRawInput(stroopsToInput(balance))}
-            className="font-body"
+            className="font-body h-auto hover:no-underline"
             style={{
               fontSize: "11px",
               color: "var(--color-accent)",
@@ -346,7 +350,7 @@ export function RedeemPanel({
             }}
           >
             Use max balance
-          </button>
+          </Button>
         )}
 
         {/* Error message */}
@@ -367,12 +371,13 @@ export function RedeemPanel({
         )}
 
         {/* Submit button */}
-        <button
+        <Button
           type="submit"
+          variant="ghost"
           disabled={!canSubmit}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="font-body"
+          className="font-body h-auto px-0 disabled:pointer-events-auto"
           style={{
             width: "100%",
             height: "40px",
@@ -405,7 +410,7 @@ export function RedeemPanel({
             <span className="live-dot" aria-hidden="true" />
           )}
           {redeemStatus === "pending" ? "Submitting…" : "Request Redemption"}
-        </button>
+        </Button>
 
         {/* Inline confirmation — covers request / claim / cancel for this panel */}
         <TxStatus hash={lastHash} label={lastLabel} />
@@ -493,10 +498,11 @@ export function RedeemPanel({
                       }}
                     >
                       {status === "claimable" && (
-                        <button
+                        <Button
+                          variant="ghost"
                           onClick={() => handleClaim(req.id)}
                           disabled={isPending}
-                          className="font-body"
+                          className="font-body h-auto disabled:pointer-events-auto"
                           style={{
                             fontSize: "12px",
                             fontWeight: 500,
@@ -513,13 +519,14 @@ export function RedeemPanel({
                           aria-busy={isPending}
                         >
                           {isPending ? "…" : "Claim"}
-                        </button>
+                        </Button>
                       )}
                       {status === "pending" && (
-                        <button
+                        <Button
+                          variant="ghost"
                           onClick={() => handleCancel(req.id)}
                           disabled={isPending}
-                          className="font-body"
+                          className="font-body h-auto disabled:pointer-events-auto"
                           style={{
                             fontSize: "12px",
                             fontWeight: 500,
@@ -536,7 +543,7 @@ export function RedeemPanel({
                           aria-busy={isPending}
                         >
                           {isPending ? "…" : "Cancel"}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>

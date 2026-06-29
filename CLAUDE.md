@@ -63,3 +63,9 @@ Stellar Wallets Kit + the three brand fronts wired to the testnet deploy. Use th
 **`impeccable`** skill (an optional design-quality dev tool — install separately;
 not vendored in this repo) for design quality, and the MUTAV brand tokens above —
 do not invent colors/type.
+
+**Styling layers + guardrails:** see `frontend/AGENTS.md`. Two layers — shadcn UI
+primitives (`frontend/components/ui/*`, Tailwind utilities) for interactive controls;
+inline `style={{}}` + `var(--color-*)` brand tokens for product components. Hard rule:
+**never redefine the Tailwind `--spacing` scale in `@theme`** (it doubled `h-10`→80px and
+broke every primitive), and **never let `@theme inline` redefine `--color-accent`/`--color-border`**.

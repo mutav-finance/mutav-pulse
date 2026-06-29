@@ -17,6 +17,17 @@
 import { createContext, useContext, useState } from "react";
 import { treatTxError, type TxContext } from "@/lib/format";
 import { Mono } from "@/components/Mono";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * True while a consequential action is armed (confirm pending). The shared field
@@ -231,8 +242,9 @@ export function ProtocolActionForm({
 
         {/* Submit row */}
         <div style={{ padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", flexWrap: "wrap" }}>
-          <button
+          <Button
             type="submit"
+            variant="outline"
             disabled={!canSubmit}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -279,11 +291,12 @@ export function ProtocolActionForm({
               />
             )}
             {isPending ? "Submitting…" : confirming ? `Confirm ${actionLabel}` : actionLabel}
-          </button>
+          </Button>
           {confirming && !isPending && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setConfirming(false)}
                 className="font-mono"
                 style={{
@@ -300,7 +313,7 @@ export function ProtocolActionForm({
                 }}
               >
                 Cancel
-              </button>
+              </Button>
               <span
                 className="font-mono"
                 style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
@@ -345,7 +358,7 @@ export function FormField({
   const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label
+      <Label
         htmlFor={id}
         className="font-body"
         style={{
@@ -356,8 +369,8 @@ export function FormField({
         }}
       >
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={id}
         type={type}
         min={min}
@@ -376,6 +389,8 @@ export function FormField({
           fontFeatureSettings: '"tnum" 1',
           fontVariantNumeric: "tabular-nums",
           width: "100%",
+          // Preserve original non-dimmed disabled look (primitive adds disabled:opacity-40)
+          opacity: 1,
           // No border-radius — Precision Brutalism
         }}
         aria-describedby={hint ? `${id}-hint` : undefined}
@@ -424,18 +439,12 @@ export function FormCheckbox({
         cursor: isDisabled ? "not-allowed" : "pointer",
       }}
     >
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onCheckedChange={(v) => onChange(v === true)}
         disabled={isDisabled}
-        style={{
-          width: "14px",
-          height: "14px",
-          accentColor: "var(--color-copper)",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-        }}
+        style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
       />
       <span
         className="font-body"
@@ -473,7 +482,7 @@ export function FormSelect({
   const isDisabled = disabled || locked;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label
+      <Label
         htmlFor={id}
         className="font-body"
         style={{
@@ -484,34 +493,22 @@ export function FormSelect({
         }}
       >
         {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={isDisabled}
-        className="font-mono"
-        style={{
-          backgroundColor: "var(--color-canvas)",
-          border: "1px solid var(--color-border-input)",
-          color: value ? "var(--color-text)" : "var(--color-text-3)",
-          fontSize: "13px",
-          padding: "7px 10px",
-          width: "100%",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-        }}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      </Label>
+      <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+        <SelectTrigger
+          id={id}
+          className="font-mono h-auto px-2.5 py-[7px] text-[13px] data-[placeholder]:text-[var(--color-text-3)]"
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value} className="font-mono text-[13px]">
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

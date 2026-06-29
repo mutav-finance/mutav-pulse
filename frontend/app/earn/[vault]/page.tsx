@@ -64,6 +64,8 @@ function VerifiedHub({
 
   return (
     <main
+      data-front="terminal"
+      className="texture-terminal"
       style={{
         minHeight: "100vh",
         backgroundColor: "var(--color-canvas)",

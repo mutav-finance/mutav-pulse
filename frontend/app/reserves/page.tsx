@@ -28,7 +28,11 @@ export default function ReservesPage() {
   const { primaryLabel, aumFor } = useLiveAum();
 
   return (
-    <main style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}>
+    <main
+      data-front="terminal"
+      className="texture-terminal"
+      style={{ minHeight: "100vh", backgroundColor: "var(--color-canvas)", color: "var(--color-text)" }}
+    >
       <div style={{ width: "100%", padding: "56px var(--page-pad) 80px" }}>
         {/* Header */}
         <p

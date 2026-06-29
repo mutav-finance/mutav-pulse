@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AssetInfo } from "@/lib/trustline";
 import { treatTxError } from "@/lib/format";
 import { TxStatus } from "@/components/TxStatus";
+import { Button } from "@/components/ui/button";
 
 export interface FaucetCardProps {
   /** Connected wallet public key */
@@ -174,15 +175,13 @@ export function FaucetCard({
       </div>
 
       {/* CTA */}
-      <button
+      <Button
         onClick={() => run(isTrustlineStep ? "trustline" : "drip")}
         disabled={busy || !ready}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="font-body"
+        className="font-body h-auto disabled:pointer-events-auto"
         style={{
-          display: "inline-flex",
-          alignItems: "center",
           gap: "8px",
           fontSize: "13px",
           fontWeight: 500,
@@ -192,14 +191,13 @@ export function FaucetCard({
           border: busy || !ready ? "1px solid var(--color-border)" : "1px solid var(--color-accent)",
           padding: "7px 16px",
           cursor: busy || !ready ? "not-allowed" : "pointer",
-          whiteSpace: "nowrap",
           lineHeight: 1,
           opacity: hovered && !busy && ready ? 0.92 : 1,
         }}
       >
         {busy && <span className="live-dot" aria-hidden="true" />}
         <span>{ready ? label : "Checking wallet…"}</span>
-      </button>
+      </Button>
 
       {error && (
         <p

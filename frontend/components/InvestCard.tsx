@@ -26,6 +26,8 @@ import { CbrlFaucet } from "@/components/CbrlFaucet";
 import { TesouroFaucet } from "@/components/TesouroFaucet";
 import { BuyTesouro } from "@/components/BuyTesouro";
 import { Mono } from "@/components/Mono";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { faucetEnabled, cbrlFaucetEnabled, tesouroFaucetEnabled, tesouroSwapEnabled, config } from "@/lib/config";
 import { getUsdcInfo, getCbrlInfo } from "@/lib/faucet";
 import { getTesouroInfo } from "@/lib/buy-tesouro";
@@ -250,62 +252,41 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
           )}
 
           {/* Invest | Withdraw | Fund tabs */}
-          <div>
-            <div role="tablist" style={{ display: "flex", gap: "20px", borderBottom: "1px solid var(--color-border)", marginBottom: "16px" }}>
+          <Tabs value={mode} onValueChange={(v) => setMode(v as Tab)}>
+            <TabsList className="gap-5">
               {(["invest", "withdraw", ...(hasFund ? ["fund"] : [])] as Tab[]).map((m) => (
-                <button
+                <TabsTrigger
                   key={m}
-                  role="tab"
-                  aria-selected={mode === m}
-                  onClick={() => setMode(m)}
-                  className="font-mono"
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    color: mode === m ? "var(--color-text)" : "var(--color-text-2)",
-                    borderBottom: mode === m ? "2px solid var(--color-accent)" : "2px solid transparent",
-                    padding: "0 0 10px",
-                  }}
+                  value={m}
+                  className="font-mono text-[13px] font-normal uppercase tracking-[0.04em] px-0 pt-0 pb-2.5 cursor-pointer"
                 >
                   {m}
-                </button>
+                </TabsTrigger>
               ))}
-            </div>
+            </TabsList>
 
-            {mode === "invest" ? (
-              <>
-                <DepositWidget
-                  address={address}
-                  navPerShare={data.navPerShare}
-                  depositToken={reserve.depositToken}
-                  shareSymbol={reserve.currency}
-                  contracts={reserve.contracts!}
-                  onSuccess={handleSuccess}
-                />
-                {/* No deposit-token balance → point to the Fund tab to acquire it */}
-                {hasFund && !data.loading && data.depositBalance <= 0 && (
-                  <button
-                    onClick={() => setMode("fund")}
-                    className="font-mono"
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      color: "var(--color-accent)",
-                      padding: "12px 0 0",
-                      textAlign: "left",
-                    }}
-                  >
-                    No {reserve.depositToken} balance — add funds →
-                  </button>
-                )}
-              </>
-            ) : mode === "withdraw" ? (
+            <TabsContent value="invest">
+              <DepositWidget
+                address={address}
+                navPerShare={data.navPerShare}
+                depositToken={reserve.depositToken}
+                shareSymbol={reserve.currency}
+                contracts={reserve.contracts!}
+                onSuccess={handleSuccess}
+              />
+              {/* No deposit-token balance → point to the Fund tab to acquire it */}
+              {hasFund && !data.loading && data.depositBalance <= 0 && (
+                <Button
+                  variant="link"
+                  onClick={() => setMode("fund")}
+                  className="font-mono h-auto justify-start whitespace-normal text-left text-[11px] px-0 pt-3 pb-0 cursor-pointer hover:no-underline"
+                >
+                  No {reserve.depositToken} balance — add funds →
+                </Button>
+              )}
+            </TabsContent>
+
+            <TabsContent value="withdraw">
               <RedeemPanel
                 address={address}
                 balance={data.balance}
@@ -316,25 +297,29 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
                 contracts={reserve.contracts!}
                 onSuccess={handleSuccess}
               />
-            ) : (
+            </TabsContent>
+
+            {hasFund && (
               /* Fund — acquire the deposit token */
-              isTesouro ? (
-                /* cTSR: instant faucet + cUSD→cTSR Soroswap swap, stacked. */
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  {canTesouroFaucet && (
-                    <TesouroFaucet address={address} onSuccess={handleSuccess} refreshSignal={refreshKey} />
-                  )}
-                  {canTesouroSwap && (
-                    <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} refreshSignal={refreshKey} />
-                  )}
-                </div>
-              ) : canFaucet ? (
-                <UsdcFaucet address={address} onSuccess={handleSuccess} />
-              ) : canCbrl ? (
-                <CbrlFaucet address={address} onSuccess={handleSuccess} />
-              ) : null
+              <TabsContent value="fund">
+                {isTesouro ? (
+                  /* cTSR: instant faucet + cUSD→cTSR Soroswap swap, stacked. */
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {canTesouroFaucet && (
+                      <TesouroFaucet address={address} onSuccess={handleSuccess} refreshSignal={refreshKey} />
+                    )}
+                    {canTesouroSwap && (
+                      <BuyTesouro address={address} money={reserve} onSuccess={handleSuccess} refreshSignal={refreshKey} />
+                    )}
+                  </div>
+                ) : canFaucet ? (
+                  <UsdcFaucet address={address} onSuccess={handleSuccess} />
+                ) : canCbrl ? (
+                  <CbrlFaucet address={address} onSuccess={handleSuccess} />
+                ) : null}
+              </TabsContent>
             )}
-          </div>
+          </Tabs>
         </>
       )}
     </aside>

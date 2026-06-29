@@ -16,6 +16,9 @@ import { config, tesouroSwapEnabled } from "@/lib/config";
 import { treatTxError, fmtUnitPrice, parseToStroops, type Money, type TxContext } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import { TxStatus } from "@/components/TxStatus";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface BuyTesouroProps {
   /** Connected wallet public key */
@@ -152,10 +155,14 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
       </div>
 
       {info && !info.hasTrustline ? (
-        <button
+        <Button
+          variant="outline"
           onClick={() => run(() => addTesouroTrustline(address), "trustline")}
           disabled={isPending}
-          className="font-body"
+          // Resting/disabled look is driven by inline style (amber outline, transparent);
+          // neutralize the outline variant's amber hover-fill to preserve the original
+          // no-hover behavior at parity.
+          className="font-body hover:bg-transparent hover:text-[var(--color-accent)] hover:[border-color:var(--color-accent)]"
           style={{
             width: "100%",
             height: "40px",
@@ -170,7 +177,7 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
           aria-busy={isPending}
         >
           {isPending ? "Adding…" : `Add ${code} trustline`}
-        </button>
+        </Button>
       ) : (
         <form
           onSubmit={(e) => {
@@ -179,11 +186,11 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
           }}
           noValidate
         >
-          <label htmlFor="buy-amount" className="font-body" style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--color-text-2)", marginBottom: "6px" }}>
+          <Label htmlFor="buy-amount" className="font-body" style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--color-text-2)", marginBottom: "6px" }}>
             cUSD to spend
-          </label>
+          </Label>
           <div style={{ position: "relative", marginBottom: "16px" }}>
-            <input
+            <Input
               id="buy-amount"
               type="number"
               min="0"
@@ -213,10 +220,13 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
               cUSD
             </span>
           </div>
-          <button
+          <Button
             type="submit"
+            variant="outline"
             disabled={!canBuy}
-            className="font-body"
+            // Inline style carries the enabled (amber) / disabled (muted) resting look;
+            // hover overrides keep the enabled hover identical to rest (no amber fill).
+            className="font-body hover:bg-transparent hover:text-[var(--color-accent)] hover:[border-color:var(--color-accent)]"
             style={{
               width: "100%",
               height: "40px",
@@ -231,7 +241,7 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
             aria-busy={isPending}
           >
             {isPending ? "Swapping…" : `Buy ${code}`}
-          </button>
+          </Button>
         </form>
       )}
 
