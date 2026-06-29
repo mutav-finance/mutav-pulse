@@ -20,6 +20,13 @@ import { Mono } from "@/components/Mono";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * True while a consequential action is armed (confirm pending). The shared field
@@ -426,6 +433,7 @@ export function FormCheckbox({
         cursor: isDisabled ? "not-allowed" : "pointer",
       }}
     >
+      {/* eslint-disable-next-line no-restricted-syntax -- no shadcn Checkbox primitive installed; raw checkbox is intentional */}
       <input
         id={id}
         type="checkbox"
@@ -487,33 +495,21 @@ export function FormSelect({
       >
         {label}
       </Label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={isDisabled}
-        className="font-mono"
-        style={{
-          backgroundColor: "var(--color-canvas)",
-          border: "1px solid var(--color-border-input)",
-          color: value ? "var(--color-text)" : "var(--color-text-3)",
-          fontSize: "13px",
-          padding: "7px 10px",
-          width: "100%",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-        }}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+        <SelectTrigger
+          id={id}
+          className="font-mono h-auto px-2.5 py-[7px] text-[13px] data-[placeholder]:text-[var(--color-text-3)]"
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value} className="font-mono text-[13px]">
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
