@@ -173,9 +173,9 @@ export function DepositWidget({
                 height: "auto",
                 padding: "10px 52px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
-                // focus ring comes from the global :focus-visible rule
-                // Dark native controls (number spinner) instead of the light default.
-                colorScheme: "dark",
+                // focus ring comes from the global :focus-visible rule.
+                // Native control scheme (number spinner) comes from the front's
+                // `color-scheme` in globals.css — no per-input override needed.
                 // No border-radius (Precision Brutalism)
               }}
               aria-label={`${depositToken} amount to deposit`}

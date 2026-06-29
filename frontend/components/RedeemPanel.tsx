@@ -286,7 +286,7 @@ export function RedeemPanel({
                 padding: "10px 56px 10px 12px",
                 fontFeatureSettings: '"tnum" 1',
                 fontVariantNumeric: "tabular-nums",
-                colorScheme: "dark",
+                // native control scheme comes from the front's color-scheme (globals.css)
               }}
               aria-label={`${shareSymbol} shares to redeem`}
             />

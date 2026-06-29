@@ -153,6 +153,7 @@
 /* Dashboard Investidor (dark, amber accent) — default front */
 :root,
 [data-front="investidor"] {
+  color-scheme: dark; /* native controls (number spinners, scrollbars) render dark */
   --color-canvas:     #0E0F11;
   --color-surface:    #16181C;
   --color-surface-2:  #1E2126;
@@ -172,6 +173,7 @@
 
 /* Dashboard Imobiliárias (light, warm neutral) */
 [data-front="imobiliarias"] {
+  color-scheme: light; /* light front — keep native controls light */
   --color-canvas:     #F7F6F3;
   --color-surface:    #FFFFFF;
   --color-surface-2:  #EEEDEA;
@@ -188,6 +190,7 @@
 
 /* Terminal (dark, copper secondary) */
 [data-front="terminal"] {
+  color-scheme: dark; /* native controls (number spinners, scrollbars) render dark */
   --color-canvas:     #0A0B0D;
   --color-surface:    #111316;
   --color-surface-2:  #181B1F;
