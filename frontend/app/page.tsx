@@ -94,11 +94,34 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
         style={{
+          position: "relative",
+          overflow: "hidden",
           width: "100%",
           padding: "88px var(--page-pad) 72px",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/hero-6.png"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "auto",
+            maxWidth: "48%",
+            objectFit: "contain",
+            objectPosition: "right center",
+            opacity: 0.7,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel>Mutav Pulse Protocol</SectionLabel>
 
         <h1
@@ -127,7 +150,7 @@ export default function Home() {
         {/* CTAs — exactly one amber */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
           <Link
-            href={`/earn/${PRIMARY_RESERVE.address}`}
+            href="/reserves"
             className="font-body"
             style={{
               display: "inline-flex",
@@ -164,6 +187,7 @@ export default function Home() {
           >
             How it works ↓
           </a>
+        </div>
         </div>
       </section>
 
@@ -310,9 +334,9 @@ export default function Home() {
           }}
         >
           {[
-            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …) — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
+            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …), your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
             { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a fee on every active, fee-current guarantee." },
-            { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus — solvency comes first, always." },
+            { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus. Solvency comes first, always." },
           ].map((s) => (
             <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-accent)", fontFeatureSettings: '"tnum" 1' }}>
@@ -385,14 +409,14 @@ export default function Home() {
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Connect a wallet to deposit and drive the full cycle yourself — or explore an active
+          Connect a wallet to deposit and drive the full cycle yourself, or explore an active
           reserve first.
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center", marginBottom: "14px" }}>
           <ConnectButton />
           <Link
-            href={`/earn/${PRIMARY_RESERVE.address}`}
+            href="/reserves"
             className="font-body"
             style={{
               display: "inline-flex",
@@ -400,9 +424,9 @@ export default function Home() {
               gap: "8px",
               fontSize: "14px",
               fontWeight: 500,
-              color: "var(--color-text-2)",
+              color: "var(--color-accent)",
               backgroundColor: "transparent",
-              border: "1px solid var(--color-border)",
+              border: "1px solid var(--color-accent)",
               padding: "12px 22px",
               textDecoration: "none",
               lineHeight: 1,

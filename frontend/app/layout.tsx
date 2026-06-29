@@ -18,7 +18,7 @@ const geist = Geist({
 // in globals.css — no next/font needed; they ship as self-hosted WOFF2.
 
 export const metadata: Metadata = {
-  title: "Mutav Pulse — MUTAV Reserve",
+  title: "Mutav Pulse: MUTAV Reserve",
   description: "Solvency-gated tokenized reserve vault on Stellar. Rental-guarantee infrastructure.",
 };
 

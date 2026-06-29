@@ -250,7 +250,7 @@ const EDGES: Edge<GateData>[] = [
 ];
 
 const GATES = [
-  { n: "1", title: "Solvency gate", body: "Async redemption (EIP-7540 style): request → surplus-gated process → claim. Exits and new guarantees draw only from free_capital = stable_assets − coverage_required. stable ≥ coverage, always — no bank run." },
+  { n: "1", title: "Solvency gate", body: "Async redemption (EIP-7540 style): request → surplus-gated process → claim. Exits and new guarantees draw only from free_capital = stable_assets − coverage_required. stable ≥ coverage, always: no bank run." },
   { n: "2", title: "Fee gate", body: "A guarantee is covered only while its fees are current. Stop paying → coverage lapses and cover_default halts until it's caught up." },
   { n: "3", title: "Stable-backed floor", body: "Only stable strategy balances count toward coverage. Volatile adapters lift NAV but never the floor, so a price crash can't make the reserve insolvent." },
 ];
@@ -282,16 +282,20 @@ export function ProtocolDiagram() {
   const rfRef = useRef<ReactFlowInstance | null>(null);
 
   // React Flow paints the grid + arrowheads as SVG attributes, where CSS vars
-  // don't resolve — so resolve the brand tokens to concrete values at mount
-  // (lazy initializer; React Flow renders client-side) instead of hardcoding hex.
-  const [tokens] = useState(() => {
-    if (typeof window === "undefined") return { grid: GRID_COLOR, arrow: ARROW_COLOR };
+  // don't resolve — so resolve the brand tokens to concrete values. This MUST
+  // start from the static fallbacks so the first client render matches the SSR
+  // HTML (the arrowhead marker id is derived from its colour — reading
+  // getComputedStyle during the initial render desynced it and threw a
+  // hydration mismatch). Resolve the real tokens in a post-mount effect.
+  const [tokens, setTokens] = useState({ grid: GRID_COLOR, arrow: ARROW_COLOR });
+
+  useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
-    return {
+    setTokens({
       grid: cs.getPropertyValue("--color-border").trim() || GRID_COLOR,
       arrow: cs.getPropertyValue("--color-text-3").trim() || ARROW_COLOR,
-    };
-  });
+    });
+  }, []);
 
   const edges = useMemo<Edge[]>(
     () =>

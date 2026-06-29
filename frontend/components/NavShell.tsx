@@ -116,7 +116,7 @@ export function NavShell() {
           {/* Logo — fixed-color brand mark, identical on both fronts */}
           <Link
             href="/"
-            aria-label="MUTAV — home"
+            aria-label="MUTAV, home"
             onClick={() => setMenuOpen(false)}
             style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
           >

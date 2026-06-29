@@ -133,16 +133,16 @@ export function BuyTesouro({ address, money, onSuccess, refreshSignal }: BuyTeso
           SWAP
         </p>
         <h2 className="font-display" style={{ fontSize: "18px", color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
-          Buy {code} — swap cUSD on Soroswap
+          Buy {code}: swap cUSD on Soroswap
         </h2>
         <p className="font-body" style={{ fontSize: "13px", color: "var(--color-text-2)", marginTop: "4px", lineHeight: 1.5 }}>
           {code} is tokenized Brazilian treasury. Acquire it with a client-signed Soroswap AMM swap (no KYC), then deposit it into the reserve.
         </p>
         <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "8px" }}>
-          1 {code} ≈ {fmtUnitPrice(money)} · indicative — {code} is yield-bearing, not 1:1 with BRL
+          1 {code} ≈ {fmtUnitPrice(money)} · indicative. {code} is yield-bearing, not 1:1 with BRL
         </p>
         <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-3)", marginTop: "6px", lineHeight: 1.4 }}>
-          Testnet pool — large swaps move the price; if the swap fails, try a smaller amount.
+          Testnet pool: large swaps move the price; if the swap fails, try a smaller amount.
         </p>
       </div>
 

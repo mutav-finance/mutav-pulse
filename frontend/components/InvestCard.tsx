@@ -281,7 +281,7 @@ export function InvestCard({ reads, reserve }: { reads: Reads; reserve: Reserve 
                   onClick={() => setMode("fund")}
                   className="font-mono h-auto justify-start whitespace-normal text-left text-[11px] px-0 pt-3 pb-0 cursor-pointer hover:no-underline"
                 >
-                  No {reserve.depositToken} balance — add funds →
+                  No {reserve.depositToken} balance. Add funds →
                 </Button>
               )}
             </TabsContent>

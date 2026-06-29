@@ -9,8 +9,8 @@
  * No rounded corners. JetBrains Mono numbers. Surface stacking only, no shadows.
  */
 
-import type { ReactNode, CSSProperties } from "react";
-import { fmtFiat, truncAddr, type Money } from "@/lib/format";
+import type { ReactNode } from "react";
+import { fmtFiat, type Money } from "@/lib/format";
 import { Mono } from "@/components/Mono";
 import type { StrategyAlloc } from "vault";
 
@@ -122,7 +122,7 @@ export function ReserveHealthHeader({
         </div>
       )}
 
-      {/* ── Two separate blocks: metrics grid (left) · strategy allocs (right) ── */}
+      {/* ── Metrics grid + the admin gate (children) below it ── */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch" }}>
         {/* Left column: metrics grid + the gate (children) below it */}
         <div style={{ flex: "1 1 480px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -197,143 +197,6 @@ export function ReserveHealthHeader({
           {children}
         </div>
 
-        {/* Right card: strategy allocations as a list */}
-        {!loading && strategies.length > 0 && (
-          <div
-            style={{
-              flex: "1 1 320px",
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <span
-              className="font-body"
-              style={{
-                fontSize: "10px",
-                fontWeight: 500,
-                letterSpacing: "0.08em",
-                color: "var(--color-text-3)",
-                textTransform: "uppercase",
-                padding: "14px 16px 12px",
-              }}
-            >
-              Strategy Allocs
-            </span>
-            <div className="scroll-dark scroll-fade-y" style={{ overflow: "auto", maxHeight: "152px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFeatureSettings: '"tnum" 1' }}>
-              <thead>
-                <tr>
-                  {["#", "Adapter", "Vault", "Alloc"].map((h, idx) => (
-                    <th
-                      key={h}
-                      className="font-body"
-                      style={{
-                        textAlign: idx === 3 ? "right" : "left",
-                        fontSize: "10px",
-                        fontWeight: 500,
-                        letterSpacing: "0.10em",
-                        textTransform: "uppercase",
-                        color: "var(--color-text-3)",
-                        padding: "8px 14px",
-                        borderTop: "1px solid var(--color-border)",
-                        borderBottom: "1px solid var(--color-border)",
-                        backgroundColor: "var(--color-surface-2)",
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: Math.max(3, strategies.length) }, (_, i) => {
-                  const s = strategies[i];
-                  const rowBg = i % 2 === 0 ? "var(--color-surface)" : "var(--color-canvas)";
-                  const cell: CSSProperties = {
-                    padding: "10px 14px",
-                    borderBottom: "1px solid var(--color-border)",
-                    whiteSpace: "nowrap",
-                  };
-                  return (
-                    <tr key={i} style={{ backgroundColor: rowBg }}>
-                      <td style={cell}>
-                        <Mono dim style={{ fontSize: "12px" }}>#{i + 1}</Mono>
-                      </td>
-                      {s ? (
-                        <>
-                          <td style={cell}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                              <span className="font-body" style={{ fontSize: "12px", color: "var(--color-text)" }}>
-                                DeFindex
-                              </span>
-                              {s.volatile && (
-                                <span
-                                  className="font-mono"
-                                  style={{
-                                    fontSize: "8px",
-                                    color: "var(--color-copper)",
-                                    border: "1px solid var(--color-copper)",
-                                    padding: "0 3px",
-                                    letterSpacing: "0.06em",
-                                  }}
-                                >
-                                  VOL
-                                </span>
-                              )}
-                            </span>
-                          </td>
-                          <td style={cell}>
-                            <Mono dim style={{ fontSize: "11px" }}>
-                              {truncAddr(s.address)}
-                            </Mono>
-                          </td>
-                          <td style={{ ...cell, textAlign: "right" }}>
-                            <Mono copper style={{ fontSize: "13px", fontWeight: 600 }}>
-                              {(s.weight_bps / 100).toFixed(0)}%
-                            </Mono>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={cell}>
-                            <Mono dim style={{ fontSize: "12px", color: "var(--color-text-3)" }}>—</Mono>
-                          </td>
-                          <td style={cell}>
-                            <Mono dim style={{ fontSize: "11px", color: "var(--color-text-3)" }}>—</Mono>
-                          </td>
-                          <td style={{ ...cell, textAlign: "right" }}>
-                            <Mono dim style={{ fontSize: "13px", color: "var(--color-text-3)" }}>—</Mono>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        )}
-
-        {/* Loading strategies placeholder card */}
-        {loading && (
-          <div style={{ flex: "1 1 240px", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", padding: "14px 20px", display: "flex", alignItems: "center" }}>
-            <div
-              aria-hidden="true"
-              style={{
-                height: "14px",
-                width: "200px",
-                backgroundColor: "var(--color-surface-3)",
-              }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

@@ -398,7 +398,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
     () =>
       data.activeGuarantees.map((g) => ({
         value: String(g.id),
-        label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
+        label: `#${g.id}: ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · ${g.isCurrent ? "current" : "overdue"}`,
       })),
     [data.activeGuarantees, money],
   );
@@ -414,7 +414,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
     () =>
       overdueGuarantees.map((g) => ({
         value: String(g.id),
-        label: `#${g.id} — ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
+        label: `#${g.id}: ${truncAddr(g.guarantee.landlord)} · ${fmtFiat(g.guarantee.monthly_amount, money)}/mo · overdue`,
       })),
     [overdueGuarantees, money],
   );
@@ -764,7 +764,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   lineHeight: 1.4,
                 }}
               >
-                Read-only — connected address is not admin.{" "}
+                Read-only: connected address is not admin.{" "}
                 <Mono style={{ fontSize: "11px", color: "var(--color-text-3)" }}>
                   {truncAddr(address)}
                 </Mono>
@@ -982,7 +982,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                     value={sgPeriodDays}
                     onChange={setSgPeriodDays}
                     disabled={!isPolicyAdmin}
-                    hint="Fee cadence — fee_bps is charged once per this period"
+                    hint="Fee cadence: fee_bps is charged once per this period"
                   />
                 </div>
               </ProtocolActionForm>
@@ -1327,7 +1327,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
 
             {/* ── Strategies ───────────────────────────────────────────── */}
             <TabsContent value="strategies" style={{ fontSize: "inherit" }}>
-            <SectionBio>Where idle reserve capital earns yield. See the live allocation, point capital at venues by weight, then <strong>Apply</strong> to deploy. Weights are relative shares of the deployable pool — the contract keeps the idle buffer first, then splits the rest by weight.</SectionBio>
+            <SectionBio>Where idle reserve capital earns yield. See the live allocation, point capital at venues by weight, then <strong>Apply</strong> to deploy. Weights are relative shares of the deployable pool. The contract keeps the idle buffer first, then splits the rest by weight.</SectionBio>
 
             {/* ── Allocation (live) — same actual-balance view as the investor overview ── */}
             <SubHeading>Allocation (live)</SubHeading>
@@ -1431,7 +1431,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
             )}
             {!data.loading && data.strategies.length === 0 && (
               <p className="font-mono" style={{ fontSize: "12px", color: "var(--color-text-3)", marginBottom: "16px" }}>
-                No strategies wired — all assets sit idle in the vault. Add an adapter below, then Apply.
+                No strategies wired. All assets sit idle in the vault. Add an adapter below, then Apply.
               </p>
             )}
 
@@ -1451,7 +1451,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                 onSuccess={handleSuccess}
               >
                 <p className="font-body" style={{ fontSize: "12px", color: "var(--color-text-3)", margin: 0, lineHeight: 1.5 }}>
-                  Deploys idle float toward the target weights above (keeping the liquid buffer), and pulls over-target venues back. Idempotent — running at target is a no-op. Run after changing weights, the buffer, or a cap.
+                  Deploys idle float toward the target weights above (keeping the liquid buffer), and pulls over-target venues back. Idempotent: running at target is a no-op. Run after changing weights, the buffer, or a cap.
                 </p>
               </ProtocolActionForm>
             </div>
@@ -1691,7 +1691,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
               ))}
             </div>
             <p className="font-body" style={{ fontSize: "11px", color: "var(--color-text-3)", margin: "0 0 14px", lineHeight: 1.5, maxWidth: "760px" }}>
-              Each contract has a <strong>single</strong> admin. Transferring hands control over entirely and is <strong>irreversible</strong> unless you also control the new address — there is no multi-admin list to add to or remove from.
+              Each contract has a <strong>single</strong> admin. Transferring hands control over entirely and is <strong>irreversible</strong> unless you also control the new address. There is no multi-admin list to add to or remove from.
             </p>
             <ActionGrid>
               {/* Transfer Vault Admin */}
@@ -1782,7 +1782,7 @@ function ReserveCockpit({ reads, contracts, depositToken, money, currency, curre
                   onChange={setGraceInput}
                   disabled={!isPolicyAdmin || data.graceSecs === null}
                   hint={data.graceSecs === null
-                    ? "Not available — the deployed policy predates set_grace_secs. Redeploy the policy to enable."
+                    ? "Not available: the deployed policy predates set_grace_secs. Redeploy the policy to enable."
                     : `Window after a missed fee before default. Currently ${(Number(data.graceSecs) / 86400).toFixed(1)} days.`}
                 />
               </ProtocolActionForm>

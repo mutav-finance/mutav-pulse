@@ -106,6 +106,11 @@ function SubNav({ active }: { active: string }) {
         backgroundColor: "var(--color-canvas)",
         borderBottom: "1px solid var(--color-border)",
         overflowX: "auto",
+        // Setting only overflow-x forces overflow-y to `auto`; the children's
+        // -1px margin then bleeds 1px vertically and spawns a stray vertical
+        // scrollbar. Pin overflow-y so only the (intended) horizontal scroll
+        // survives for narrow viewports.
+        overflowY: "hidden",
       }}
     >
       {SECTIONS.map((s) => {
@@ -343,7 +348,7 @@ interface ContractRow {
 function contractRows(): ContractRow[] {
   const rows: ContractRow[] = [
     { role: "Vault", id: config.contracts.vault, desc: "Custody, tokenized shares & NAV, the redemption queue, and the strategy allocator." },
-    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain — fee-gated coverage and default payouts." },
+    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain: fee-gated coverage and default payouts." },
     { role: "Registry", id: config.contracts.registry, desc: "Writer-gated store of the active guarantee book." },
     { role: "USDC", id: config.contracts.usdc, desc: "The reserve's underlying asset (Stellar asset contract)." },
   ];
@@ -447,7 +452,7 @@ export function ReserveTransparency({
       url: contractUrl(config.contracts.usdc),
       blurb: heldYieldBearing
         ? `Held directly in the vault. ${reserve.depositToken} is yield-bearing, so it accrues its base yield even when not deployed.`
-        : "Held directly in the vault — not deployed to any venue. Liquid for operations and redemptions.",
+        : "Held directly in the vault, not deployed to any venue. Liquid for operations and redemptions.",
       type: heldYieldBearing ? "Yield-bearing asset" : "Cash · underlying",
       targetBps: idleBps,
       amount: data.availableHeld,
@@ -482,13 +487,14 @@ export function ReserveTransparency({
       <Section
         first
         id="overview"
+        first
         title="Overview"
         intro={
           <>
             The <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> reserve is a
             solvency-gated, tokenized vault that backs Brazilian rental guarantees and turns their
             fees into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
-            NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept — values are
+            NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept: values are
             live on-chain reads, not a production reserve.
           </>
         }
@@ -543,7 +549,7 @@ export function ReserveTransparency({
         intro={
           <>
             The underwriting brain. The reserve writes fee-gated coverage on rental guarantees and
-            pays tenant defaults — while the solvency invariant keeps committed coverage at or below
+            pays tenant defaults, while the solvency invariant keeps committed coverage at or below
             stable assets, always.
           </>
         }
@@ -558,7 +564,7 @@ export function ReserveTransparency({
             <AllocationDonut
               loading={loading}
               size={DONUT_SIZE}
-              ariaLabel="Reserve allocation — committed coverage vs liquidity buffer"
+              ariaLabel="Reserve allocation: committed coverage vs liquidity buffer"
               centerDisplay={fmtFiat(data.totalAssets, reserve)}
               centerLabel="Reserve value"
               segments={[
@@ -657,7 +663,7 @@ export function ReserveTransparency({
           <>
             Mutav vaults put reserve capital to work through <strong style={{ color: "var(--color-text-2)" }}>strategies</strong> and{" "}
             <strong style={{ color: "var(--color-text-2)" }}>adapters</strong>. A strategy is a target
-            allocation — the weight the vault&apos;s allocator aims to hold in a venue. An adapter is the
+            allocation: the weight the vault&apos;s allocator aims to hold in a venue. An adapter is the
             on-chain contract that actually moves capital into that venue (DeFindex, for example) and
             reports its live balance back. The allocator rebalances toward the targets while keeping the
             rest liquid in the vault. Everything below is read live on-chain.
@@ -722,7 +728,7 @@ export function ReserveTransparency({
         title="Contracts"
         intro={
           <>
-            No black box. Every number above reads from these Soroban contracts — open any of them on
+            No black box. Every number above reads from these Soroban contracts. Open any of them on
             the explorer to verify.
           </>
         }

@@ -101,7 +101,7 @@ export default function AdminPage() {
         try {
           acct = await readAdminAccount(canonical);
         } catch (e) {
-          signerError = errMsg(e, "Failed to read admin signers — signer management unavailable; retry.");
+          signerError = errMsg(e, "Failed to read admin signers. Signer management unavailable; retry.");
         }
       }
       setData({ rows: reserveRows, account: acct, loading: false, error: signerError });
@@ -256,7 +256,7 @@ export default function AdminPage() {
                 low {account.thresholds.low} · med {account.thresholds.med} · high {account.thresholds.high}
               </Mono>
               <span className="font-body" style={{ fontSize: "10px", color: "var(--color-text-3)", marginLeft: "8px" }}>
-                {account.thresholds.med <= 1 ? "any single signer authorizes" : "M-of-N — multiple signatures required"}
+                {account.thresholds.med <= 1 ? "any single signer authorizes" : "M-of-N: multiple signatures required"}
               </span>
             </LabelRow>
           )}
@@ -308,8 +308,8 @@ export default function AdminPage() {
           </GateNotice>
         ) : !canManage && account ? (
           <GateNotice>
-            Your wallet <Mono>{truncAddr(address)}</Mono> is not a signer of the admin account —
-            you can view the signer set but not change it. Ask a current signer to add you.
+            Your wallet <Mono>{truncAddr(address)}</Mono> is not a signer of the admin account.
+            You can view the signer set but not change it. Ask a current signer to add you.
           </GateNotice>
         ) : null}
 
@@ -357,7 +357,7 @@ export default function AdminPage() {
             disabled={!canManage}
             onSubmit={async () => {
               const pk = newSigner.trim();
-              if (!isValidPubkey(pk)) throw new Error("Invalid public key — must be a G… address.");
+              if (!isValidPubkey(pk)) throw new Error("Invalid public key: must be a G… address.");
               if (!address) throw new Error("Connect a signer wallet first.");
               const w = Number(newWeight || "1");
               if (!Number.isInteger(w) || w < 1 || w > 255) throw new Error("Weight must be an integer 1–255.");
@@ -372,7 +372,7 @@ export default function AdminPage() {
               value={newSigner}
               onChange={setNewSigner}
               disabled={!canManage}
-              hint="The wallet's Stellar public key. They sign with their own key — no key sharing."
+              hint="The wallet's Stellar public key. They sign with their own key, no key sharing."
             />
             <FormField
               id="new-weight"
@@ -410,7 +410,7 @@ export default function AdminPage() {
                 const floor = Math.max(account.thresholds.med, 1);
                 if (removed && remaining < floor) {
                   throw new Error(
-                    `Removing this signer drops total weight to ${remaining}, below the account threshold (${floor}) — it would lock the admin account out. Lower the threshold or add another signer first.`,
+                    `Removing this signer drops total weight to ${remaining}, below the account threshold (${floor}). It would lock the admin account out. Lower the threshold or add another signer first.`,
                   );
                 }
               }

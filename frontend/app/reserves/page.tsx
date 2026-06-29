@@ -46,7 +46,7 @@ export default function ReservesPage() {
             margin: "0 0 8px",
           }}
         >
-          Mutav Pulse Protocol — reserves
+          Mutav Pulse Protocol: reserves
         </p>
         <h1
           className="font-display"
