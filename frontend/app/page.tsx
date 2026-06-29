@@ -198,12 +198,15 @@ export default function Home() {
       <section
         style={{
           width: "100%",
-          padding: "72px var(--section-pad-x)",
+          // Extra horizontal inset over the shared token to pull this section's
+          // content further toward the centre.
+          padding: "72px calc(var(--section-pad-x) + 120px)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        {/* Centered header */}
-        <div style={{ maxWidth: "62ch", margin: "0 auto 44px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        {/* Header row: text block (left) + partner logos stacked (right) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "32px", margin: "0 0 44px" }}>
+        <div style={{ maxWidth: "62ch", display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
           <span
             className="font-mono"
             style={{
@@ -230,6 +233,14 @@ export default function Home() {
             and running end-to-end on Stellar testnet.
           </p>
         </div>
+        {/* Partner logos — stacked, right-aligned, pushed to the bottom of the row */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", alignSelf: "flex-end", gap: "30px", flexShrink: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/stellar-logo.png" alt="Stellar" style={{ width: "150px", height: "auto", display: "block", opacity: 0.6 }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/nearx-logo.png" alt="NearX" style={{ width: "150px", height: "auto", display: "block", opacity: 0.6 }} />
+        </div>
+        </div>
 
         {/* Detail cards */}
         <div
@@ -239,8 +250,7 @@ export default function Home() {
             gap: "1px",
             backgroundColor: "var(--color-border)",
             border: "1px solid var(--color-border)",
-            maxWidth: "800px",
-            margin: "0 auto",
+            margin: 0,
           }}
         >
           {[
@@ -266,7 +276,7 @@ export default function Home() {
               body: "Testnet only. No real funds. Not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
             },
           ].map((c) => (
-            <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "26px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "16px 24px", display: "flex", flexDirection: "column", gap: "10px" }}>
               {c.icon}
               <h3 className="font-body" style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text)", margin: 0 }}>
                 {c.title}
