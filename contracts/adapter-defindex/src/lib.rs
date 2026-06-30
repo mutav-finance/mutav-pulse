@@ -1,5 +1,6 @@
 #![no_std]
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec, Address, BytesN, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token, vec, Address, BytesN, Env, IntoVal};
+use soroban_sdk::auth::{ContractContext, InvokerContractAuthEntry, SubContractInvocation};
 use strategy::Strategy;
 use interfaces::{BPS_DENOM, DefindexVaultClient};
 
@@ -168,6 +169,27 @@ impl Strategy for AdapterDefindex {
         // Pre-deposit df-share balance (read via the df_shares() token-balance helper,
         // NOT the ignored `Val` deposit return).
         let before = AdapterDefindex::df_shares(&e);
+        // AUTH (real-vault): the DeFindex vault's `deposit` pulls the underlying with
+        // `transfer(from=adapter, to=vault, amount)` — a call the VAULT makes on our
+        // behalf, deeper in the stack — so the adapter must pre-authorize exactly that
+        // transfer via `authorize_as_current_contract`. Tests run under
+        // `mock_all_auths`, which silently satisfied this; the live DeFindex vault does
+        // not, and without this the deposit reverts `Error(Auth, InvalidAction)`.
+        // Single-asset deposit consumes `amount` verbatim (no optimal-ratio haircut),
+        // so the authorized amount matches the transfer exactly.
+        let vault_addr = AdapterDefindex::vault(&e);
+        let token_addr = AdapterDefindex::underlying_addr(&e);
+        e.authorize_as_current_contract(vec![
+            &e,
+            InvokerContractAuthEntry::Contract(SubContractInvocation {
+                context: ContractContext {
+                    contract: token_addr,
+                    fn_name: symbol_short!("transfer"),
+                    args: (me.clone(), vault_addr, amount).into_val(&e),
+                },
+                sub_invocations: vec![&e],
+            }),
+        ]);
         // `amounts_min` floors the amount the vault may *consume*, not the shares
         // *minted* — defense-in-depth, mirroring divest's `min_amounts_out`. The
         // binding guard is the minted-share-value assertion below.
