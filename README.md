@@ -9,13 +9,13 @@
 
 ## TL;DR for judges
 
-- **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
+- **What:** an onchain rental guarantor (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, fee, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
 - **Live on testnet:** three reserves (MUSD · MTESOURO · MBRL) deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
-- **Customer discovery:** real-estate agencies interviewed; investor interviews in progress.
-- ▶️ **Demo video:** <!-- TODO: link --> · 🌐 **Live demo:** <!-- TODO: Vercel URL -->
+- **Customer discovery:** real-estate agencies interviewed; four investor interviews completed.
+- ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [view rendered](https://htmlpreview.github.io/?https://github.com/mutav-finance/mutav-pulse/blob/main/deck/index.html) · [source](deck/index.html)
 
 ---
 
@@ -106,7 +106,7 @@ The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6
 **Proof of operation** — verify the protocol actually runs onchain, not just deployed:
 <!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted MUSD, a collect_fee, and a cover_default disbursement. -->
 
-▶️ **Demo video:** <!-- TODO: 1–2 min walkthrough link --> · 🌐 **Live demo:** <!-- TODO: Vercel URL, e.g. https://pulse.mutav.finance -->
+▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance)
 
 ---
 
@@ -115,7 +115,7 @@ The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6
 MUTAV is built directly against the two sides of the Brazilian rental market it serves:
 
 - **Real-estate agencies (*imobiliárias*)** — across seven interviews, the complaint was consistent: today's guarantee providers are slow and opaque to claim against (payouts stretching to 60–90 days, line items contested to pay less, some exonerating themselves at any time, even going bankrupt). Because the agency sold the guarantee, the loss lands on it — almost all advance the rent to the owner and wait months for a reimbursement that rarely arrives in full. This is the gap MUTAV closes: a guarantor whose solvency is verifiable onchain, with transparent, rules-based payouts, instead of an opaque counterparty that delays, underpays, or walks away.
-- **Investors (DeFi / yield)** — the signal so far is clear: for real-world-backed yield, trust hinges on transparency of the backing, not on the APY. The recurring frustration with RWAs is never being able to confirm whether the "real" is actually real. Investors judge a protocol by what they can check themselves (TVL and verified contracts), expect yield to stay realistic (near the ~4% U.S. benchmark, with double-digit APY on a stablecoin a red flag), and accept a lockup when the rationale is clear. This validates MUTAV's bet on onchain-verifiable solvency, makes the solvency gate and contract addresses something to surface rather than bury, and frames the surplus-gated redemption queue as solvency protection.
+- **Investors (DeFi / yield)** — across four interviews the signal is clear: for real-world-backed yield, trust hinges on transparency of the backing and the team, not on the APY. The recurring frustration with RWAs is never being able to confirm whether the "real" is actually real. Investors judge a protocol by what they can check themselves (TVL, a doxxed team, and verified contracts), expect yield to stay realistic (three of four anchor it to risk/realism, treating an unexplained double-digit APY on a stablecoin as a red flag), and accept a lockup when the rationale is clear. This validates MUTAV's bet on onchain-verifiable solvency, makes the solvency gate and contract addresses something to surface rather than bury, and frames the surplus-gated redemption queue as solvency protection.
 
 Full write-ups, methodology, and the investor interview guide are in [`docs/resources/customer-discovery.md`](docs/resources/customer-discovery.md).
 
