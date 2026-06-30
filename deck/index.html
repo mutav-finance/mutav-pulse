@@ -186,6 +186,37 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .gcard h5 { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text); margin-bottom: 5px; }
 .gcard p { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.45; color: var(--color-text-2); }
 
+/* ── Merged candidate: Architecture + Integrations ───────────────────────── */
+.archint .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex: 0 0 auto; margin: auto 0; align-items: stretch; min-height: 0; }
+.archint .stellar-head { margin-top: 0; }
+.archint .stellar-head .kicker { margin-bottom: 6px; }
+.archint .stellar-head .title { font-size: 34px; margin-top: 4px; line-height: 1.08; }
+.archint .stellar-sub { font-size: 15px; margin-top: 8px; max-width: 48ch; }
+
+/* left · stacked integration cards */
+.archint .ai-left { display: flex; flex-direction: column; justify-content: flex-end; }
+.archint .ai-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.archint .intcell { display: flex; flex-wrap: wrap; align-items: center; border: 1px solid var(--color-border); background: var(--color-surface); padding: 15px 18px; text-align: left; }
+.archint .intlbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); }
+.archint .intcell .rsv-pills { margin: 0 0 0 auto; justify-content: flex-end; }
+.archint .intcell .spill { font-size: 12px; }
+.archint .intcell p { flex: 0 0 100%; font-size: 11.5px; color: var(--color-text-2); line-height: 1.4; margin-top: 18px; }
+
+/* right · vertical money-flow diagram (reuses original architecture style) */
+.archint .ai-right { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; }
+.slide.stellar.archint .vault-flow { transform: none; margin: 0 auto; }
+.slide.stellar.archint .diagram-frame { flex: 0 0 auto; margin: 0; padding: 26px; width: 100%; height: 489px; display: flex; align-items: center; justify-content: center; }
+/* diagram text sizes (−4px from base) */
+.archint .vault-flow .leaf .nt { font-size: 11px; }
+.archint .vault-flow .leaf .ns { font-size: 8px; }
+.archint .vault-flow .rsv-title { font-size: 16px; }
+.archint .vault-flow .rsv-badge { font-size: 9px; }
+.archint .vault-flow .rsv-sub { font-size: 9.5px; }
+.archint .vault-flow .rsv-lbl { font-size: 9px; }
+.archint .vault-flow .spill { font-size: 10px; }
+.archint .vault-flow .rsv-yield { font-size: 9.5px; }
+.archint .vault-flow .vchip { font-size: 8.5px; }
+
 /* ── Cover ───────────────────────────────────────────────────────────────── */
 #cover .cover-art { position: absolute; top: 0; right: 0; height: 100%; width: auto; object-fit: contain; object-position: right center; opacity: .7; z-index: 0; pointer-events: none; user-select: none; }
 #cover .content { position: absolute; inset: 0; z-index: 1; padding: 60px 76px; display: flex; flex-direction: column; justify-content: space-between; }
@@ -224,6 +255,13 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 #thanks .thanks-rule { width: 100%; height: 1px; margin: 14px 0 0; background: var(--color-text-3); }
 #thanks .contact { margin-top: 14px; font-family: var(--font-mono); font-size: 20px; color: var(--color-text-2); }
 #thanks .contact b { color: var(--color-accent); font-weight: 500; }
+
+/* ── Business model (transparent pillar cards) ───────────────────────────── */
+.bizmodel .pillars { grid-template-columns: 1fr 1fr; max-width: 720px; margin-left: auto; margin-right: auto; }
+.bizmodel .pillar { background: transparent; }
+.bizmodel .pillar p { margin-top: 12px; }
+.bizmodel .pmetric { display: block; font-family: var(--font-mono); font-size: 15px; color: var(--color-accent); margin-top: 14px; }
+.bizmodel .biz-foot { font-size: 16px; color: var(--color-text-2); line-height: 1.5; margin-top: 30px; max-width: 62ch; margin-left: auto; margin-right: auto; }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 #progress { position: fixed; left: 0; bottom: 0; height: 2px; background: var(--color-accent); width: 0; transition: width 180ms ease-out; z-index: 30; }
@@ -328,114 +366,113 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     </div></div>
   </section>
 
-  <!-- d · ARCHITECTURE — SECURE & MODULAR ─────────────────────────────────── -->
-  <section class="slide stellar" data-eyebrow="04 · ARCHITECTURE">
+  <!-- d · ARCHITECTURE + INTEGRATIONS ──────────────────────────────────────── -->
+  <section class="slide stellar archint" data-eyebrow="04 · ARCHITECTURE">
     <div class="pad">
-      <div class="stellar-head">
-        <div class="kicker">Built on Stellar</div>
-        <h2 class="title">Modular Architecture</h2>
-        <p class="stellar-sub">One immutable vault. Swappable guarantee logic, pluggable yield adapters.<br>Money moves only through the vault.</p>
-      </div>
+      <div class="ai-grid">
 
-      <div class="diagram-frame">
-        <div class="vault-flow" style="height:352px">
-        <svg class="vwires" viewBox="0 0 1160 352" preserveAspectRatio="none">
-          <defs>
-            <marker id="aArr" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#6b6b6b"/></marker>
-          </defs>
-          <!-- deposit: investor -> reserve -->
-          <path d="M180,90 H380" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- redeem: reserve -> investor (gate 1) -->
-          <path d="M380,110 H180" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- fee: guarantees -> reserve (gate 2) -->
-          <path d="M980,104 H780" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-          <!-- settle: reserve -> partner agencies (gate 2) -->
-          <path d="M580,224 V292" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr)"/>
-        </svg>
-
-        <div class="vnode leaf" style="left:0;top:56px;width:180px;height:84px;">
-          <span class="nt">INVESTOR</span>
-          <span class="ns mono">MTVR · SEP-0041</span>
-        </div>
-
-        <div class="rsv" style="left:380px;top:30px;width:400px;height:194px;">
-          <div class="rsv-head">
-            <div class="rsv-htop">
-              <span class="rsv-title">RESERVE</span>
-              <span class="rsv-badge">SEP-0056</span>
-            </div>
-            <span class="rsv-sub">OZ FungibleVault · NAV · async redeem (7540)</span>
+        <!-- LEFT · text + stacked integration cards -->
+        <div class="ai-left">
+          <div class="stellar-head">
+            <div class="kicker">Built on Stellar</div>
+            <h2 class="title">Modular <span class="amber">architecture</span></h2>
+            <p class="stellar-sub">One immutable vault, swappable guarantee logic.<br>Pluggable adapters route idle capital into on-chain yield.<br><em>Money only ever moves through the vault.</em></p>
           </div>
-          <div class="rsv-body">
-            <span class="rsv-lbl">Strategy adapters</span>
-            <div class="rsv-pills">
-              <span class="spill live">DeFindex</span>
-              <span class="spill">Soroswap</span>
-              <span class="spill">Blend</span>
+          <div class="ai-cards">
+            <div class="intcell">
+              <span class="intlbl">Wallet &amp; rails</span>
+              <div class="rsv-pills">
+                <span class="spill live">Stellar Wallets Kit</span>
+                <span class="spill live">Soroswap</span>
+                <span class="spill live">Horizon</span>
+              </div>
+              <p>Connect via Freighter · Albedo · xBull. Soroswap AMM cUSD→cTSR swaps. Horizon reads balances &amp; trustlines.</p>
             </div>
-            <span class="rsv-yield">idle float → yield</span>
+            <div class="intcell">
+              <span class="intlbl">Yield &amp; real assets</span>
+              <div class="rsv-pills">
+                <span class="spill live">DeFindex</span>
+                <span class="spill live">Etherfuse</span>
+              </div>
+              <p>DeFindex — onchain DeFi yield aggregator. Etherfuse — tokenized treasury (TESOURO) bringing real-world yield into the reserve.</p>
+            </div>
+            <div class="intcell">
+              <span class="intlbl">On the roadmap</span>
+              <div class="rsv-pills">
+                <span class="spill">Blend</span>
+              </div>
+              <p>Blend (lending) plugs in as an additional yield adapter on the same interface.</p>
+            </div>
           </div>
         </div>
 
-        <div class="vnode leaf" style="left:980px;top:56px;width:180px;height:84px;">
-          <span class="nt">GUARANTEES</span>
-          <span class="ns mono">tenant fee · terms</span>
+        <!-- RIGHT · vertical money-flow (investor ↕ reserve ↓ agencies · guarantees → reserve) -->
+        <div class="ai-right">
+          <div class="diagram-frame" style="margin:0 auto;">
+          <div class="vault-flow" style="width:528px;height:437px;">
+          <svg class="vwires" viewBox="0 0 528 437" preserveAspectRatio="none">
+            <defs>
+              <marker id="aArr2" markerWidth="11" markerHeight="11" refX="8" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#6b6b6b"/></marker>
+            </defs>
+            <!-- deposit: investor -> reserve -->
+            <path d="M125,52 V137" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr2)"/>
+            <!-- redeem: reserve -> investor -->
+            <path d="M148,139 V54" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr2)"/>
+            <!-- fee: guarantees -> reserve -->
+            <path d="M412,218 H274" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr2)"/>
+            <!-- settle: reserve -> partner agencies -->
+            <path d="M135,299 V383" stroke="#555B66" stroke-width="1.25" fill="none" marker-end="url(#aArr2)"/>
+          </svg>
+
+          <div class="vnode leaf" style="left:72px;top:0px;width:126px;height:52px;">
+            <span class="nt">INVESTOR</span>
+            <span class="ns mono">reserve shares · SEP-0041</span>
+          </div>
+
+          <div class="rsv" style="left:0px;top:139px;width:270px;height:160px;">
+            <div class="rsv-head">
+              <div class="rsv-htop">
+                <span class="rsv-title">RESERVE</span>
+                <span class="rsv-badge">SEP-0056</span>
+              </div>
+              <span class="rsv-sub">OZ FungibleVault · NAV · async redeem (7540)</span>
+            </div>
+            <div class="rsv-body">
+              <span class="rsv-lbl">Strategy adapters</span>
+              <div class="rsv-pills">
+                <span class="spill live">DeFindex</span>
+                <span class="spill">Soroswap</span>
+                <span class="spill">Blend</span>
+              </div>
+              <span class="rsv-yield">idle float → yield</span>
+            </div>
+          </div>
+
+          <div class="vnode leaf" style="left:412px;top:192px;width:116px;height:52px;">
+            <span class="nt">GUARANTEES</span>
+            <span class="ns mono">tenant fee · terms</span>
+          </div>
+
+          <div class="vnode leaf" style="left:52px;top:385px;width:166px;height:52px;">
+            <span class="nt">PARTNER AGENCIES</span>
+            <span class="ns mono">default settlement</span>
+          </div>
+
+          <div class="vchip" style="left:105px;top:92px;">deposit USDC</div>
+          <div class="vchip" style="left:173px;top:118px;">async redeem</div>
+          <div class="vchip" style="left:341px;top:218px;">fee → NAV</div>
+          <div class="vchip" style="left:135px;top:342px;">settle_default</div>
+          </div>
+          <div class="live-tag" style="position:absolute;top:12px;right:16px;margin-top:0;font-size:6px;z-index:2">Live on Stellar testnet</div>
+          </div>
         </div>
 
-        <div class="vnode leaf" style="left:480px;top:292px;width:200px;height:60px;">
-          <span class="nt">PARTNER AGENCIES</span>
-          <span class="ns mono">default settlement</span>
-        </div>
-
-        <div class="vchip" style="left:280px;top:70px;">deposit USDC</div>
-        <div class="vchip" style="left:280px;top:130px;">async redeem</div>
-        <div class="vchip" style="left:880px;top:84px;">fee → NAV</div>
-        <div class="vchip" style="left:580px;top:258px;">settle_default</div>
-        </div>
-        <div class="live-tag" style="position:absolute;top:-22px;right:0;margin-top:0;font-size:10px">Live on Stellar testnet</div>
       </div>
     </div>
   </section>
 
-  <!-- e · INTEGRATIONS — Stellar ecosystem stack ─────────────────────────── -->
-  <section class="slide" data-eyebrow="05 · INTEGRATIONS">
-    <div class="pad"><div class="body">
-      <div class="kicker">Built on Stellar's stack</div>
-      <h2 class="title" style="max-width:30ch">Integrated across the<br><span class="amber">Stellar ecosystem</span></h2>
-
-      <div class="pillars" style="margin-top:34px">
-        <div class="pillar">
-          <h4 class="amber">Wallet &amp; rails</h4>
-          <div class="rsv-pills" style="margin:14px 0 6px">
-            <span class="spill live">Stellar Wallets Kit</span>
-            <span class="spill live">Soroswap</span>
-            <span class="spill live">Horizon</span>
-          </div>
-          <p>Connect via Freighter · Albedo · xBull.<br>Soroswap AMM cUSD→cTSR swaps.<br>Horizon reads balances &amp; trustlines.</p>
-        </div>
-        <div class="pillar">
-          <h4 class="amber">Yield &amp; real assets</h4>
-          <div class="rsv-pills" style="margin:14px 0 6px">
-            <span class="spill live">DeFindex</span>
-            <span class="spill live">Etherfuse</span>
-          </div>
-          <p>DeFindex — onchain DeFi yield aggregator. Etherfuse — tokenized treasury (TESOURO) bringing real-world yield into the reserve.</p>
-        </div>
-        <div class="pillar">
-          <h4 class="amber">On the roadmap</h4>
-          <div class="rsv-pills" style="margin:14px 0 6px">
-            <span class="spill">Blend</span>
-          </div>
-          <p>Blend (lending) plugs in as an additional yield adapter on the same interface.</p>
-        </div>
-      </div>
-
-      <div class="live-tag" style="margin-top:28px">Live on Stellar testnet</div>
-    </div></div>
-  </section>
-
   <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
-  <section class="slide" id="ecosystem" data-eyebrow="06 · Ecosystem">
+  <section class="slide" id="ecosystem" data-eyebrow="05 · Ecosystem">
     <img class="eco-art" src="assets/ecosystem-art.jpg" alt="" aria-hidden="true" />
     <div class="pad"><div class="body" style="align-items:center;text-align:center">
       <div class="kicker">Real Asset · Real Yield</div>
@@ -445,6 +482,28 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
         <div class="point"><span class="pk mono">→</span><span class="pt">Energizing Stellar's ecosystem</span><span class="pd">Real RWA value and liquidity into Stellar, deployed across native yield protocols.</span></div>
         <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated to crypto</span><span class="pd">Reserve value tracks rents and real cashflows.</span></div>
       </div>
+    </div></div>
+  </section>
+
+  <!-- e · BUSINESS MODEL ───────────────────────────────────────────────────── -->
+  <section class="slide centered bizmodel" data-eyebrow="06 · BUSINESS MODEL">
+    <div class="pad"><div class="body">
+      <div class="kicker">Business model</div>
+      <h2 class="title" style="max-width:none">Two revenue streams,<br><span class="amber">one aligned reserve</span>.</h2>
+      <p class="lead">B2B: We integrate real estate agencies as <span class="amber">guarantee distributors</span>.</p>
+      <div class="pillars">
+        <div class="pillar">
+          <h4>Guarantee fee</h4>
+          <p>Fee of 9–15% of rent · 80% to reserve</p>
+          <span class="pmetric">20% of the fee collected</span>
+        </div>
+        <div class="pillar">
+          <h4>Yield from reserve</h4>
+          <p>Pluggable adapters · DeFindex &amp; Etherfuse</p>
+          <span class="pmetric">~18–43% APY</span>
+        </div>
+      </div>
+      <p class="biz-foot">Investor returns are built on real rents and reserve yield: aligned with the business and uncorrelated to crypto.</p>
     </div></div>
   </section>
 
