@@ -8,13 +8,10 @@ Evidence for the PULSO Hackathon "customer discovery & validation" criterion. Th
 
 | Segment | Target | Done | Evidence |
 |---|---|---|---|
-| Investors (DeFi / yield) | 2 | in progress | below |
+| Investors (DeFi / yield) | 2 | 2 / 2 (I1, I2) | below |
 
 ## Methodology
 
-- **Format:** <!-- TODO: e.g. 20–30 min calls, semi-structured. -->
-- **Recruiting:** <!-- TODO: how you reached interviewees. -->
-- **Period:** <!-- TODO: dates. -->
 - **Goal:** validate that investors will fund a solvency-gated, real-world-backed (rental-guarantee) reserve on Stellar for yield, and that verifiable onchain solvency is what earns their trust.
 
 ## Summary of findings
@@ -61,12 +58,24 @@ Use this on the calls you still need. Keep it conversational; the goal is to *le
 
 ### Interview I2
 
-- **Who:** <!-- TODO -->
-- **Date / format:** <!-- TODO -->
-- **Key responses:** <!-- TODO -->
-- **Reaction to the solvency gate / queue:** <!-- TODO -->
-- **Yield expectation:** <!-- TODO -->
-- **Verbatim quote:** > <!-- "…" -->
+- **Who:** Investidor **ativo principalmente no ecossistema Solana**, presente no mercado DeFi e em RWA, com **compreensão avançada de DeFi**. Perfil que combina apetite por renda on-chain com familiaridade com ativos lastreados no mundo real. *(identidade anonimizada — perfil de segmento mantido como evidência.)*
+- **Date / format:** <!-- TODO: data --> · entrevista remota, semi-estruturada
+- **Key responses:**
+  - **Confiança:** a confiança vem antes de tudo da **equipe** — procura times com **background sólido e anos de experiência**, e confia no projeto quando confia em quem está por trás. Soma-se a isso **TVL alto** (sinal de que o mercado já validou) e **indicação** de pessoas/fontes em quem confia. Ou seja: credibilidade do time + tração medível + prova social.
+  - **RWA:** tem **familiaridade** com o tema e **gosta da idealização** de yield lastreado no mundo real — falou bem da categoria e já considera/investe nesse tipo de produto. Citou o **ONRE** como exemplo de referência que aprecia. Vê RWA como direção legítima do mercado, não como nicho experimental.
+  - **Lockup / liquidez:** **não gosta de bloqueio** e **prioriza liquidez**. A ressalva é importante: até aceita um produto com prazo, **desde que haja saída pelo mercado secundário** — a liquidez não precisa ser instantânea no protocolo, mas precisa *existir* uma via de saída. Capital 100% travado sem rota de liquidez é um bloqueador.
+  - **Faixa de yield:** quer **APY atrativo o suficiente para valer o risco, mas nada exagerado**. Acima de **~20–30% a.a.** fica **desconfiado** e passa a querer entender **de onde vem a renda**. Valoriza dois pontos: (a) um **APR mínimo consistente** que já justifique o interesse, e (b) **composabilidade** — poder usar a posição no resto do DeFi para **somar outros rendimentos** em cima.
+- **Reaction to the solvency gate / queue:** o gate de solvência não foi o foco da conversa, mas o perfil **tensiona** com a fila de resgate surplus-gated: ele prioriza liquidez e rejeita bloqueio rígido. O sinal é claro — a fila só é aceitável para este perfil **se vier acompanhada de uma rota de saída via mercado secundário** (ex.: transferibilidade/negociação das shares do vault). A solvência verificável agrada, mas não substitui liquidez na cabeça dele.
+- **Yield expectation:** APY **atrativo porém crível** — abaixo de ~20–30% a.a. para não acionar desconfiança; o **lastro precisa ser explicável**. Bônus decisivo: **composabilidade** para empilhar rendimentos no DeFi.
+- **Verbatim quote:** > 
+- **Verbatim quote 2:** > 
+
+#### Insights para o MUTAV Pulse (da entrevista I2)
+
+1. **Liquidez via mercado secundário pode ser o destravador da fila de resgate.** Diferente da I1 (que aceita lockup com racional), este perfil rejeita bloqueio — mas aceita **se houver saída pelo secundário**. → As **shares do vault são tokenizadas (OZ fungible)**; expor/permitir **transferência e negociação** dessas shares vira uma feature de liquidez de primeira classe, não detalhe técnico. A fila surplus-gated protege a solvência; o secundário dá a saída.
+2. **Composabilidade é argumento de venda, não só arquitetura.** Ele aprova explicitamente poder **empilhar rendimentos** usando a posição no resto do DeFi. → Posicionar as shares como **ativo componível** (colateral/LP em outros protocolos Stellar) amplia o apelo para o investidor DeFi-native.
+3. **Confiança = time + tração + prova social** (complementa a I1, que pesava auditabilidade própria). Nem todo investidor audita contrato sozinho. → O frontend precisa comunicar **quem é o time e seu histórico**, **TVL** e **sinais de prova social/indicação**, lado a lado com a prova de solvência on-chain.
+4. **"De onde vem a renda" é a pergunta-chave — de novo.** Assim como a I1 cobrou transparência do *R* do RWA, aqui o gatilho de desconfiança é APY que não se explica. → Reforça que o **lastro real (prêmios de fiança)** deve ser visível e o APY ancorado de forma **conservadora e explicável** (convergente com o insight #4 da I1).
 
 ### Investor takeaways
 
