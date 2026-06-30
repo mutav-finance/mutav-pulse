@@ -106,7 +106,7 @@ The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6
 **Proof of operation** — verify the protocol actually runs onchain, not just deployed:
 <!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted MUSD, a collect_fee, and a cover_default disbursement. -->
 
-▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance)
+🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance)
 
 ---
 
