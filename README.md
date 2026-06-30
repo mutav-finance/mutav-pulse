@@ -9,13 +9,13 @@
 
 ## TL;DR for judges
 
-- **What:** an onchain *fiador institucional* (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
+- **What:** an onchain rental guarantor (institutional rental guarantor) for Brazil — a PoC of MUTAV, a decentralized rental-guarantee system.
 - **The Stellar integration is the product:** every core operation (deposit, fee, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
 - **Live on testnet:** three reserves (MUSD · MTESOURO · MBRL) deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; four investor interviews completed.
-- ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [`deck/`](deck/index.html) (open `deck/index.html`)
+- ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [view rendered](https://htmlpreview.github.io/?https://github.com/mutav-finance/mutav-pulse/blob/main/deck/index.html) · [source](deck/index.html)
 
 ---
 

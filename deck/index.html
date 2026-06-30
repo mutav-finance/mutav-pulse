@@ -150,7 +150,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   border: 1px solid var(--color-border);
   background: var(--color-surface-2); overflow: hidden;
 }
-.demo-frame video, .demo-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.demo-frame video, .demo-frame img, .demo-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
 .demo-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
 .demo-play { width: 64px; height: 64px; border: 1px solid var(--color-text-3); border-radius: 50%; display: grid; place-items: center; color: var(--color-text-2); font-size: 20px; padding-left: 4px; }
 .demo-cap { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--color-text-3); }
@@ -353,14 +353,13 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <div class="kicker">Transparent where they are opaque</div>
         </div>
 
-        <!-- Demo video drop-zone · 16:9 (1920×1080). To embed, replace the
-             .demo-ph block with:
-             <video src="assets/demo.mp4" autoplay muted loop playsinline></video> -->
+        <!-- Demo video · 16:9 · muted autoplay loop (YouTube walkthrough). -->
         <div class="demo-frame">
-          <div class="demo-ph">
-            <span class="demo-play mono">▶</span>
-            <span class="demo-cap">App demo · 1920 × 1080</span>
-          </div>
+          <iframe
+            src="https://www.youtube.com/embed/ndJkO3XGN6Q?autoplay=1&mute=1&loop=1&playlist=ndJkO3XGN6Q&controls=0&modestbranding=1&rel=0&playsinline=1"
+            title="MUTAV app demo"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowfullscreen></iframe>
         </div>
       </div>
     </div></div>
