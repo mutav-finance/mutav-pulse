@@ -94,11 +94,37 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section
         style={{
+          position: "relative",
+          overflow: "hidden",
           width: "100%",
-          padding: "88px var(--page-pad) 72px",
+          padding: "88px var(--section-pad-x) 72px",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/hero-6.png"
+          alt=""
+          aria-hidden="true"
+          className="hero-backdrop"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "auto",
+            maxWidth: "48%",
+            objectFit: "contain",
+            objectPosition: "right center",
+            transform: "scale(2)",
+            transformOrigin: "right center",
+            opacity: 0.7,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel>Mutav Pulse Protocol</SectionLabel>
 
         <h1
@@ -127,8 +153,8 @@ export default function Home() {
         {/* CTAs — exactly one amber */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
           <Link
-            href={`/earn/${PRIMARY_RESERVE.address}`}
-            className="font-body"
+            href="/reserves"
+            className="font-body cta-fill"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -147,7 +173,7 @@ export default function Home() {
           </Link>
           <a
             href="#how-it-works"
-            className="font-body"
+            className="font-body cta-outline"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -165,18 +191,22 @@ export default function Home() {
             How it works ↓
           </a>
         </div>
+        </div>
       </section>
 
       {/* ── WHAT THIS IS (testnet / PoC) ─────────────────────────────────── */}
       <section
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          // Extra horizontal inset over the shared token to pull this section's
+          // content further toward the centre.
+          padding: "72px calc(var(--section-pad-x) + 120px)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        {/* Centered header */}
-        <div style={{ maxWidth: "62ch", margin: "0 auto 44px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        {/* Header row: text block (left) + partner logos stacked (right) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "32px", margin: "0 0 44px" }}>
+        <div style={{ maxWidth: "62ch", display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
           <span
             className="font-mono"
             style={{
@@ -203,6 +233,14 @@ export default function Home() {
             and running end-to-end on Stellar testnet.
           </p>
         </div>
+        {/* Partner logos — stacked, right-aligned, pushed to the bottom of the row */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", alignSelf: "flex-end", gap: "30px", flexShrink: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/stellar-logo.png" alt="Stellar" style={{ width: "150px", height: "auto", display: "block", opacity: 0.6 }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/nearx-logo.png" alt="NearX" style={{ width: "150px", height: "auto", display: "block", opacity: 0.6 }} />
+        </div>
+        </div>
 
         {/* Detail cards */}
         <div
@@ -212,8 +250,7 @@ export default function Home() {
             gap: "1px",
             backgroundColor: "var(--color-border)",
             border: "1px solid var(--color-border)",
-            maxWidth: "800px",
-            margin: "0 auto",
+            margin: 0,
           }}
         >
           {[
@@ -236,15 +273,15 @@ export default function Home() {
                 </svg>
               ),
               title: "Testnet today, pilot Q3 2026",
-              body: "Testnet only, no real funds, not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
+              body: "Testnet only. No real funds. Not yet investable. Production pilot opens Q3 2026 with a BRL vault. APYs shown are modeled, not live.",
             },
           ].map((c) => (
-            <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "26px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div key={c.title} style={{ backgroundColor: "var(--color-surface)", padding: "16px 24px", display: "flex", flexDirection: "column", gap: "10px" }}>
               {c.icon}
               <h3 className="font-body" style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text)", margin: 0 }}>
                 {c.title}
               </h3>
-              <p className="font-mono" style={{ fontSize: "12px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
+              <p className="font-body" style={{ fontSize: "14px", lineHeight: 1.55, color: "var(--color-text-2)", margin: 0 }}>
                 {c.body}
               </p>
             </div>
@@ -257,7 +294,7 @@ export default function Home() {
         id="reserves"
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -275,9 +312,9 @@ export default function Home() {
           }}
         >
           {liveCount} live · {plannedCount} coming · live AUM{" "}
-          <span style={{ color: "var(--color-text)" }}>{primaryLabel}</span>
+          <span aria-live="polite" style={{ color: "var(--color-text)" }}>{primaryLabel}</span>
         </p>
-        <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
+        <div className="scroll-fade-x scroll-dark" style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "4px" }}>
           {reserves.map((r) => (
             <div key={r.id} style={{ flex: "1 1 0", minWidth: "240px" }}>
               <ReserveCard
@@ -293,12 +330,40 @@ export default function Home() {
       <section
         id="how-it-works"
         style={{
+          position: "relative",
+          overflow: "hidden",
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
       >
+        {/* Faint amber backdrop, right-aligned, behind the content. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/how-8.jpg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "auto",
+            maxWidth: "48%",
+            objectFit: "contain",
+            objectPosition: "right center",
+            transform: "translateY(40%) scale(4)",
+            transformOrigin: "right center",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 60%)",
+            maskImage: "linear-gradient(to right, transparent 0%, #000 60%)",
+            opacity: 0.06,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel as="h2" display size={17} color="var(--color-text)">How it works</SectionLabel>
         <div
           style={{
@@ -310,12 +375,12 @@ export default function Home() {
           }}
         >
           {[
-            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …) — your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
-            { n: "02", t: "Reserve backs fianças", d: "The reserve underwrites rental fianças (the PoC demos the mechanic on Stellar testnet), earning a fee on every active, fee-current guarantee." },
-            { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus — solvency comes first, always." },
+            { n: "01", t: "Deposit, receive shares", d: "Deposit the reserve's underlying token and receive its currency shares (MUSD, MBRL, …), your tokenized claim on the whole reserve at NAV (SEP-0041 token)." },
+            { n: "02", t: "Reserve backs rental guarantees", d: "The reserve underwrites rental guarantees (fianças in Brazil), earning a fee on every active, fee-current guarantee. The PoC demos the mechanic on Stellar testnet." },
+            { n: "03", t: "Idle float earns yield", d: "Capital not locked behind coverage is allocated to DeFi adapters. Exits come from surplus. Solvency comes first, always." },
           ].map((s) => (
             <div key={s.n} style={{ backgroundColor: "var(--color-surface)", padding: "28px 26px", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-accent)", fontFeatureSettings: '"tnum" 1' }}>
+              <span className="font-mono" style={{ fontSize: "12px", letterSpacing: "0.1em", color: "var(--color-text-2)", fontFeatureSettings: '"tnum" 1' }}>
                 {s.n}
               </span>
               <h3 className="font-display" style={{ fontSize: "19px", letterSpacing: "0.01em", textTransform: "uppercase", margin: 0, color: "var(--color-text)" }}>
@@ -342,6 +407,7 @@ export default function Home() {
         >
           <span style={{ color: "var(--color-accent)" }}>solvency-gated:</span> stable assets ≥ guarantee coverage, always.
         </p>
+        </div>
       </section>
 
       {/* ── PROTOCOL FLOW (diagram + gates) ──────────────────────────────── */}
@@ -349,7 +415,7 @@ export default function Home() {
         id="protocol-flow"
         style={{
           width: "100%",
-          padding: "72px var(--page-pad)",
+          padding: "72px var(--section-pad-x)",
           borderBottom: "1px solid var(--color-border)",
           scrollMarginTop: "72px",
         }}
@@ -373,7 +439,38 @@ export default function Home() {
       </section>
 
       {/* ── ONBOARD ──────────────────────────────────────────────────────── */}
-      <section style={{ width: "100%", padding: "72px var(--page-pad) 96px" }}>
+      <section style={{ position: "relative", overflow: "hidden", width: "100%", padding: "72px var(--section-pad-x) 96px" }}>
+        {/* CTA block — the backdrop is clipped to this block so it stops at the
+            footer divider below (overflow:hidden cuts the 2x-scaled image). The
+            negative top margin pulls it up to the section's top edge so the image
+            reaches the top divider; paddingTop restores the content spacing. */}
+        <div style={{ position: "relative", overflow: "hidden", marginTop: "-72px", paddingTop: "72px" }}>
+        {/* Faint grayscale backdrop, right-aligned, 2x zoom, behind the content. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/cta-mtvh.jpg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            width: "48%",
+            objectFit: "cover",
+            objectPosition: "right center",
+            transform: "translateY(-30%) scale(2)",
+            transformOrigin: "right top",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, #000 55%)",
+            maskImage: "linear-gradient(to right, transparent 0%, #000 55%)",
+            filter: "grayscale(1)",
+            opacity: 0.06,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <SectionLabel>Try the proof-of-concept</SectionLabel>
         <h2
           className="font-display"
@@ -385,24 +482,24 @@ export default function Home() {
           className="font-body"
           style={{ fontSize: "15px", lineHeight: 1.55, color: "var(--color-text-2)", margin: "0 0 28px", maxWidth: "52ch" }}
         >
-          Connect a wallet to deposit and drive the full cycle yourself — or explore an active
+          Deposit and drive the full cycle yourself, or explore the live
           reserve first.
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center", marginBottom: "14px" }}>
           <ConnectButton />
           <Link
-            href={`/earn/${PRIMARY_RESERVE.address}`}
-            className="font-body"
+            href="/reserves"
+            className="font-body cta-outline"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
               fontSize: "14px",
               fontWeight: 500,
-              color: "var(--color-text-2)",
+              color: "var(--color-accent)",
               backgroundColor: "transparent",
-              border: "1px solid var(--color-border)",
+              border: "1px solid var(--color-accent)",
               padding: "12px 22px",
               textDecoration: "none",
               lineHeight: 1,
@@ -417,6 +514,8 @@ export default function Home() {
         >
           Testnet demo · no real funds
         </p>
+        </div>
+        </div>
 
         {/* ── Footer ── */}
         <SiteFooter />

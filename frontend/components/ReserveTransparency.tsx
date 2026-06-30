@@ -29,7 +29,7 @@ import { AllocationBar, type BarSegment } from "@/components/AllocationBar";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { GuaranteeTable } from "@/components/GuaranteeTable";
 import { SolvencyChip } from "@/components/SolvencyChip";
-import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtShares, fmtBps, truncAddr, clamp01 } from "@/lib/format";
+import { fmtFiat, fmtNav, fmtPct2, fmtSignedPct, fmtBps, truncAddr, clamp01 } from "@/lib/format";
 import { computeEconomics } from "@/lib/economics";
 import { resolveProvider, venueName } from "@/lib/providers";
 import { config, contractUrl } from "@/lib/config";
@@ -106,6 +106,11 @@ function SubNav({ active }: { active: string }) {
         backgroundColor: "var(--color-canvas)",
         borderBottom: "1px solid var(--color-border)",
         overflowX: "auto",
+        // Setting only overflow-x forces overflow-y to `auto`; the children's
+        // -1px margin then bleeds 1px vertically and spawns a stray vertical
+        // scrollbar. Pin overflow-y so only the (intended) horizontal scroll
+        // survives for narrow viewports.
+        overflowY: "hidden",
       }}
     >
       {SECTIONS.map((s) => {
@@ -144,18 +149,22 @@ function Section({
   id,
   title,
   intro,
-  aside,
   children,
   first = false,
+  introMaxWidth = "75ch",
 }: {
   id: string;
   title: string;
   intro: React.ReactNode;
-  aside?: React.ReactNode;
   children: React.ReactNode;
   /** First section — skip the top hairline (the SubNav already draws one). */
   first?: boolean;
+  /** Max width of the description paragraph. Content below is always full width. */
+  introMaxWidth?: string;
 }) {
+  // Invariant: every section reads top-to-bottom as Title → Description →
+  // Content. The content (children) is always full width and never sits beside
+  // the description — group it with <SubBlock> for sub-headed pieces.
   return (
     <section
       id={id}
@@ -165,70 +174,119 @@ function Section({
         marginBottom: "56px",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "20px",
-          flexWrap: "wrap",
-          margin: "20px 0 24px",
-        }}
-      >
-        <div style={{ maxWidth: "62ch" }}>
-          <h2
-            className="font-display"
-            style={{
-              fontSize: "20px",
-              letterSpacing: "0.01em",
-              textTransform: "uppercase",
-              color: "var(--color-text)",
-              margin: "0 0 10px",
-            }}
-          >
-            {title}
-          </h2>
-          <p
-            className="font-body"
-            style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
-          >
-            {intro}
-          </p>
-        </div>
-        {aside && <div style={{ flexShrink: 0, maxWidth: "100%", minWidth: 0 }}>{aside}</div>}
+      <div style={{ margin: "20px 0 24px" }}>
+        <h2
+          className="font-display"
+          style={{
+            fontSize: "20px",
+            letterSpacing: "0.01em",
+            textTransform: "uppercase",
+            color: "var(--color-text)",
+            margin: "0 0 10px",
+          }}
+        >
+          {title}
+        </h2>
+        <p
+          className="font-body"
+          style={{ maxWidth: introMaxWidth, fontSize: "14px", lineHeight: 1.6, color: "var(--color-text-2)", margin: 0 }}
+        >
+          {intro}
+        </p>
       </div>
       {children}
     </section>
   );
 }
 
-/** Donut on the left, a metric grid filling the rest — separated, big-screen safe. */
-function ChartRow({ donut, cards }: { donut: React.ReactNode; cards: React.ReactNode }) {
+/**
+ * SubBlock — a labeled content group inside a Section: a sub-heading (with an
+ * optional tooltip and right-aligned meta count) above full-width content. Keeps
+ * every content group — donut, metrics, allocation, tables — structured the same
+ * way, so a section is just a stack of these.
+ */
+function SubBlock({
+  title,
+  meta,
+  tooltip,
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  tooltip?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "28px",
-        alignItems: "flex-start",
-        marginBottom: "28px",
-      }}
-    >
-      <div style={{ flex: "0 0 auto", maxWidth: "100%", minWidth: 0, paddingTop: "4px" }}>{donut}</div>
-      <div style={{ flex: "1 1 320px", minWidth: 0, ...hairlineGrid(160) }}>
-        {cards}
+    <div style={{ marginBottom: "28px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+        <h3 className="font-display" style={SUBHEAD}>
+          {title}
+        </h3>
+        {tooltip}
+        {meta != null && (
+          <span
+            className="font-mono"
+            style={{ marginLeft: "auto", fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
+          >
+            {meta}
+          </span>
+        )}
       </div>
+      {children}
     </div>
   );
 }
 
-/** Brutalist hairline grid — 1px gaps over the border color, no radius/shadow. */
-const hairlineGrid = (minPx: number): React.CSSProperties => ({
+/**
+ * MetricGroup — a labeled cluster of metric cards with a plain one-line gloss.
+ * Cards are capped to ~Overview width (the `minmax` ceiling), so the value type
+ * renders at the same standard scale no matter how many cards the group holds —
+ * and trailing tracks stay transparent, so a short group leaves no border cells.
+ */
+function MetricGroup({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ marginBottom: "24px" }}>
+      <p
+        className="font-body"
+        style={{
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--color-text-2)",
+          margin: "0 0 3px",
+        }}
+      >
+        {label}
+      </p>
+      <p
+        className="font-body"
+        style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--color-text-3)", margin: "0 0 12px", maxWidth: "70ch" }}
+      >
+        {hint}
+      </p>
+      <div style={metricGrid(190)}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Standard metric-card grid — the cross-page default for any cluster of metric
+ * cards. Transparent gaps (each card carries its own border), so a short final
+ * row leaves NO empty bordered cell — unlike the hairline shared-border grid.
+ */
+const metricGrid = (minPx = 200): React.CSSProperties => ({
   display: "grid",
-  gridTemplateColumns: `repeat(auto-fit, minmax(${minPx}px, 1fr))`,
-  gap: "1px",
-  backgroundColor: "var(--color-border)",
-  border: "1px solid var(--color-border)",
+  gridTemplateColumns: `repeat(auto-fill, minmax(${minPx}px, 1fr))`,
+  gap: "12px",
 });
 
 const SUBHEAD: React.CSSProperties = {
@@ -260,7 +318,10 @@ interface AllocRow {
   /** Adapter address to show as an "Adapter … ↗" sub-line (venues only). */
   adapterAddr?: string;
   type: string;
+  /** Allocator intent — the target weight the allocator aims to hold (bps). */
   targetBps: number;
+  /** Actual on-chain allocation: this venue's share of total assets (0..1). */
+  allocFraction: number;
   /** Live amount; undefined renders "—". */
   amount?: bigint;
   yieldPct: number;
@@ -273,7 +334,7 @@ function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
     <tr
       style={{
         borderTop: "1px solid var(--color-border)",
-        verticalAlign: "top",
+        verticalAlign: "middle",
         backgroundColor: row.status === "liquid" ? "var(--color-surface)" : undefined,
       }}
     >
@@ -308,24 +369,16 @@ function AllocRowView({ row, reserve }: { row: AllocRow; reserve: Reserve }) {
       <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
         {fmtBps(row.targetBps)}
       </td>
-      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)" }}>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text)", fontWeight: 600 }}>
+        {`${(row.allocFraction * 100).toFixed(1)}%`}
+      </td>
+      <td className="font-mono" style={{ ...numCell, color: "var(--color-text-2)" }}>
         {row.amount === undefined ? "—" : fmtFiat(row.amount, reserve)}
       </td>
       <td className="font-mono" style={{ ...numCell, color: row.yieldModeled ? "var(--color-accent)" : "var(--color-text-3)" }}>
         {fmtPct2(row.yieldPct)}
         {row.yieldModeled && (
           <div style={{ fontSize: "9px", color: "var(--color-text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>modeled</div>
-        )}
-      </td>
-      <td style={{ padding: "14px" }}>
-        {row.status === "live" ? (
-          <span className="font-mono" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-            <span className="live-dot" aria-hidden="true" /> Live
-          </span>
-        ) : (
-          <span className="font-mono" style={{ fontSize: "11px", letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--color-text-3)" }}>
-            Liquid
-          </span>
         )}
       </td>
     </tr>
@@ -343,7 +396,7 @@ interface ContractRow {
 function contractRows(): ContractRow[] {
   const rows: ContractRow[] = [
     { role: "Vault", id: config.contracts.vault, desc: "Custody, tokenized shares & NAV, the redemption queue, and the strategy allocator." },
-    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain — fee-gated coverage and default payouts." },
+    { role: "Policy", id: config.contracts.policy, desc: "The underwriting brain: fee-gated coverage and default payouts." },
     { role: "Registry", id: config.contracts.registry, desc: "Writer-gated store of the active guarantee book." },
     { role: "USDC", id: config.contracts.usdc, desc: "The reserve's underlying asset (Stellar asset contract)." },
   ];
@@ -427,6 +480,7 @@ export function ReserveTransparency({
   const allocRows: AllocRow[] = [
     ...data.strategies.map((s) => {
       const provider = resolveProvider(s.address);
+      const bal = data.strategyBalances[s.address];
       return {
         key: s.address,
         name: provider?.name ?? venueName(s.address),
@@ -435,7 +489,8 @@ export function ReserveTransparency({
         adapterAddr: s.address,
         type: s.volatile ? "Volatile yield" : "Stable yield",
         targetBps: s.weight_bps,
-        amount: data.strategyBalances[s.address],
+        allocFraction: totalNum > 0 && bal !== undefined ? Number(bal) / totalNum : 0,
+        amount: bal,
         yieldPct: econ.underlyingYield,
         yieldModeled: true,
         status: "live" as const,
@@ -447,9 +502,10 @@ export function ReserveTransparency({
       url: contractUrl(config.contracts.usdc),
       blurb: heldYieldBearing
         ? `Held directly in the vault. ${reserve.depositToken} is yield-bearing, so it accrues its base yield even when not deployed.`
-        : "Held directly in the vault — not deployed to any venue. Liquid for operations and redemptions.",
+        : "Held directly in the vault, not deployed to any venue. Liquid for operations and redemptions.",
       type: heldYieldBearing ? "Yield-bearing asset" : "Cash · underlying",
       targetBps: idleBps,
+      allocFraction: idleFrac,
       amount: data.availableHeld,
       yieldPct: heldYieldBearing ? reserve.assumptions.underlyingYield : 0,
       yieldModeled: heldYieldBearing,
@@ -487,12 +543,17 @@ export function ReserveTransparency({
           <>
             The <span style={{ color: "var(--color-accent)" }}>{reserve.currency}</span> reserve is a
             solvency-gated, tokenized vault that backs Brazilian rental guarantees and turns their
-            fees into yield. Deposit {reserve.depositToken}, receive {reserve.currency} shares at
-            NAV, and redeem from surplus. Running on Stellar testnet as a proof of concept — values are
-            live on-chain reads, not a production reserve.
+            fees into yield. Deposit {reserve.depositToken} and receive {reserve.currency} shares at
+            NAV. Withdrawals are <strong style={{ color: "var(--color-text-2)" }}>asynchronous</strong>:
+            you request a redemption and claim it as the reserve&apos;s liquidity buffer frees up. The
+            queue is paid from surplus over committed coverage, so redemptions never force the reserve
+            below solvency. Running on Stellar testnet as a proof of concept: values are live on-chain
+            reads, not a production reserve.
           </>
         }
-        aside={
+      >
+        {/* Solvency — full-width status banner: the reserve's core promise up top. */}
+        <div style={{ marginBottom: "20px" }}>
           <SolvencyChip
             stableAssets={data.stableAssets}
             coverageRequired={data.coverageRequired}
@@ -500,9 +561,10 @@ export function ReserveTransparency({
             loading={loading}
             error={error ?? undefined}
           />
-        }
-      >
-        <div style={hairlineGrid(170)}>
+        </div>
+        {/* Headline metrics — size, return, share price. Standard transparent
+            grid (same min as the economics groups) so the three sit on one row. */}
+        <div style={metricGrid(190)}>
           <MetricCard
             label="Reserve Value"
             value={loading ? "—" : fmtFiat(data.totalAssets, reserve)}
@@ -526,13 +588,6 @@ export function ReserveTransparency({
             loading={loading}
             error={error ?? undefined}
           />
-          <MetricCard
-            label="Shares Outstanding"
-            value={loading ? "—" : fmtShares(data.totalSupply)}
-            unit={`${reserve.currency} issued`}
-            loading={loading}
-            error={error ?? undefined}
-          />
         </div>
       </Section>
 
@@ -540,25 +595,22 @@ export function ReserveTransparency({
       <Section
         id="policy"
         title="Policy"
+        introMaxWidth="94ch"
         intro={
           <>
             The underwriting brain. The reserve writes fee-gated coverage on rental guarantees and
-            pays tenant defaults — while the solvency invariant keeps committed coverage at or below
+            pays tenant defaults, while the solvency invariant keeps committed coverage at or below
             stable assets, always.
           </>
         }
-        aside={
-          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${data.guarantees.length} active`}
-          </span>
-        }
       >
-        <ChartRow
-          donut={
+        {/* Reserve allocation — donut in its own block, centered and compact. */}
+        <SubBlock title="Reserve allocation">
+          <div style={{ display: "flex", justifyContent: "center" }}>
             <AllocationDonut
               loading={loading}
               size={DONUT_SIZE}
-              ariaLabel="Reserve allocation — committed coverage vs liquidity buffer"
+              ariaLabel="Reserve allocation: committed coverage vs liquidity buffer"
               centerDisplay={fmtFiat(data.totalAssets, reserve)}
               centerLabel="Reserve value"
               segments={[
@@ -578,75 +630,107 @@ export function ReserveTransparency({
                 },
               ]}
             />
-          }
-          cards={
-            <>
-              <MetricCard
-                label="Underlying Yield"
-                value={fmtPct2(econ.underlyingYield)}
-                accentValue
-                unit="modeled base rate"
-                tooltip="Base return on the reserve's capital before underwriting, set by the currency's reference rate. A stated assumption, not an on-chain reading."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Underwriting Spread"
-                value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
-                accentValue
-                unit="fees − expected defaults"
-                tooltip="Extra return from underwriting: annual fees minus expected default payouts, over total assets. From the live book."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Loss Ratio"
-                value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
-                accentValue
-                unit="expected payout ÷ fees"
-                tooltip="Expected annual default payouts as a share of fee income. Below 100% means fees cover expected losses."
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Cushion"
-                value={hasBook ? fmtMult(econ.cushion) : "—"}
-                accentValue
-                unit="vs break-even delinquency"
-                tooltip={`How far monthly defaults can rise before fees stop covering payouts. Break-even ${fmtPct2(econ.breakevenRho)} vs ${fmtPct2(econ.rho)} modeled.`}
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Fees Collected"
-                value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
-                unit={`cumulative · indicative ${reserve.fiatSymbol}`}
-                loading={loading}
-                error={error ?? undefined}
-              />
-              <MetricCard
-                label="Coverage Required"
-                value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
-                unit="committed to active guarantees"
-                loading={loading}
-                error={error ?? undefined}
-              />
-            </>
-          }
-        />
+          </div>
+        </SubBlock>
 
-        <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <h3 className="font-display" style={SUBHEAD}>Guarantee Registry</h3>
-          <InfoTooltip label="Guarantee registry">
-            Active guarantees underwritten by this reserve, read live from the registry contract.
-          </InfoTooltip>
+        {/* Economics — grouped so the numbers read as a story: what the reserve
+            earns, then the margin that keeps it solvent. Plain labels lead; the
+            precise term sits in each card's subtitle, with a tooltip on every
+            metric. Cards cap to the standard (Overview) width via MetricGroup. */}
+        <div style={{ marginBottom: "28px" }}>
+          <h3 className="font-display" style={{ ...SUBHEAD, marginBottom: "4px" }}>
+            Economics
+          </h3>
+          <p
+            className="font-body"
+            style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--color-text-2)", margin: "0 0 20px", maxWidth: "75ch" }}
+          >
+            How the reserve makes its return and stays solvent — what the capital earns, and the
+            margin that protects depositors when tenants default.
+          </p>
+
+          <MetricGroup
+            label="What it earns"
+            hint="Return on the reserve's capital — on its own, and from writing guarantees."
+          >
+            <MetricCard
+              label="Base Yield"
+              value={fmtPct2(econ.underlyingYield)}
+              accentValue
+              unit="underlying rate · modeled"
+              tooltip="What the reserve's own capital earns before any guarantee income — a modeled assumption from the currency's reference rate, not a live on-chain reading."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Guarantee Spread"
+              value={hasBook ? fmtSignedPct(econ.underwritingSpread) : "—"}
+              accentValue
+              unit="underwriting · fees − expected defaults"
+              tooltip="The extra return from writing guarantees: annual fees minus expected default payouts, measured over total assets. Read from the live book."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Fees Earned"
+              value={loading ? "—" : fmtFiat(data.feeIncome, reserve)}
+              unit={`cumulative · indicative ${reserve.fiatSymbol}`}
+              tooltip="Total guarantee fees the reserve has collected so far. Fees lift the share price (NAV) rather than minting new shares."
+              loading={loading}
+              error={error ?? undefined}
+            />
+          </MetricGroup>
+
+          <MetricGroup
+            label="How it stays solvent"
+            hint="The margin between what the reserve owes on defaults and the fees backing it."
+          >
+            <MetricCard
+              label="Defaults vs Fees"
+              value={hasBook ? fmtPct2(econ.lossRatio) : "—"}
+              accentValue
+              unit="loss ratio · payouts ÷ fees"
+              tooltip="Expected annual default payouts as a share of fee income. Under 100% means fees more than cover expected losses."
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Safety Margin"
+              value={hasBook ? fmtMult(econ.cushion) : "—"}
+              accentValue
+              unit="cushion vs break-even"
+              tooltip={`How far defaults can rise before fees stop covering payouts — delinquency could run several times the modeled ${fmtPct2(econ.rho)} monthly rate before the reserve operates at a loss (break-even ${fmtPct2(econ.breakevenRho)}).`}
+              loading={loading}
+              error={error ?? undefined}
+            />
+            <MetricCard
+              label="Obligations"
+              value={loading ? "—" : fmtFiat(data.coverageRequired, reserve)}
+              unit="coverage committed to active guarantees"
+              tooltip="What the reserve is currently committed to cover across all active guarantees. The solvency rule keeps this at or below stable assets, always."
+              loading={loading}
+              error={error ?? undefined}
+            />
+          </MetricGroup>
         </div>
-        <GuaranteeTable
-          guarantees={data.guarantees}
-          money={reserve}
-          loading={loading}
-          error={error ?? undefined}
-        />
+
+        {/* Guarantee registry — the live underwriting book. */}
+        <SubBlock
+          title="Guarantee Registry"
+          tooltip={
+            <InfoTooltip label="Guarantee registry">
+              Active guarantees underwritten by this reserve, read live from the registry contract.
+            </InfoTooltip>
+          }
+          meta={loading ? "…" : `${data.guarantees.length} active`}
+        >
+          <GuaranteeTable
+            guarantees={data.guarantees}
+            money={reserve}
+            loading={loading}
+            error={error ?? undefined}
+          />
+        </SubBlock>
       </Section>
 
       {/* ══ STRATEGY ════════════════════════════════════════════════════ */}
@@ -657,38 +741,36 @@ export function ReserveTransparency({
           <>
             Mutav vaults put reserve capital to work through <strong style={{ color: "var(--color-text-2)" }}>strategies</strong> and{" "}
             <strong style={{ color: "var(--color-text-2)" }}>adapters</strong>. A strategy is a target
-            allocation — the weight the vault&apos;s allocator aims to hold in a venue. An adapter is the
+            allocation: the weight the vault&apos;s allocator aims to hold in a venue. An adapter is the
             on-chain contract that actually moves capital into that venue (DeFindex, for example) and
             reports its live balance back. The allocator rebalances toward the targets while keeping the
             rest liquid in the vault. Everything below is read live on-chain.
           </>
         }
-        aside={
-          <span className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}>
-            {loading ? "…" : `${data.strategies.length} wired`}
-          </span>
-        }
       >
-        {/* Chart — allocation across each venue + the asset held in-vault, summing to total. */}
-        <AllocationBar loading={loading} segments={allocationSegments} />
+        {/* Allocation — full width, above the table. */}
+        <SubBlock title="Allocation" meta={loading ? "…" : `${data.strategies.length} wired`}>
+          {/* Allocation across each venue + the in-vault asset, summing to total. */}
+          <AllocationBar loading={loading} segments={allocationSegments} />
+        </SubBlock>
 
         {/* Table — each strategy option: provider, adapter, amount, yield. */}
-        <div className="scroll-fade-x" style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
+        <div style={{ overflowX: "auto", marginBottom: "16px", border: "1px solid var(--color-border)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "680px" }}>
             <thead>
               <tr style={{ backgroundColor: "var(--color-surface-2)" }}>
-                {["Provider", "Type", "Target", "Amount", "Yield", "Status"].map((h, i) => (
+                {["Provider", "Type", "Target", "Allocation", "Amount", "Yield"].map((h, i) => (
                   <th
                     key={h}
                     className="font-body"
                     style={{
-                      textAlign: i >= 2 && i <= 4 ? "right" : "left",
+                      textAlign: i >= 2 && i <= 5 ? "right" : "left",
                       padding: "10px 14px",
                       fontSize: "10px",
                       fontWeight: 600,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
-                      color: "var(--color-text-3)",
+                      color: "var(--color-text-2)", // text-2, not text-3: AA on surface-2
                       borderBottom: "1px solid var(--color-border)",
                       whiteSpace: "nowrap",
                     }}
@@ -712,7 +794,7 @@ export function ReserveTransparency({
           </table>
         </div>
         <p className="font-mono" style={{ fontSize: "10px", color: "var(--color-text-3)", margin: 0, letterSpacing: "0.02em", lineHeight: 1.5 }}>
-          Target = allocator intent (weight). Amount = live on-chain balance. Yield = modeled annual rate, not realized. Idle {reserve.depositToken} earns no yield on this reserve.
+          Allocation = actual on-chain share of total assets. Target = allocator intent (weight). Amount = live on-chain balance. Yield = modeled annual rate, not realized. Idle {reserve.depositToken} earns no yield on this reserve.
         </p>
       </Section>
 
@@ -722,12 +804,12 @@ export function ReserveTransparency({
         title="Contracts"
         intro={
           <>
-            No black box. Every number above reads from these Soroban contracts — open any of them on
+            No black box. Every number above reads from these Soroban contracts. Open any of them on
             the explorer to verify.
           </>
         }
       >
-        <div style={hairlineGrid(280)}>
+        <div style={metricGrid(190)}>
           {contractRows().map(({ role, id, desc }) => (
             <a
               key={role}
@@ -742,6 +824,7 @@ export function ReserveTransparency({
                 gap: "8px",
                 padding: "18px 18px",
                 backgroundColor: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
                 textDecoration: "none",
                 color: "inherit",
               }}

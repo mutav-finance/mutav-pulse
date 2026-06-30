@@ -250,7 +250,7 @@ const EDGES: Edge<GateData>[] = [
 ];
 
 const GATES = [
-  { n: "1", title: "Solvency gate", body: "Async redemption (EIP-7540 style): request → surplus-gated process → claim. Exits and new guarantees draw only from free_capital = stable_assets − coverage_required. stable ≥ coverage, always — no bank run." },
+  { n: "1", title: "Solvency gate", body: "Async redemption (EIP-7540 style): request → surplus-gated process → claim. Exits and new guarantees draw only from free_capital = stable_assets − coverage_required. stable ≥ coverage, always: no bank run." },
   { n: "2", title: "Fee gate", body: "A guarantee is covered only while its fees are current. Stop paying → coverage lapses and cover_default halts until it's caught up." },
   { n: "3", title: "Stable-backed floor", body: "Only stable strategy balances count toward coverage. Volatile adapters lift NAV but never the floor, so a price crash can't make the reserve insolvent." },
 ];
@@ -282,16 +282,20 @@ export function ProtocolDiagram() {
   const rfRef = useRef<ReactFlowInstance | null>(null);
 
   // React Flow paints the grid + arrowheads as SVG attributes, where CSS vars
-  // don't resolve — so resolve the brand tokens to concrete values at mount
-  // (lazy initializer; React Flow renders client-side) instead of hardcoding hex.
-  const [tokens] = useState(() => {
-    if (typeof window === "undefined") return { grid: GRID_COLOR, arrow: ARROW_COLOR };
+  // don't resolve — so resolve the brand tokens to concrete values. This MUST
+  // start from the static fallbacks so the first client render matches the SSR
+  // HTML (the arrowhead marker id is derived from its colour — reading
+  // getComputedStyle during the initial render desynced it and threw a
+  // hydration mismatch). Resolve the real tokens in a post-mount effect.
+  const [tokens, setTokens] = useState({ grid: GRID_COLOR, arrow: ARROW_COLOR });
+
+  useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
-    return {
+    setTokens({
       grid: cs.getPropertyValue("--color-border").trim() || GRID_COLOR,
       arrow: cs.getPropertyValue("--color-text-3").trim() || ARROW_COLOR,
-    };
-  });
+    });
+  }, []);
 
   const edges = useMemo<Edge[]>(
     () =>
@@ -326,6 +330,7 @@ export function ProtocolDiagram() {
         ref={boxRef}
         role="img"
         aria-label={DIAGRAM_LABEL}
+        className="diagram-canvas"
         style={{ height: "clamp(360px, 42vw, 480px)", border: "1px solid var(--color-border)", backgroundColor: "var(--color-canvas)" }}
       >
         <ReactFlow
@@ -344,6 +349,12 @@ export function ProtocolDiagram() {
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
+          // The wrapper is exposed as a single role="img"; keep xyflow's nodes/
+          // edges out of the tab order so keyboard users don't hit phantom stops
+          // inside the image (the readable gate semantics live in the legend).
+          nodesFocusable={false}
+          edgesFocusable={false}
+          disableKeyboardA11y
           panOnDrag={false}
           panOnScroll={false}
           zoomOnScroll={false}
@@ -355,6 +366,29 @@ export function ProtocolDiagram() {
           {/* Blueprint grid — sits behind the nodes/edges, inside the bordered box. 30% opacity → backdrop. */}
           <Background variant={BackgroundVariant.Lines} gap={28} lineWidth={1} color={tokens.grid} style={{ opacity: 0.3 }} />
         </ReactFlow>
+      </div>
+
+      {/* Mobile fallback — the fixed-coordinate canvas above scales sub-pixel on
+          phones, so render the same money-flow as a readable vertical stack.
+          The ◇ gate marks are explained in the legend below. */}
+      <div
+        className="diagram-mobile"
+        style={{ border: "1px solid var(--color-border)", backgroundColor: "var(--color-canvas)", padding: "14px", flexDirection: "column", gap: "6px" }}
+      >
+        <div style={{ border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", padding: "10px 12px" }}>
+          <div className="font-display" style={{ fontSize: "13px", letterSpacing: "0.02em", color: "var(--color-text)" }}>INVESTOR</div>
+          <div className="font-mono" style={{ fontSize: "9px", lineHeight: 1.4, color: "var(--color-text-3)", marginTop: "3px" }}>reserve shares · SEP-0041</div>
+        </div>
+        <div className="font-mono" style={{ fontSize: "9.5px", color: "var(--color-text-2)", textAlign: "center", padding: "2px 0" }}>↓ deposit USDC   ·   ↑ async redeem ◇1</div>
+        <div style={{ border: `1px solid ${ACCENT}`, backgroundColor: "var(--color-surface)", padding: "10px 12px" }}>
+          <div className="font-display" style={{ fontSize: "13px", letterSpacing: "0.02em", color: "var(--color-text)" }}>RESERVE</div>
+          <div className="font-mono" style={{ fontSize: "9px", lineHeight: 1.4, color: "var(--color-text-3)", marginTop: "3px" }}>OZ FungibleVault · NAV · async redeem (7540) · adapters DeFindex/Soroswap/Blend → yield ◇3</div>
+        </div>
+        <div className="font-mono" style={{ fontSize: "9.5px", color: "var(--color-text-2)", textAlign: "center", padding: "2px 0" }}>↑ fee → NAV ◇2 (Guarantees)   ·   ↓ cover_default ◇2 (Partner Agency)</div>
+        <div style={{ border: "1px solid var(--color-border)", backgroundColor: "var(--color-surface)", padding: "10px 12px" }}>
+          <div className="font-display" style={{ fontSize: "13px", letterSpacing: "0.02em", color: "var(--color-text)" }}>GUARANTEES · PARTNER AGENCY</div>
+          <div className="font-mono" style={{ fontSize: "9px", lineHeight: 1.4, color: "var(--color-text-3)", marginTop: "3px" }}>tenant fee · policy · default payout</div>
+        </div>
       </div>
 
       {/* ── Gate legend ── */}

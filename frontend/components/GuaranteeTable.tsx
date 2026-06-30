@@ -36,13 +36,13 @@ function StatusBadge({ active, isCurrent }: { active: boolean; isCurrent: boolea
   if (!active) {
     // Closed/settled state — neutral grey. Amber would read as active/warning.
     color = "var(--color-text-3)";
-    label = "LIQUIDADO";
+    label = "SETTLED";
   } else if (!isCurrent) {
-    color = "var(--color-error)"; // overdue = error red
-    label = "EM_DEFAULT";
+    color = "var(--color-error)"; // fees lapsed / in default = error red
+    label = "DEFAULT";
   } else {
     color = "var(--color-success)"; // current & active = success
-    label = "ATIVO";
+    label = "ACTIVE";
   }
 
   return (
@@ -78,7 +78,7 @@ const HEADER_STYLE: React.CSSProperties = {
   fontSize: "9px",
   fontWeight: 500,
   letterSpacing: "0.08em",
-  color: "var(--color-text-3)",
+  color: "var(--color-text-2)", // text-2, not text-3: small label on surface-2 needs AA
   fontFamily: "var(--font-body)",
   textTransform: "uppercase",
   borderBottom: "1px solid var(--color-border)",

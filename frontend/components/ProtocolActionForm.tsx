@@ -318,7 +318,7 @@ export function ProtocolActionForm({
                 className="font-mono"
                 style={{ fontSize: "10px", color: "var(--color-text-3)", letterSpacing: "0.02em" }}
               >
-                irreversible — click confirm to execute
+                irreversible: click confirm to execute
               </span>
             </>
           )}

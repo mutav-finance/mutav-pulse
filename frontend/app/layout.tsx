@@ -18,7 +18,7 @@ const geist = Geist({
 // in globals.css — no next/font needed; they ship as self-hosted WOFF2.
 
 export const metadata: Metadata = {
-  title: "Mutav Pulse — MUTAV Reserve",
+  title: "Mutav Pulse: MUTAV Reserve",
   description: "Solvency-gated tokenized reserve vault on Stellar. Rental-guarantee infrastructure.",
 };
 
@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="pt-BR"
+      lang="en"
       className={`${geist.variable} h-full antialiased`}
       data-front="investidor"
       // Stellar Wallets Kit injects `--swk-*` CSS custom properties onto
@@ -41,12 +41,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {/* Skip link — first focusable element; jumps past the sticky nav to the
+            page content (WCAG 2.4.1). Visually hidden until focused. */}
+        <a href="#main-content" className="skip-link font-body">Skip to content</a>
         <WalletProvider>
           {/* Single app-wide Radix TooltipProvider (see components/ui/tooltip). */}
           <TooltipProvider>
             {/* Shared top nav — rendered on all pages */}
             <NavShell />
-            {children}
+            <div id="main-content" tabIndex={-1} style={{ outline: "none", display: "flex", flexDirection: "column", flex: "1 1 auto", minWidth: 0 }}>
+              {children}
+            </div>
           </TooltipProvider>
         </WalletProvider>
       </body>

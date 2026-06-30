@@ -323,7 +323,7 @@ export function RedeemPanel({
                 lineHeight: 1.4,
               }}
             >
-              Exceeds balance — you hold{" "}
+              Exceeds balance: you hold{" "}
               {shareBalanceStr}{" "}
               {shareSymbol}
             </p>

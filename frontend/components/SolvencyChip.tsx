@@ -103,8 +103,7 @@ export function SolvencyChip({
         padding: "12px 16px",
         backgroundColor: "var(--color-surface)",
         border: `1px solid ${statusColor}`,
-        width: "fit-content",
-        maxWidth: "100%",
+        width: "100%",
       }}
       role="status"
       aria-label={`Solvency status: ${label}`}

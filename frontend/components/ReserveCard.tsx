@@ -109,7 +109,7 @@ export function ReserveCard({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
             <p className="font-mono" style={{ fontSize: "11px", color: "var(--color-text-2)", margin: 0 }}>
               AUM{" "}
-              <span style={{ color: "var(--color-text)" }}>
+              <span aria-live="polite" style={{ color: "var(--color-text)" }}>
                 {aum ?? "—"}
               </span>
             </p>
