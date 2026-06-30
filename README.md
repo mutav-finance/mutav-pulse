@@ -13,7 +13,7 @@
 - **The Stellar integration is the product:** every core operation (deposit, fee, default payout, yield allocation) is a Soroban contract call across a modular vault / policy / registry / strategy design. Frontend holds no keys.
 - **The hard technical thing:** an onchain solvency invariant (`stable_assets ≥ coverage_required`) enforced *re-entrancy-safely* — the policy reduces coverage before the vault disburses, dodging a Soroban re-entrancy trap.
 - **Live on testnet:** three reserves (MUSD · MTESOURO · MBRL) deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
-- **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
+- **Yield:** the `adapter-defindex` is **live and load-bearing on the MUSD reserve** — idle reserve capital flows into a **real DeFindex vault** (created via their testnet factory) and back, proven on-chain ([proof of operation](docs/reference/proof-of-operation.md)). That mock-asset vault holds cUSD idle (no Blend pool exists for it), so no external yield accrues yet, and the other two reserves still run a mock — wiring the real USDC Blend vault is the next step (see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; four investor interviews completed.
 - ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [pulse.mutav.finance/deck](https://pulse.mutav.finance/deck)
 
@@ -35,7 +35,7 @@ A reserve of USDC on Stellar — held by the `vault` contract — that is **prov
 - **Investors** fund the reserve: they deposit USDC and receive `MUSD` vault shares (a tokenized position — each reserve mints a per-currency share; `MUSD` is the USD reserve). Their capital is what backs the *fianças*, and it earns yield.
 - **Mutav** pays the landlord on a tenant default (`cover_default`) — one month of rent at a time, and stops paying out the moment a *fiança* falls behind on fees.
 - The whole thing is **solvency-gated**: the invariant `stable_assets ≥ coverage_required` is enforced onchain on every payout and every redemption. Only *surplus* capital (`free_capital = stable_assets − coverage_required`) can ever leave the reserve — an onchain anti-bank-run guarantee.
-- Idle reserve capital is **put to work earning DeFi yield** through a pluggable strategy allocator — a DeFindex adapter today, with Soroswap / Blend designed against the same interface.
+- Idle reserve capital is **allocated into a real DeFindex vault** through a pluggable strategy allocator — live on the MUSD reserve today, with Soroswap / Blend designed against the same interface.
 
 **The proof is public.** The `/earn/transparency` dashboard shows a live solvency chip, coverage metrics, and the full guarantee registry — and every number on screen links back to its onchain source. Nothing to take on trust.
 
@@ -56,7 +56,7 @@ A modular, single-responsibility design — custody, data, and the underwriting 
 | `vault` | **Custody** — USDC funds, tokenized per-currency shares (`MUSD` for the USD reserve; OpenZeppelin fungible token, virtual-offset anti-inflation), NAV, surplus-gated redemption queue, strategy allocator. [SEP-0056](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0056.md) (Tokenized Vault Standard) surface — note `withdraw`/`redeem` are intentionally disabled in favor of the async redemption queue (a conformant "withdrawals-gated" configuration). |
 | `policy` | **Underwriting brain** — fee model, coverage math, `cover_default`. Swappable without moving funds. |
 | `registry` | Writer-gated typed store of guarantee records. |
-| `strategy` (trait) + `adapter-defindex` | Yield venues. `adapter-defindex` integrates **[DeFindex](https://www.defindex.io/)**, a Stellar DeFi yield protocol — `invest` deposits idle reserve into a DeFindex vault, `balance` values the position in real time, `divest` withdraws. Built and unit-tested against the DeFindex interface; live testnet deployment is the next step (see [Roadmap](#roadmap--extensibility)). |
+| `strategy` (trait) + `adapter-defindex` | Yield venues. `adapter-defindex` integrates **[DeFindex](https://www.defindex.io/)**, a Stellar DeFi yield protocol — `invest` deposits idle reserve into a DeFindex vault, `balance` values the position in real time, `divest` withdraws. **Live and load-bearing on the MUSD reserve** against a real DeFindex vault, with the full deposit→withdraw round-trip [proven on-chain](docs/reference/proof-of-operation.md). |
 | `interfaces` | Shared cross-contract client traits + the `Guarantee` type. |
 
 **The safety spine (three onchain authority rules):**
@@ -79,7 +79,7 @@ Full protocol documentation — concepts, contract reference, the security model
 - **Soroban smart contracts** — the entire protocol.
 - **OpenZeppelin Stellar contracts** — audited fungible-token base for the share token.
 - **Stellar Wallets Kit** — wallet connection in the frontend (no injected keys).
-- **DeFindex** — yield adapter built and unit-tested against the DeFindex interface (live testnet wiring pending; see [Roadmap](#roadmap--extensibility)).
+- **DeFindex** — `adapter-defindex` live and load-bearing on the MUSD reserve against a real DeFindex vault (created via their testnet factory), with a deposit→withdraw round-trip [proven on-chain](docs/reference/proof-of-operation.md). The mock-cUSD vault holds funds idle (no Blend pool), so real yield + the other two reserves are the next step (see [Roadmap](#roadmap--extensibility)).
 
 ### Frontend (`frontend/`, Next.js 16)
 
@@ -192,9 +192,9 @@ PULSO Hackathon · Brazil track · team of 2 (both based in Brazil 🇧🇷).
 
 The strategy allocator is a trait, so new yield venues plug in without touching custody:
 
-- **DeFindex (live wiring)** — deploy the built `adapter-defindex` onto a DeFindex testnet vault and make it the active strategy, so real yield flows into NAV (the slot runs a mock today).
+- **DeFindex (real yield)** — `adapter-defindex` is already live and load-bearing on the MUSD reserve against a real DeFindex vault ([proof](docs/reference/proof-of-operation.md)), but that vault holds cUSD idle because no Blend pool exists for a mock asset. Next: stand up a reserve over real testnet USDC wired to DeFindex's USDC Blend vault so real yield flows into NAV, and extend the live adapter to the MTESOURO / MBRL reserves (which still run mocks).
 - **Soroswap / Blend** — additional adapters against the same `Strategy` trait (listed as Planned in the venue directory on `/earn/transparency`); add a `max_volatile_bps` cap when the first volatile venue lands.
-- **Mainnet path** — characterize and tune the DeFindex adapter's slippage floor (today a conservative 0.5% default via `max_slippage_bps`, not yet validated against a live DeFindex vault) before any mainnet deploy.
+- **Mainnet path** — characterize and tune the DeFindex adapter's slippage floor (a conservative 0.5% default via `max_slippage_bps`): the live idle-vault round-trip cleared it, but fee/rounding behavior on a real yield-bearing Blend vault is not yet characterized, and an `authorize_as_current_contract` deposit-auth fix (surfaced only against the live vault) should be locked in with a no-mock-auth regression test before any mainnet deploy.
 
 ## License
 
