@@ -103,8 +103,26 @@ Primary reserve (MUSD) below; the full address set for all three reserves + thei
 The MUSD vault settles in the cUSD SAC `CAWAVKYQ5AFSM3PVEZ4COPMBCOQDRCNB4LVGDOZ6GWX5ZK6OQJZTEDAH`. The three deposit tokens (cUSD / cTSR / cBRL) are mock testnet assets issued by `GA6LJT75ZRW3GWJ3NUQFBIL7CL66ITLT5BS35ZA7E7G35IOMGTSFJRIO`.
 <!-- deploy:end -->
 
-**Proof of operation** — verify the protocol actually runs onchain, not just deployed:
-<!-- TODO before submit: add stellar.expert tx links to the seeded operations — the deposit that minted MUSD, a collect_fee, and a cover_default disbursement. -->
+**Proof of operation** — verify the protocol actually runs onchain, not just deployed.
+
+**1. The guarantee lifecycle (the protocol itself)** — underwrite a *fiança* → collect the premium → pay out both coverage legs to a real landlord, live on the MBRL (cBRL) pilot reserve. Landlord [`GAEILCIV…R2LB`](https://stellar.expert/explorer/testnet/account/GAEILCIVINMSDUXWQEQF7OVIHM563B5U2JTG4JHLMI2TG3UIJMWLR2LB) received **3,000 cBRL** across the two payouts:
+
+| Operation | What it proves | Transaction |
+|---|---|---|
+| `sign_guarantee` | underwrite a fiança (solvency-gated) | [`ff173e3c`](https://stellar.expert/explorer/testnet/tx/ff173e3c87bdf5a402bad12ec6cf161da3e52c6bda3eabc522c4a0141cdbd555) |
+| `pay_fee` | premium collected → accrues to NAV | [`05bddeb1`](https://stellar.expert/explorer/testnet/tx/05bddeb16842bc1ed68d5e04102f64e4f154be40520a6f9bb60baff9d62fc9f5) |
+| **`cover_exit`** | **property-recovery payout — 1,000 cBRL → landlord** | [`18cfe2d0`](https://stellar.expert/explorer/testnet/tx/18cfe2d01e79c7c9d093b54a295b7aced74a0e5048c5b6c146e6a8cd1a152d11) |
+| **`cover_default`** | **rent-arrears payout — 2,000 cBRL → landlord** | [`5aa4b5bc`](https://stellar.expert/explorer/testnet/tx/5aa4b5bc0f8f01d93ca89adeefd2dce3dc1ba02386847d2db50867d49dbb80ce) |
+
+**2. The yield integration (DeFindex)** — the MUSD reserve routes idle capital through our audited `adapter-defindex` into a **real [DeFindex](https://www.defindex.io/) vault** (created via DeFindex's testnet factory over our cUSD) and back:
+
+| Operation | What it proves | Transaction |
+|---|---|---|
+| `create_defindex_vault` | DeFindex factory creates our cUSD vault | [`66d249ad`](https://stellar.expert/explorer/testnet/tx/66d249add8f18158b499473befc4d2cfe5daef269bceeedc9a6c12cd2de2fb81) |
+| **`rebalance`** | **~454k cUSD allocated INTO the DeFindex vault** | [`9402013f`](https://stellar.expert/explorer/testnet/tx/9402013f7ab667cc17bd2f3df5d799acf7f15a332af7e1a79b1dcb2caf837da0) |
+| **`process_redemptions`** | **~95k cUSD divested back OUT of DeFindex** | [`7fa65a91`](https://stellar.expert/explorer/testnet/tx/7fa65a91f87540a735b07b1128a278ed69fe2143d789afa755446e29e44aea63) |
+
+Full operation list (deploy, wiring, async redemption, governance) and contract addresses: [`docs/reference/proof-of-operation.md`](docs/reference/proof-of-operation.md).
 
 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance)
 
