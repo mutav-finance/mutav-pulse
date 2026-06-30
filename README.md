@@ -15,7 +15,7 @@
 - **Live on testnet:** three reserves (MUSD · MTESOURO · MBRL) deployed + seeded; 135 contract unit tests + 28 frontend tests green. Contract addresses + verify links [below](#live-on-testnet).
 - **Yield:** the DeFindex yield adapter is built and unit-tested; deploying it onto a live DeFindex testnet vault is the next step (the live strategy slot currently runs a mock — see [Roadmap](#roadmap--extensibility)).
 - **Customer discovery:** real-estate agencies interviewed; four investor interviews completed.
-- ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [pulse.mutav.finance/deck](https://pulse.mutav.finance/deck) · [source](deck/index.html)
+- ▶️ **Demo video:** [YouTube walkthrough](https://www.youtube.com/watch?v=ndJkO3XGN6Q) · 🌐 **Live demo:** [pulse.mutav.finance](https://pulse.mutav.finance) · 📊 **Pitch deck:** [pulse.mutav.finance/deck](https://pulse.mutav.finance/deck)
 
 ---
 
