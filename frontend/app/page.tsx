@@ -199,8 +199,10 @@ export default function Home() {
         style={{
           width: "100%",
           // Extra horizontal inset over the shared token to pull this section's
-          // content further toward the centre.
-          padding: "72px calc(var(--section-pad-x) + 120px)",
+          // content further toward the centre on wide screens. The extra ramps to
+          // 0 below ~600px viewport (clamp) so the fixed-width partner logos don't
+          // overflow on phones.
+          padding: "72px calc(var(--section-pad-x) + clamp(0px, 100vw - 600px, 120px))",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
