@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" data-front="investidor">
+<html lang="pt-BR" data-front="investidor">
 <head>
 <meta charset="utf-8" />
 <!-- Deployed at pulse.mutav.finance/deck — anchor relative asset paths to /deck/ -->
 <base href="/deck/" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MUTAV · Onchain Rental Guarantee · Pitch</title>
+<title>MUTAV · Garantia Locatícia Onchain · Pitch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -247,6 +247,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 #ecosystem { background-image: none; }
 #ecosystem .eco-art { position: absolute; top: 0; left: 0; height: 100%; width: auto; object-fit: cover; object-position: left center; opacity: .04; filter: grayscale(1); z-index: 0; pointer-events: none; user-select: none; -webkit-mask-image: linear-gradient(to right, #000 45%, transparent 92%); mask-image: linear-gradient(to right, #000 45%, transparent 92%); }
 #ecosystem .pad { z-index: 1; }
+#ecosystem .point .pt { text-align: left; }
 
 /* ── Thank you ───────────────────────────────────────────────────────────── */
 #thanks { background-image: none; }
@@ -286,73 +287,73 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     <div class="content">
       <div class="cover-top">
         <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
-        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · 2026</span>
+        <span class="mono pageno">GARANTIA LOCATÍCIA ONCHAIN · 2026</span>
       </div>
       <div class="cover-headline">
-        <h1 class="display">Rental agencies finally have a <span style="white-space:nowrap">rent guarantor</span><br><span class="amber">on their side</span></h1>
+        <h1 class="display">Imobiliárias finalmente têm um <span style="white-space:nowrap">garantidor de aluguel</span><br><span class="amber">do lado delas</span></h1>
         <div class="cover-rule"></div>
-        <p class="tagline">Onchain Rental Guarantee to take over Brazil.</p>
+        <p class="tagline">Protocolo de DeFi lastreado em contratos de garantia locatícia.</p>
       </div>
     </div>
   </section>
 
   <!-- a · PROBLEM ────────────────────────────────────────────────────────── -->
-  <section class="slide centered" data-eyebrow="01 · PROBLEM">
+  <section class="slide centered" data-eyebrow="01 · PROBLEMA">
     <div class="pad"><div class="body">
-      <div class="kicker">The problem</div>
-      <h2 class="title">Rental agencies are<br><span class="amber">absorbing the risk</span>.</h2>
+      <div class="kicker">O problema</div>
+      <h2 class="title">Imobiliárias estão<br><span class="amber">absorvendo o risco</span>.</h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">The risk falls on the agency</h4><ul>
-          <li>Agencies &amp; landlords absorb every tenant default</li>
-          <li>No guarantor is truly on their side</li>
-          <li>They carry the risk alone</li>
+        <div class="pillar"><h4 class="amber">Burocrático e opaco</h4><ul>
+          <li>Difícil de aprovar, lento para pagar</li>
+          <li>Os garantidores atuais são uma caixa-preta</li>
+          <li>Sem prova de que a reserva é solvente</li>
         </ul></div>
-        <div class="pillar"><h4 class="amber">An opaque promise</h4><ul>
-          <li>Existing guarantors are a black box</li>
-          <li>No way to verify the reserve is solvent</li>
-          <li>Trust without proof</li>
+        <div class="pillar"><h4 class="amber">Fechado ao mercado</h4><ul>
+          <li>Capital de lastro preso a poucas instituições</li>
+          <li>Fechado a capital externo</li>
+          <li>Sem espaço para investidores participarem</li>
         </ul></div>
-        <div class="pillar"><h4 class="amber">Bureaucratic &amp; closed</h4><ul>
-          <li>Hard to approve, slow to settle</li>
-          <li>Backing capital locked to a few institutions</li>
-          <li>Closed to outside capital</li>
+        <div class="pillar"><h4 class="amber">O risco cai sobre a imobiliária</h4><ul>
+          <li>Imobiliárias &amp; proprietários absorvem cada inadimplência</li>
+          <li>Nenhum garantidor está de fato do lado delas</li>
+          <li>Elas carregam o risco sozinhas</li>
         </ul></div>
       </div>
     </div></div>
   </section>
 
   <!-- b · SOLUTION ───────────────────────────────────────────────────────── -->
-  <section class="slide centered" data-eyebrow="02 · SOLUTION">
+  <section class="slide centered" data-eyebrow="02 · SOLUÇÃO">
     <div class="pad"><div class="body">
-      <div class="kicker">The solution</div>
-      <h2 class="title" style="max-width:none">An institutional guarantor,<br><span style="text-decoration:underline;text-decoration-color:var(--color-accent);text-underline-offset:6px;text-decoration-thickness:2px">backed onchain</span>.</h2>
+      <div class="kicker">A solução</div>
+      <h2 class="title" style="max-width:none">Um garantidor institucional,<br><span style="text-decoration:underline;text-decoration-color:var(--color-accent);text-underline-offset:6px;text-decoration-thickness:2px">lastreado onchain</span>.</h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Agency-first guarantor</h4><ul>
-          <li>We become the rent guarantor</li>
-          <li>We take on the risk agencies &amp; landlords have been absorbing</li>
-          <li>Tenant defaults, we settle</li>
+        <div class="pillar"><h4 class="amber">Reserva verificável onchain</h4><ul>
+          <li>Reserva técnica transparente na Stellar</li>
+          <li>Auditável em tempo real</li>
+          <li>Não uma promessa opaca</li>
         </ul></div>
-        <div class="pillar"><h4 class="amber">Verifiable onchain reserve</h4><ul>
-          <li>Transparent technical reserve on Stellar</li>
-          <li>Auditable in real time</li>
-          <li>Not an opaque promise</li>
+        <div class="pillar"><h4 class="amber">Aberta a investidores cripto</h4><ul>
+          <li>Cofre tokenizado</li>
+          <li>Rendimento lastreado em ativos reais (contratos de garantia)</li>
+          <li>Autocustodial &amp; descorrelacionado de cripto</li>
         </ul></div>
-        <div class="pillar"><h4 class="amber">Open to crypto investors</h4><ul>
-          <li>Tokenized vault</li>
-          <li>Yield backed by real assets (guarantee contracts)</li>
-          <li>Self-custodial &amp; uncorrelated to crypto</li>
+        <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária</h4><ul>
+          <li>Nós nos tornamos o garantidor do aluguel</li>
+          <li>Assumimos o risco que imobiliárias &amp; proprietários vêm absorvendo</li>
+          <li>Inquilino inadimplente, nós pagamos</li>
         </ul></div>
       </div>
     </div></div>
   </section>
 
   <!-- c · SOLVENCY & TRANSPARENCY ─────────────────────────────────────────── -->
-  <section class="slide demo" data-eyebrow="03 · SOLVENCY">
+  <section class="slide demo" data-eyebrow="03 · SOLVÊNCIA">
     <div class="pad"><div class="body">
       <div class="demo-grid">
         <div class="demo-text">
-          <h2 class="title">Full solvency<br>reserve access<br>for our&nbsp;partners</h2>
-          <div class="kicker">Transparent where they are opaque</div>
+          <h2 class="title">Acesso total<br>à solvência da reserva<br>para nossos&nbsp;parceiros</h2>
+          <div class="kicker">Transparentes onde eles são opacos</div>
         </div>
 
         <!-- Demo video · 16:9 (1920×1080) -->
@@ -364,41 +365,34 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- d · ARCHITECTURE + INTEGRATIONS ──────────────────────────────────────── -->
-  <section class="slide stellar archint" data-eyebrow="04 · ARCHITECTURE">
+  <section class="slide stellar archint" data-eyebrow="04 · ARQUITETURA">
     <div class="pad">
       <div class="ai-grid">
 
         <!-- LEFT · text + stacked integration cards -->
         <div class="ai-left">
           <div class="stellar-head">
-            <div class="kicker">Built on Stellar</div>
-            <h2 class="title">Modular <span class="amber">architecture</span></h2>
-            <p class="stellar-sub">One immutable vault, swappable guarantee logic.<br>Pluggable adapters route idle capital into on-chain yield.<br><em>Money only ever moves through the vault.</em></p>
+            <div class="kicker">Construído na Stellar</div>
+            <h2 class="title">Arquitetura <span class="amber">modular</span></h2>
+            <p class="stellar-sub">Adaptadores plugáveis levam capital ocioso para rendimento onchain.</p>
           </div>
           <div class="ai-cards">
             <div class="intcell">
-              <span class="intlbl">Wallet &amp; rails</span>
+              <span class="intlbl">Carteira &amp; trilhos</span>
               <div class="rsv-pills">
                 <span class="spill live">Stellar Wallets Kit</span>
                 <span class="spill live">Soroswap</span>
                 <span class="spill live">Horizon</span>
               </div>
-              <p>Connect via Freighter · Albedo · xBull. Soroswap AMM cUSD→cTSR swaps. Horizon reads balances &amp; trustlines.</p>
+              <p>Conecte via Freighter · Albedo · xBull. Swaps cUSD→cTSR na AMM Soroswap. Horizon lê saldos &amp; trustlines.</p>
             </div>
             <div class="intcell">
-              <span class="intlbl">Yield &amp; real assets</span>
+              <span class="intlbl">Rendimento &amp; ativos reais</span>
               <div class="rsv-pills">
                 <span class="spill live">DeFindex</span>
                 <span class="spill live">Etherfuse</span>
               </div>
-              <p>DeFindex — onchain DeFi yield aggregator. Etherfuse — tokenized treasury (TESOURO) bringing real-world yield into the reserve.</p>
-            </div>
-            <div class="intcell">
-              <span class="intlbl">On the roadmap</span>
-              <div class="rsv-pills">
-                <span class="spill">Blend</span>
-              </div>
-              <p>Blend (lending) plugs in as an additional yield adapter on the same interface.</p>
+              <p>DeFindex — agregador de rendimento DeFi onchain. Etherfuse — tesouro tokenizado (TESOURO) trazendo rendimento do mundo real para a reserva.</p>
             </div>
           </div>
         </div>
@@ -422,45 +416,45 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           </svg>
 
           <div class="vnode leaf" style="left:72px;top:0px;width:126px;height:52px;">
-            <span class="nt">INVESTOR</span>
-            <span class="ns mono">reserve shares · SEP-0041</span>
+            <span class="nt">INVESTIDOR</span>
+            <span class="ns mono">cotas da reserva · SEP-0041</span>
           </div>
 
           <div class="rsv" style="left:0px;top:139px;width:270px;height:160px;">
             <div class="rsv-head">
               <div class="rsv-htop">
-                <span class="rsv-title">RESERVE</span>
+                <span class="rsv-title">RESERVA</span>
                 <span class="rsv-badge">SEP-0056</span>
               </div>
-              <span class="rsv-sub">OZ FungibleVault · NAV · async redeem (7540)</span>
+              <span class="rsv-sub">OZ FungibleVault · NAV · resgate async (7540)</span>
             </div>
             <div class="rsv-body">
-              <span class="rsv-lbl">Strategy adapters</span>
+              <span class="rsv-lbl">Adaptadores de estratégia</span>
               <div class="rsv-pills">
                 <span class="spill live">DeFindex</span>
-                <span class="spill">Soroswap</span>
+                <span class="spill live">Soroswap</span>
                 <span class="spill">Blend</span>
               </div>
-              <span class="rsv-yield">idle float → yield</span>
+              <span class="rsv-yield">capital ocioso → rendimento</span>
             </div>
           </div>
 
           <div class="vnode leaf" style="left:412px;top:192px;width:116px;height:52px;">
-            <span class="nt">GUARANTEES</span>
-            <span class="ns mono">tenant fee · terms</span>
+            <span class="nt">GARANTIAS</span>
+            <span class="ns mono">taxa do inquilino · termos</span>
           </div>
 
           <div class="vnode leaf" style="left:52px;top:385px;width:166px;height:52px;">
-            <span class="nt">PARTNER AGENCIES</span>
-            <span class="ns mono">default settlement</span>
+            <span class="nt">IMOBILIÁRIAS PARCEIRAS</span>
+            <span class="ns mono">pagamento de inadimplência</span>
           </div>
 
-          <div class="vchip" style="left:105px;top:92px;">deposit USDC</div>
-          <div class="vchip" style="left:173px;top:118px;">async redeem</div>
-          <div class="vchip" style="left:341px;top:218px;">fee → NAV</div>
+          <div class="vchip" style="left:105px;top:92px;">depositar USDC</div>
+          <div class="vchip" style="left:173px;top:118px;">resgate async</div>
+          <div class="vchip" style="left:341px;top:218px;">taxa → NAV</div>
           <div class="vchip" style="left:135px;top:342px;">settle_default</div>
           </div>
-          <div class="live-tag" style="position:absolute;top:12px;right:16px;margin-top:0;font-size:6px;z-index:2">Live on Stellar testnet</div>
+          <div class="live-tag" style="position:absolute;top:12px;right:16px;margin-top:0;font-size:6px;z-index:2">Ao vivo na testnet Stellar</div>
           </div>
         </div>
 
@@ -469,88 +463,88 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
-  <section class="slide" id="ecosystem" data-eyebrow="05 · Ecosystem">
+  <section class="slide" id="ecosystem" data-eyebrow="05 · Ecossistema">
     <img class="eco-art" src="assets/ecosystem-art.jpg" alt="" aria-hidden="true" />
     <div class="pad"><div class="body" style="align-items:center;text-align:center">
-      <div class="kicker">Real Asset · Real Yield</div>
-      <h2 class="title">Real-world cashflows <span class="amber">on Stellar</span></h2>
+      <div class="kicker">Ativo Real · Rendimento Real</div>
+      <h2 class="title">Renda do mundo real, <span class="amber">na Stellar</span></h2>
       <div class="points">
-        <div class="point"><span class="pk mono">→</span><span class="pt">Real world yield</span><span class="pd">Yield from real rental guarantees: landlords, monthly rents in USDC, guarantee fees accruing to NAV.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Energizing Stellar's ecosystem</span><span class="pd">Real RWA value and liquidity into Stellar, deployed across native yield protocols.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Uncorrelated to crypto</span><span class="pd">Reserve value tracks rents and real cashflows.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Rendimento do mundo real</span><span class="pd">Taxas de garantia acumulando na reserva.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Energizando o ecossistema Stellar</span><span class="pd">Liquidez alocada em protocolos nativos da Stellar.</span></div>
+        <div class="point"><span class="pk mono">→</span><span class="pt">Descorrelacionado de cripto</span><span class="pd">Reserva atrelada a fluxo de caixa real.</span></div>
       </div>
     </div></div>
   </section>
 
   <!-- e · BUSINESS MODEL ───────────────────────────────────────────────────── -->
-  <section class="slide centered bizmodel" data-eyebrow="06 · BUSINESS MODEL">
+  <section class="slide centered bizmodel" data-eyebrow="06 · MODELO DE NEGÓCIO">
     <div class="pad"><div class="body">
-      <div class="kicker">Business model</div>
-      <h2 class="title" style="max-width:none">Two revenue streams,<br><span class="amber">one aligned reserve</span>.</h2>
-      <p class="lead">B2B: We integrate real estate agencies as <span class="amber">guarantee distributors</span>.</p>
+      <div class="kicker">Modelo de negócio</div>
+      <h2 class="title" style="max-width:none">Duas fontes de receita,<br><span class="amber">uma reserva alinhada</span>.</h2>
+      <p class="lead">B2B: integramos imobiliárias como <span class="amber">distribuidoras de garantia</span>.</p>
       <div class="pillars">
         <div class="pillar">
-          <h4>Guarantee fee</h4>
-          <p>Fee of 9–15% of rent · 80% to reserve</p>
-          <span class="pmetric">20% of the fee collected</span>
+          <h4>Taxa de garantia</h4>
+          <p>Taxa de 9–15% do aluguel · 80% para a reserva</p>
+          <span class="pmetric">20% da taxa arrecadada</span>
         </div>
         <div class="pillar">
-          <h4>Yield from reserve</h4>
-          <p>Pluggable adapters · DeFindex &amp; Etherfuse</p>
+          <h4>Rendimento da reserva</h4>
+          <p class="mono">RENDIMENTO = ADAPTADORES + TAXA COLETADA</p>
           <span class="pmetric">~18–43% APY</span>
         </div>
       </div>
-      <p class="biz-foot">Investor returns are built on real rents and reserve yield: aligned with the business and uncorrelated to crypto.</p>
+      <p class="biz-foot">Os retornos do investidor vêm de aluguéis reais e do rendimento da reserva: alinhados ao negócio e descorrelacionados de cripto.</p>
     </div></div>
   </section>
 
   <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="07 · TRACTION">
+  <section class="slide" data-eyebrow="07 · TRAÇÃO">
     <div class="pad"><div class="body" style="align-items:center;justify-content:center">
-      <h2 class="traction-h">Agencies are signing on!</h2>
+      <h2 class="traction-h">Imobiliárias estão aderindo!</h2>
       <div class="traction-stats">
         <div class="tstat">
           <span class="tval mono">+10</span>
-          <span class="tlbl">Agencies in contact</span>
+          <span class="tlbl">Imobiliárias em contato</span>
         </div>
         <div class="tstat">
           <span class="tval mono" style="color:var(--color-accent)">4 LOIs</span>
-          <span class="tlbl">Agencies LOIs Secured</span>
+          <span class="tlbl">LOIs de imobiliárias fechadas</span>
         </div>
         <div class="tstat">
           <span class="tval"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" stroke-linejoin="miter"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="8 6 18 6 18 16"/></svg></span>
-          <span class="tlbl">More LOIs in progress</span>
+          <span class="tlbl">Mais LOIs em andamento</span>
         </div>
       </div>
     </div></div>
   </section>
 
   <!-- g · TEAM ───────────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="08 · TEAM">
+  <section class="slide" data-eyebrow="08 · TIME">
     <div class="pad"><div class="body">
-      <h2 class="title" style="max-width:28ch;margin-top:36px">The team behind it.</h2>
+      <h2 class="title" style="max-width:28ch;margin-top:36px">O time por trás disso.</h2>
       <div class="team">
         <div class="member">
           <img class="photo" src="assets/team-draau.png" alt="Matheus de Pauli" />
           <div class="member-info">
-            <div class="role">Cofounder · CEO</div>
+            <div class="role">Cofundador · CEO</div>
             <div class="name">Matheus "Draau" de Pauli</div>
-            <div class="bio">5 years building brands &amp; blockchain products. Direct line into the Southern-Brazil real-estate network.</div>
+            <div class="bio">5 anos construindo marcas &amp; produtos blockchain. Linha direta com a rede imobiliária do Sul do Brasil.</div>
           </div>
         </div>
         <div class="member">
           <img class="photo" src="assets/team-julia.png" alt="Julia Hoffmann Buratto" />
           <div class="member-info">
-            <div class="role">Cofounder · CTO</div>
+            <div class="role">Cofundadora · CTO</div>
             <div class="name">Julia Hoffmann Buratto</div>
-            <div class="bio">Built Brazilian onchain financial infra (RWA / CVM-88). Chainless 0 → 30k users.</div>
+            <div class="bio">Construiu infra financeira onchain brasileira (RWA / CVM-88). Chainless de 0 → 30k usuários.</div>
           </div>
         </div>
         <div class="member advisor">
-          <div class="role">Strategic Advisor</div>
+          <div class="role">Conselheira Estratégica</div>
           <div class="name">Cinara Bigóis</div>
           <span class="adv-num mono">+30</span>
-          <span class="adv-lbl">years at the rental market</span>
+          <span class="adv-lbl">anos no mercado de locação</span>
         </div>
       </div>
     </div></div>
@@ -562,7 +556,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     <div class="pad">
       <div class="topbar">
         <div class="brand"><img src="assets/logo-mark.png" alt="MUTAV" /><span class="wm">MUTAV</span></div>
-        <span class="mono pageno">ONCHAIN RENTAL GUARANTEE · BRAZIL · 2026</span>
+        <span class="mono pageno">GARANTIA LOCATÍCIA ONCHAIN · BRASIL · 2026</span>
       </div>
       <div class="body">
         <div class="brand" style="justify-content:center;gap:0;margin-bottom:6px">
@@ -570,10 +564,10 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <span class="wm" style="font-size:30px">MUTAV</span>
         </div>
         <div class="thanks-head">
-          <h1 class="display amber">Thank you!</h1>
+          <h1 class="display amber">Obrigado!</h1>
           <div class="thanks-rule"></div>
         </div>
-        <div class="contact">CONTACT US<br><span style="font-size:16px"><b>mutav.finance@gmail.com</b><br>www.mutav.finance</span></div>
+        <div class="contact">FALE CONOSCO<br><span style="font-size:16px"><b>mutav.finance@gmail.com</b><br>www.mutav.finance</span></div>
       </div>
     </div>
   </section>
@@ -583,8 +577,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 <div id="progress"></div>
 <div id="nav">
   <span id="counter" class="mono"><b>01</b> / 9</span>
-  <button id="prev" aria-label="Previous">‹</button>
-  <button id="next" aria-label="Next">›</button>
+  <button id="prev" aria-label="Anterior">‹</button>
+  <button id="next" aria-label="Próximo">›</button>
 </div>
 
 <script>
