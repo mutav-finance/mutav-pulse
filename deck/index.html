@@ -74,8 +74,10 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .slide.centered .body { align-items: center; text-align: center; }
 .slide.centered .title { max-width: 24ch; }
 .slide.centered .lead { margin-left: auto; margin-right: auto; }
-.slide.centered .pillars { width: 100%; }
-.slide.centered .pillar { text-align: left; }
+.slide.centered .pillars { width: 100%; max-width: 860px; margin-left: auto; margin-right: auto; grid-template-columns: repeat(2, 1fr); }
+.slide.centered .pillar { text-align: center; min-height: 128px; display: flex; flex-direction: column; justify-content: center; }
+.slide.centered .pillar h4 { font-size: 22px; color: var(--color-text); opacity: .72; }
+.slide.centered .pillar .tam { font-family: var(--font-mono); font-size: 17px; letter-spacing: .02em; color: var(--color-accent); margin-top: 12px; }
 .slide.centered .points { width: 100%; text-align: left; }
 
 /* ── Minimal point list (one idea, few points) ───────────────────────────── */
@@ -309,21 +311,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="kicker">O problema</div>
       <h2 class="title">As imobiliárias estão<br><span class="amber">absorvendo o risco</span></h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Burocrático e opaco</h4><ul>
-          <li>Difícil de aprovar, lento para pagar</li>
-          <li>Os garantidores atuais são uma caixa-preta</li>
-          <li>Sem prova de que a reserva é solvente</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Imobiliária desamparada</h4><ul>
-          <li>Imobiliárias &amp; proprietários absorvem cada inadimplência</li>
-          <li>Nenhum garantidor está de fato do lado delas</li>
-          <li>Elas carregam o risco sozinhas</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Fechado ao mercado</h4><ul>
-          <li>Capital de lastro preso a poucas instituições</li>
-          <li>Fechado a capital externo</li>
-          <li>Sem espaço para investidores participarem</li>
-        </ul></div>
+        <div class="pillar"><h4 class="amber">Burocrático, opaco e desamparado</h4></div>
+        <div class="pillar"><h4 class="amber">Fechado ao mercado</h4><span class="tam">TAM = US$ 10 Bi</span></div>
       </div>
     </div></div>
   </section>
@@ -334,21 +323,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="kicker">A solução</div>
       <h2 class="title" style="max-width:none">Um garantidor institucional,<br><span class="amber">lastreado onchain</span></h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Reserva verificável onchain</h4><ul>
-          <li>Reserva técnica transparente na Stellar</li>
-          <li>Auditável em tempo real</li>
-          <li>Não uma promessa opaca</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária</h4><ul>
-          <li>Nós nos tornamos o garantidor do aluguel</li>
-          <li>Assumimos o risco que imobiliárias &amp; proprietários vêm absorvendo</li>
-          <li>Inquilino inadimplente, nós pagamos</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Aberta a investidores</h4><ul>
-          <li>Rendimento lastreado em ativos reais (contratos de garantia)</li>
-          <li>Autocustodial &amp; descorrelacionado de cripto</li>
-          <li>Liquidez alocada em protocolos nativos da Stellar</li>
-        </ul></div>
+        <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária, verificável onchain</h4></div>
+        <div class="pillar"><h4 class="amber">Aberta a investidores</h4></div>
       </div>
     </div></div>
   </section>
@@ -451,8 +427,29 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     </div>
   </section>
 
+  <!-- c · DEMO / APP LIVE ─────────────────────────────────────────── -->
+  <section class="slide demo" data-eyebrow="04 · DEMO">
+    <div class="pad"><div class="body">
+      <div class="demo-grid">
+        <div class="demo-text">
+          <div class="kicker">App ao vivo na testnet</div>
+          <h2 class="title">Uma nova opção<br>de investimento<br><span class="amber">na Stellar</span></h2>
+          <div class="demo-disc">
+            <span class="demo-disc-lbl">Validado com customer discovery</span>
+            <p>O que trava o RWA não é o retorno,<br>é não conseguir verificar o lastro.</p>
+          </div>
+        </div>
+
+        <!-- Demo video · 16:9 (1920×1080) -->
+        <div class="demo-frame">
+          <video src="assets/demo.mp4" autoplay muted loop playsinline></video>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
   <!-- e · BUSINESS MODEL ───────────────────────────────────────────────────── -->
-  <section class="slide centered bizmodel" data-eyebrow="04 · MODELO DE NEGÓCIO">
+  <section class="slide centered bizmodel" data-eyebrow="05 · MODELO DE NEGÓCIO">
     <div class="pad"><div class="body">
       <div class="kicker">Modelo de negócio</div>
       <h2 class="title" style="max-width:none">Duas fontes de receita,<br><span class="amber">uma reserva alinhada</span></h2>
@@ -474,7 +471,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
   </section>
 
   <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="05 · TRAÇÃO">
+  <section class="slide" data-eyebrow="06 · TRAÇÃO">
     <div class="pad"><div class="body" style="align-items:center;justify-content:center">
       <h2 class="traction-h">Imobiliárias estão aderindo!</h2>
       <div class="traction-stats">
@@ -489,27 +486,6 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
         <div class="tstat">
           <span class="tval"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square" stroke-linejoin="miter"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="8 6 18 6 18 16"/></svg></span>
           <span class="tlbl">Mais LOIs em andamento</span>
-        </div>
-      </div>
-    </div></div>
-  </section>
-
-  <!-- c · DEMO / APP LIVE ─────────────────────────────────────────── -->
-  <section class="slide demo" data-eyebrow="06 · DEMO">
-    <div class="pad"><div class="body">
-      <div class="demo-grid">
-        <div class="demo-text">
-          <div class="kicker">App ao vivo na testnet</div>
-          <h2 class="title">Uma nova opção<br>de investimento<br><span class="amber">na Stellar</span></h2>
-          <div class="demo-disc">
-            <span class="demo-disc-lbl">Validado com customer discovery</span>
-            <p>O que trava o RWA não é o retorno,<br>é não conseguir verificar o lastro.</p>
-          </div>
-        </div>
-
-        <!-- Demo video · 16:9 (1920×1080) -->
-        <div class="demo-frame">
-          <video src="assets/demo.mp4" autoplay muted loop playsinline></video>
         </div>
       </div>
     </div></div>
