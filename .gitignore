@@ -13,6 +13,7 @@ node_modules/
 # (.claude/workflows IS tracked — our own orchestration scripts.)
 .claude/skills/
 .claude/worktrees/
+.worktrees/
 .superpowers/
 
 # Local secrets / wallet backups — NEVER commit (testnet keys; see secrets-audit #12)

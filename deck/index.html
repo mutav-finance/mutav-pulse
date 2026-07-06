@@ -143,7 +143,7 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 /* ── Demo slide: text (1/3) + 16:9 video drop-zone (2/3, 1920×1080) ───────── */
 .demo-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; align-items: center; width: 100%; }
 .demo-text { text-align: right; }
-.demo-text .kicker { margin-top: 18px; margin-bottom: 0; }
+.demo-text .kicker { margin-top: 0; margin-bottom: 16px; }
 .slide.demo .title { font-size: 34px; line-height: 1.08; }
 .demo-frame {
   position: relative; aspect-ratio: 16 / 9; width: 100%;
@@ -190,15 +190,15 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .archint .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex: 0 0 auto; margin: auto 0; align-items: stretch; min-height: 0; }
 .archint .stellar-head { margin-top: 0; }
 .archint .stellar-head .kicker { margin-bottom: 6px; }
-.archint .stellar-head .title { font-size: 34px; margin-top: 4px; line-height: 1.08; }
-.archint .stellar-sub { font-size: 15px; margin-top: 8px; max-width: 48ch; }
+.archint .stellar-head .title { font-size: 46px; margin-top: 4px; line-height: 1.08; }
+.archint .stellar-sub { font-size: 15px; margin-top: 8px; max-width: 66ch; }
 
 /* left · stacked integration cards */
-.archint .ai-left { display: flex; flex-direction: column; justify-content: flex-end; }
+.archint .ai-left { display: flex; flex-direction: column; justify-content: flex-start; }
 .archint .ai-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 .archint .intcell { display: flex; flex-wrap: wrap; align-items: center; border: 1px solid var(--color-border); background: var(--color-surface); padding: 15px 18px; text-align: left; }
-.archint .intlbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); }
-.archint .intcell .rsv-pills { margin: 0 0 0 auto; justify-content: flex-end; }
+.archint .intlbl { font-family: var(--font-mono); font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); }
+.archint .intcell .rsv-pills { flex: 0 0 100%; margin: 14px 0 0; justify-content: flex-start; }
 .archint .intcell .spill { font-size: 12px; }
 .archint .intcell p { flex: 0 0 100%; font-size: 11.5px; color: var(--color-text-2); line-height: 1.4; margin-top: 18px; }
 
@@ -223,8 +223,9 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 #cover .cover-top { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; }
 #cover .cover-headline { margin: auto 0; }
 #cover h1 { font-size: 58px; max-width: 17ch; }
-#cover .cover-rule { width: 570px; max-width: 100%; height: 1px; margin-top: 26px; background: var(--color-accent); opacity: .85; }
-#cover .tagline { margin-top: 22px; font-size: 21px; color: var(--color-text); max-width: 42ch; line-height: 1.45; }
+#cover .cover-foot { width: fit-content; max-width: 100%; }
+#cover .cover-rule { width: 100%; height: 1px; margin-top: 26px; background: var(--color-accent); opacity: .85; }
+#cover .tagline { margin-top: 22px; font-size: 21px; color: var(--color-text); max-width: 64ch; line-height: 1.45; }
 #cover .tagline b { color: var(--color-accent); font-weight: 600; }
 
 /* ── Team (minimal) ──────────────────────────────────────────────────────── */
@@ -258,11 +259,13 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 #thanks .contact b { color: var(--color-accent); font-weight: 500; }
 
 /* ── Business model (transparent pillar cards) ───────────────────────────── */
-.bizmodel .pillars { grid-template-columns: 1fr 1fr; max-width: 720px; margin-left: auto; margin-right: auto; }
+.bizmodel .lead { max-width: 720px; margin-left: auto; margin-right: auto; text-align: left; margin-bottom: 0; }
+.bizmodel .pillars { grid-template-columns: 1fr 1fr; max-width: 720px; margin-left: auto; margin-right: auto; margin-top: 14px; }
 .bizmodel .pillar { background: transparent; }
 .bizmodel .pillar p { margin-top: 12px; }
 .bizmodel .pmetric { display: block; font-family: var(--font-mono); font-size: 15px; color: var(--color-accent); margin-top: 14px; }
 .bizmodel .biz-foot { font-size: 16px; color: var(--color-text-2); line-height: 1.5; margin-top: 30px; max-width: 62ch; margin-left: auto; margin-right: auto; }
+.bizmodel .pmetric + .pmetric { margin-top: 6px; }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 #progress { position: fixed; left: 0; bottom: 0; height: 2px; background: var(--color-accent); width: 0; transition: width 180ms ease-out; z-index: 30; }
@@ -288,9 +291,11 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
         <span class="mono pageno">GARANTIA LOCATÍCIA ONCHAIN · 2026</span>
       </div>
       <div class="cover-headline">
-        <h1 class="display">Imobiliárias finalmente têm um <span style="white-space:nowrap">garantidor de aluguel</span><br><span class="amber">do lado delas</span></h1>
-        <div class="cover-rule"></div>
-        <p class="tagline">Protocolo de DeFi lastreado em contratos de garantia locatícia.</p>
+        <h1 class="display">Uma nova opção de investimento em RWA:<br><span class="amber">garantia locatícia</span></h1>
+        <div class="cover-foot">
+          <div class="cover-rule"></div>
+          <p class="tagline">Protocolo de DeFi lastreado em contratos de garantia locatícia.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -306,15 +311,15 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <li>Os garantidores atuais são uma caixa-preta</li>
           <li>Sem prova de que a reserva é solvente</li>
         </ul></div>
+        <div class="pillar"><h4 class="amber">Imobiliária desamparada</h4><ul>
+          <li>Imobiliárias &amp; proprietários absorvem cada inadimplência</li>
+          <li>Nenhum garantidor está de fato do lado delas</li>
+          <li>Elas carregam o risco sozinhas</li>
+        </ul></div>
         <div class="pillar"><h4 class="amber">Fechado ao mercado</h4><ul>
           <li>Capital de lastro preso a poucas instituições</li>
           <li>Fechado a capital externo</li>
           <li>Sem espaço para investidores participarem</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">O risco cai sobre a imobiliária</h4><ul>
-          <li>Imobiliárias &amp; proprietários absorvem cada inadimplência</li>
-          <li>Nenhum garantidor está de fato do lado delas</li>
-          <li>Elas carregam o risco sozinhas</li>
         </ul></div>
       </div>
     </div></div>
@@ -331,39 +336,22 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <li>Auditável em tempo real</li>
           <li>Não uma promessa opaca</li>
         </ul></div>
-        <div class="pillar"><h4 class="amber">Aberta a investidores cripto</h4><ul>
-          <li>Cofre tokenizado</li>
-          <li>Rendimento lastreado em ativos reais (contratos de garantia)</li>
-          <li>Autocustodial &amp; descorrelacionado de cripto</li>
-        </ul></div>
         <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária</h4><ul>
           <li>Nós nos tornamos o garantidor do aluguel</li>
           <li>Assumimos o risco que imobiliárias &amp; proprietários vêm absorvendo</li>
           <li>Inquilino inadimplente, nós pagamos</li>
         </ul></div>
-      </div>
-    </div></div>
-  </section>
-
-  <!-- c · SOLVENCY & TRANSPARENCY ─────────────────────────────────────────── -->
-  <section class="slide demo" data-eyebrow="03 · SOLVÊNCIA">
-    <div class="pad"><div class="body">
-      <div class="demo-grid">
-        <div class="demo-text">
-          <h2 class="title">Acesso total<br>à solvência da reserva<br>para nossos&nbsp;parceiros</h2>
-          <div class="kicker">Transparentes onde eles são opacos</div>
-        </div>
-
-        <!-- Demo video · 16:9 (1920×1080) -->
-        <div class="demo-frame">
-          <video src="assets/demo.mp4" autoplay muted loop playsinline></video>
-        </div>
+        <div class="pillar"><h4 class="amber">Aberta a investidores</h4><ul>
+          <li>Liquidez alocada em protocolos nativos da Stellar</li>
+          <li>Rendimento lastreado em ativos reais (contratos de garantia)</li>
+          <li>Autocustodial &amp; descorrelacionado de cripto</li>
+        </ul></div>
       </div>
     </div></div>
   </section>
 
   <!-- d · ARCHITECTURE + INTEGRATIONS ──────────────────────────────────────── -->
-  <section class="slide stellar archint" data-eyebrow="04 · ARQUITETURA">
+  <section class="slide stellar archint" data-eyebrow="03 · ARQUITETURA">
     <div class="pad">
       <div class="ai-grid">
 
@@ -377,20 +365,20 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
           <div class="ai-cards">
             <div class="intcell">
               <span class="intlbl">Carteira &amp; trilhos</span>
+              <p>Conecte via Freighter · Albedo · xBull. Swaps cUSD→cTSR na AMM Soroswap. Horizon lê saldos &amp; trustlines.</p>
               <div class="rsv-pills">
                 <span class="spill live">Stellar Wallets Kit</span>
                 <span class="spill live">Soroswap</span>
                 <span class="spill live">Horizon</span>
               </div>
-              <p>Conecte via Freighter · Albedo · xBull. Swaps cUSD→cTSR na AMM Soroswap. Horizon lê saldos &amp; trustlines.</p>
             </div>
             <div class="intcell">
               <span class="intlbl">Rendimento &amp; ativos reais</span>
+              <p>DeFindex: agregador de rendimento DeFi onchain. Etherfuse: tesouro tokenizado (TESOURO) trazendo rendimento do mundo real para a reserva.</p>
               <div class="rsv-pills">
                 <span class="spill live">DeFindex</span>
                 <span class="spill live">Etherfuse</span>
               </div>
-              <p>DeFindex — agregador de rendimento DeFi onchain. Etherfuse — tesouro tokenizado (TESOURO) trazendo rendimento do mundo real para a reserva.</p>
             </div>
           </div>
         </div>
@@ -460,22 +448,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     </div>
   </section>
 
-  <!-- f · RWA THESIS ──────────────────────────────────────────────────────── -->
-  <section class="slide" id="ecosystem" data-eyebrow="05 · Ecossistema">
-    <img class="eco-art" src="assets/ecosystem-art.jpg" alt="" aria-hidden="true" />
-    <div class="pad"><div class="body" style="align-items:center;text-align:center">
-      <div class="kicker">Ativo Real · Rendimento Real</div>
-      <h2 class="title">Renda do mundo real, <span class="amber">na Stellar</span></h2>
-      <div class="points">
-        <div class="point"><span class="pk mono">→</span><span class="pt">Rendimento do mundo real</span><span class="pd">Taxas de garantia acumulando na reserva.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Energizando o ecossistema Stellar</span><span class="pd">Liquidez alocada em protocolos nativos da Stellar.</span></div>
-        <div class="point"><span class="pk mono">→</span><span class="pt">Descorrelacionado de cripto</span><span class="pd">Reserva atrelada a fluxo de caixa real.</span></div>
-      </div>
-    </div></div>
-  </section>
-
   <!-- e · BUSINESS MODEL ───────────────────────────────────────────────────── -->
-  <section class="slide centered bizmodel" data-eyebrow="06 · MODELO DE NEGÓCIO">
+  <section class="slide centered bizmodel" data-eyebrow="04 · MODELO DE NEGÓCIO">
     <div class="pad"><div class="body">
       <div class="kicker">Modelo de negócio</div>
       <h2 class="title" style="max-width:none">Duas fontes de receita,<br><span class="amber">uma reserva alinhada</span>.</h2>
@@ -483,21 +457,21 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="pillars">
         <div class="pillar">
           <h4>Taxa de garantia</h4>
-          <p>Taxa de 9–15% do aluguel · 80% para a reserva</p>
-          <span class="pmetric">20% da taxa arrecadada</span>
+          <p>9% a 15% do aluguel por contrato</p>
+          <span class="pmetric">80% → Reserva</span>
+          <span class="pmetric">20% → Protocolo</span>
         </div>
         <div class="pillar">
           <h4>Rendimento da reserva</h4>
           <p class="mono">RENDIMENTO = ADAPTADORES + TAXA COLETADA</p>
-          <span class="pmetric">~18–43% APY</span>
+          <span class="pmetric">~18% a 43% APY</span>
         </div>
       </div>
-      <p class="biz-foot">Os retornos do investidor vêm de aluguéis reais e do rendimento da reserva: alinhados ao negócio e descorrelacionados de cripto.</p>
     </div></div>
   </section>
 
   <!-- f · DISCOVERY / TRACTION ───────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="07 · TRAÇÃO">
+  <section class="slide" data-eyebrow="05 · TRAÇÃO">
     <div class="pad"><div class="body" style="align-items:center;justify-content:center">
       <h2 class="traction-h">Imobiliárias estão aderindo!</h2>
       <div class="traction-stats">
@@ -517,8 +491,25 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
     </div></div>
   </section>
 
+  <!-- c · DEMO / APP LIVE ─────────────────────────────────────────── -->
+  <section class="slide demo" data-eyebrow="06 · DEMO">
+    <div class="pad"><div class="body">
+      <div class="demo-grid">
+        <div class="demo-text">
+          <div class="kicker">App ao vivo na testnet</div>
+          <h2 class="title">Uma nova opção<br>de investimento<br><span class="amber">na Stellar</span></h2>
+        </div>
+
+        <!-- Demo video · 16:9 (1920×1080) -->
+        <div class="demo-frame">
+          <video src="assets/demo.mp4" autoplay muted loop playsinline></video>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
   <!-- g · TEAM ───────────────────────────────────────────────────────────── -->
-  <section class="slide" data-eyebrow="08 · TIME">
+  <section class="slide" data-eyebrow="07 · TIME">
     <div class="pad"><div class="body">
       <h2 class="title" style="max-width:28ch;margin-top:36px">O time por trás disso.</h2>
       <div class="team">
