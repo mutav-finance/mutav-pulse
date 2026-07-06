@@ -74,8 +74,9 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
 .slide.centered .body { align-items: center; text-align: center; }
 .slide.centered .title { max-width: 24ch; }
 .slide.centered .lead { margin-left: auto; margin-right: auto; }
-.slide.centered .pillars { width: 100%; }
-.slide.centered .pillar { text-align: left; }
+.slide.centered .pillars { width: 100%; max-width: 860px; margin-left: auto; margin-right: auto; grid-template-columns: repeat(2, 1fr); }
+.slide.centered .pillar { text-align: center; min-height: 128px; display: flex; flex-direction: column; justify-content: center; }
+.slide.centered .pillar h4 { font-size: 22px; color: var(--color-text); opacity: .72; }
 .slide.centered .points { width: 100%; text-align: left; }
 
 /* ── Minimal point list (one idea, few points) ───────────────────────────── */
@@ -309,21 +310,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="kicker">O problema</div>
       <h2 class="title">As imobiliárias estão<br><span class="amber">absorvendo o risco</span></h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Burocrático e opaco</h4><ul>
-          <li>Difícil de aprovar, lento para pagar</li>
-          <li>Os garantidores atuais são uma caixa-preta</li>
-          <li>Sem prova de que a reserva é solvente</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Imobiliária desamparada</h4><ul>
-          <li>Imobiliárias &amp; proprietários absorvem cada inadimplência</li>
-          <li>Nenhum garantidor está de fato do lado delas</li>
-          <li>Elas carregam o risco sozinhas</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Fechado ao mercado</h4><ul>
-          <li>Capital de lastro preso a poucas instituições</li>
-          <li>Fechado a capital externo</li>
-          <li>Sem espaço para investidores participarem</li>
-        </ul></div>
+        <div class="pillar"><h4 class="amber">Burocrático, opaco e desamparado</h4></div>
+        <div class="pillar"><h4 class="amber">Fechado ao mercado</h4></div>
       </div>
     </div></div>
   </section>
@@ -334,21 +322,8 @@ h2.title { font-family: var(--font-display); font-weight: 700; line-height: 1.06
       <div class="kicker">A solução</div>
       <h2 class="title" style="max-width:none">Um garantidor institucional,<br><span class="amber">lastreado onchain</span></h2>
       <div class="pillars">
-        <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária</h4><ul>
-          <li>Nós nos tornamos o garantidor do aluguel</li>
-          <li>Assumimos o risco que imobiliárias &amp; proprietários vêm absorvendo</li>
-          <li>Inquilino inadimplente, nós pagamos</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Reserva verificável onchain</h4><ul>
-          <li>Reserva técnica transparente na Stellar</li>
-          <li>Auditável em tempo real</li>
-          <li>Não uma promessa opaca</li>
-        </ul></div>
-        <div class="pillar"><h4 class="amber">Aberta a investidores</h4><ul>
-          <li>Rendimento lastreado em ativos reais (contratos de garantia)</li>
-          <li>Autocustodial &amp; descorrelacionado de cripto</li>
-          <li>Liquidez alocada em protocolos nativos da Stellar</li>
-        </ul></div>
+        <div class="pillar"><h4 class="amber">Garantidor pró-imobiliária, verificável onchain</h4></div>
+        <div class="pillar"><h4 class="amber">Aberta a investidores</h4></div>
       </div>
     </div></div>
   </section>
