@@ -10,7 +10,7 @@
  *
  * Design: Precision Brutalism — no rounded corners, no shadows,
  * amber used sparingly (<5% of pixels), JetBrains Mono for address data.
- * See .design/branding/tga/identity/palettes.json for token source.
+ * See .design/branding/mutav/identity/palettes.json for token source.
  */
 
 import { useWallet } from "./WalletProvider";
