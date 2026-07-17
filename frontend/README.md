@@ -71,7 +71,7 @@ Runs `next build`. The build must pass before deploying.
 
 ## Design system
 
-Tokens sourced from `.design/branding/tga/` (vendored from `mutav-finance/brand`). Do not edit brand files inside this repo — update via `cd ../brand && bun brand:import mutav-pulse`.
+Tokens sourced from `.design/branding/mutav/` (vendored from `mutav-finance/brand`). Do not edit brand files inside this repo — update via `cd ../brand && bun brand:import mutav-pulse`.
 
 Key token rules:
 - **Amber (`#E8A020`)** — accent, <5% of pixels. Logo, active nav state, APY highlight, CTA only.

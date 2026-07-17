@@ -1,6 +1,6 @@
 # mutav-pulse
 
-Stellar Pulso hackathon testbed for the **mutav SGR** reserve/fund (rental-guarantee
+Stellar Pulso hackathon testbed for the **MUTAV** reserve/fund (rental-guarantee
 infrastructure). A solvency-gated tokenized reserve vault with premium-gated coverage,
 a diversified yield allocator, and a frontend. Org: `mutav-finance`. Throwaway prototype
 (not coupled to the audited `mutav-stellar` Fund).
@@ -34,16 +34,16 @@ Tests use `e.mock_all_auths_allowing_non_root_auth()`. Deploy/wire: `bootstrap.s
 
 ## Brand setup (vendored from `mutav-finance/brand`)
 
-Brand assets live at **`.design/branding/tga/`** — **copy-vendored, NOT symlinked**
+Brand assets live at **`.design/branding/mutav/`** — **copy-vendored, NOT symlinked**
 (the term "symlink" is a misnomer; consumers each hold a copy + a `.brand-version` baseline).
 This mirrors the other consumers (`mutav`, `mutav-app`, `mutav-fund`, `mutav-stellar`,
-`mutav-solana`), which all vendor to the same `.design/branding/tga/` path.
+`mutav-solana`), which all vendor to the same `.design/branding/mutav/` path.
 
-- **Source of truth:** the `brand` repo (`mutav-finance/brand`), at `brand/branding/tga/`.
+- **Source of truth:** the `brand` repo (`mutav-finance/brand`), at `brand/branding/mutav/`.
   `mutav-pulse` is registered in `brand/consumers.json`.
 - **To update** the vendored brand: `cd ../brand && bun brand:import mutav-pulse`
   (3-way merges brand HEAD into our `.design`). `bun brand:export` re-baselines all consumers.
-- **NEVER edit `.design/branding/tga/**` directly** — it is vendored. Change the `brand` repo
+- **NEVER edit `.design/branding/mutav/**` directly** — it is vendored. Change the `brand` repo
   and re-import, so edits round-trip through the source of truth.
 
 **Design tokens (read these for the frontend):**
@@ -51,7 +51,7 @@ This mirrors the other consumers (`mutav`, `mutav-app`, `mutav-fund`, `mutav-ste
   pixels); **copper** terminal accent; `amberLight #C47E10` for light surfaces.
 - `identity/typography.md` — three-typeface system: **Geist Bold** (authority/headings),
   **Inter** (clarity/body), **JetBrains Mono** (data/numbers). ALL CAPS only for data labels (NAV, APY, MUTAV).
-- `identity/color-system.md`, `patterns/STYLE.md`, `patterns/tga.yml` — full design system.
+- `identity/color-system.md`, `patterns/STYLE.md`, `patterns/mutav.yml` — full design system.
 - Aesthetic: **"Precision Brutalism"** — minimal-dark, terminal, professional.
 - `config.json` defines three product fronts that map to our audiences:
   **`dashboard-investidor`** (investors — dark + amber), **`dashboard-imobiliarias`** (agencies — light),
