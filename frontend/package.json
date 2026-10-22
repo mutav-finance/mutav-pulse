@@ -19,7 +19,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "faucet": "file:./bindings/faucet",
-    "next": "16.2.9",
+    "next": "16.4.1",
     "policy": "file:./bindings/policy",
     "radix-ui": "^1.6.0",
     "react": "19.2.4",
@@ -38,7 +38,7 @@
     "@types/react-dom": "^19",
     "@vitest/ui": "^4.1.9",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.4.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
