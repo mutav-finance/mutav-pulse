@@ -315,3 +315,5 @@ impl PolicyTrait for Policy {
 
 mod test;
 mod test_system;
+#[cfg(test)]
+mod test_adversarial;
