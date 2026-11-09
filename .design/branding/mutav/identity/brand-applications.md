@@ -1,6 +1,6 @@
 # Brand Applications
 **MUTAV — Token de Garantia de Aluguel**
-Identity Phase · April 2026
+Identity Phase · April 2026 · Logo, type and amber use updated 2026-11-08 to match the brand kit v1.0.
 
 ---
 
@@ -17,23 +17,23 @@ The three fronts must feel coherent as siblings and distinct as siblings. A pers
 ### 1.1 Top Navigation Bar
 
 **Background:** `#0E0F11` (Obsidian) — the nav shares the page canvas.
-**Logo:** "mutav" wordmark, Direction 1, `#E8A020` amber. Positioned left. Clear space respected. No tagline in the nav.
-**Nav items:** Inter Medium 14px, `#8A8F99`. Active state: `#F0F0EE` with a 1px amber underline below the item (not a background highlight — a line). The amber is the pointer.
+**Logo:** The MUTAV lockup, dark colourway (`mutav-lockup-dark`): warm-white mark letters, `#E8A020` amber pill and name. Positioned left. Clear space respected. No tagline in the nav.
+**Nav items:** DM Sans 500 14px, `#8A8F99`. Active state: `#F0F0EE` with a 1px amber underline below the item (not a background highlight — a line). The amber is the pointer.
 **Live indicator:** A 6px amber dot, pulsing at 2-second interval (opacity 100% → 40% → 100%, linear), adjacent to a JetBrains Mono 12px counter showing "NAV ao vivo · R$47.2M." This is the only animation in the nav.
-**Right side:** Wallet address in JetBrains Mono 12px, `#555B66`, truncated to first-6/last-4. Connect button in amber outline (1px border `#E8A020`, no fill, Inter Medium 13px, 0px radius).
+**Right side:** Wallet address in JetBrains Mono 12px, `#555B66`, truncated to first-6/last-4. Connect button in amber outline (1px border `#E8A020`, no fill, DM Sans 500 13px, 0px radius).
 
 The nav communicates immediately: this is a live instrument, not a static dashboard. The pulse is functional, not decorative.
 
 ### 1.2 NAV Display Module
 
 **Background:** Surface 1 (`#16181C`).
-**Label:** "NAV Total do Protocolo" — Inter Medium 12px, `#8A8F99`, uppercase, +1% tracking.
-**Value:** "R$47.284.000" — Geist Bold 48px, `#F0F0EE`. The period as thousands separator (BRL format) and the comma for decimals — never vice versa.
+**Label:** "NAV Total do Protocolo" — DM Sans 500 12px, `#8A8F99`, uppercase, +1% tracking.
+**Value:** "R$47.284.000" — DM Sans 700 48px, `#F0F0EE`. The period as thousands separator (BRL format) and the comma for decimals — never vice versa.
 **Sub-value:** "Última atualização: 23 minutos atrás · Bloco #284.091.447" — JetBrains Mono 11px, `#555B66`.
 **Change indicator:** "+R$284.000 (últimas 24h)" — JetBrains Mono 13px, `#3DAB72` (positive) or `#C94040` (negative). The color is the only semantic addition needed.
 **Border:** 1px `#2A2D33` on all sides. No shadow.
 
-The module is a proof of value. Geist Bold makes the declaration; JetBrains Mono provides the evidence.
+The module is a proof of value. DM Sans 700 makes the declaration; JetBrains Mono provides the evidence.
 
 ### 1.3 Contract Registry Table
 
@@ -48,9 +48,9 @@ The table is not styled — it is organized. Every styling decision is a legibil
 ### 1.4 Marketing Landing Page — Hero Section
 
 **Background:** `#0E0F11` full viewport.
-**Headline:** "Yield real. Colateral verificável. Sem intermediário." — Geist Bold 64px, `#F0F0EE`, -4% tracking, leading 1.05. Left-aligned.
-**Sub-headline:** "O único protocolo na Solana com exposição ao mercado brasileiro de garantias locatícias." — Inter Regular 18px, `#8A8F99`. Left-aligned.
-**CTA:** "Conectar carteira" — Inter Medium 14px, `#E8A020` text, 1px `#E8A020` border, `#0E0F11` background fill, 0px radius, 40px height. Hover: `#E8A020` fill, `#0E0F11` text.
+**Headline:** "Yield real. Colateral verificável. Sem intermediário." — DM Sans 700 64px, `#F0F0EE`, -4% tracking, leading 1.05. Left-aligned.
+**Sub-headline:** "O único protocolo na Solana com exposição ao mercado brasileiro de garantias locatícias." — DM Sans 400 18px, `#8A8F99`. Left-aligned.
+**CTA:** "Conectar carteira" — DM Sans 500 14px, `#E8A020` text, 1px `#E8A020` border, `#0E0F11` background fill, 0px radius, 40px height. Hover: `#E8A020` fill, `#0E0F11` text.
 **Visual element:** A live-rendering NAV chart component, embedded directly in the hero — real protocol data, not a screenshot. Amber line on obsidian background. This is the hero image.
 
 The hero refuses marketing register. There is no lifestyle imagery, no promise that isn't already verifiable in the chart next to it.
@@ -62,9 +62,9 @@ The hero refuses marketing register. There is no lifestyle imagery, no promise t
 ### 2.1 Top Navigation Bar
 
 **Background:** `#F7F6F3` (warm canvas).
-**Logo:** "mutav" wordmark, Direction 1, `#C47E10` amber. Positioned left.
-**Nav items:** Inter Medium 14px, `#6B6860`. Active: `#1A1A1A` with 2px `#C47E10` bottom border.
-**Right side:** "Olá, Carlos" (landlord name) in Inter Regular 14px, `#6B6860`. A "Sair" link in Inter Medium 13px, `#C47E10`.
+**Logo:** The MUTAV lockup, light colourway (`mutav-lockup-light`): ink mark letters, `#C47E10` Amber deep pill and name. Positioned left.
+**Nav items:** DM Sans 500 14px, `#6B6860`. Active: `#1A1A1A` with 2px `#C47E10` bottom border.
+**Right side:** "Olá, Carlos" (landlord name) in DM Sans 400 14px, `#6B6860`. A "Sair" link in DM Sans 500 13px, `#1A1A1A` with a 1px `#C47E10` underline. Never amber text at this size on paper.
 
 The nav is calm and familiar. It greets Lucas by name. There is nothing technical about it.
 
@@ -72,12 +72,12 @@ The nav is calm and familiar. It greets Lucas by name. There is nothing technica
 
 **Background:** `#FFFFFF` (Surface 1), with a 1px `#D9D7D2` border. 0px radius.
 **Status banner at card top:** 4px tall `#C47E10` amber fill — a solid stripe, not a badge. Signals: this contract is in a state that requires attention (active, meaning it is covered and running).
-**Property label:** "Apt 42 — Rua Padre João Manuel, 847, São Paulo" — Inter Medium 14px, `#1A1A1A`.
-**Tenant:** "Inquilino: Roberto Ferreira" — Inter Regular 13px, `#6B6860`.
-**Status:** "Cobertura ativa" — Inter Semi-bold 14px, `#C47E10`.
+**Property label:** "Apt 42 — Rua Padre João Manuel, 847, São Paulo" — DM Sans 500 14px, `#1A1A1A`.
+**Tenant:** "Inquilino: Roberto Ferreira" — DM Sans 400 13px, `#6B6860`.
+**Status:** "Cobertura ativa" — DM Sans 700 14px, `#1A1A1A`. The amber stripe above marks it; the text stays ink.
 **Monthly value:** "R$2.847,00/mês" — JetBrains Mono Medium 16px, `#1A1A1A`. Tabular numerals.
-**Next event:** "Próximo vencimento: 15 de maio de 2026" — Inter Regular 12px, `#6B6860`.
-**Bottom:** 1px `#D9D7D2` divider, then two actions: "Ver contrato" (Inter Medium 13px, `#C47E10`) and "Histórico" (Inter Regular 13px, `#6B6860`).
+**Next event:** "Próximo vencimento: 15 de maio de 2026" — DM Sans 400 12px, `#6B6860`.
+**Bottom:** 1px `#D9D7D2` divider, then two actions: "Ver contrato" (DM Sans 500 13px, `#1A1A1A` with a 1px `#C47E10` underline) and "Histórico" (DM Sans 400 13px, `#6B6860`).
 
 The card gives Lucas every piece of information he needs in 3 seconds. The amber status stripe is the first thing he sees: the contract is alive and covered.
 
@@ -85,20 +85,20 @@ The card gives Lucas every piece of information he needs in 3 seconds. The amber
 
 **Full card background shifts to** `#FFF8EE` (Surface Active — amber-tinted). The card itself is the alert.
 **Status banner:** 4px `#B83232` deep red stripe at top.
-**Header:** "Inadimplência detectada" — Geist Bold 16px, `#1A1A1A`. This is the only time Geist Bold appears at this size on a card in Lucas's front — it commands attention.
-**Details:** "Vencimento: 15 de abril de 2026 · Pagamento não identificado às 23h59" — Inter Regular 13px, `#6B6860`. JetBrains Mono for the date and time.
-**Process status:** "Protocolo iniciado: repasse previsto em até 48h" — Inter Medium 14px, `#1A1A1A`.
+**Header:** "Inadimplência detectada" — DM Sans 700 16px, `#1A1A1A`. This is the only bold header at this size on a card in Lucas's front — it commands attention.
+**Details:** "Vencimento: 15 de abril de 2026 · Pagamento não identificado às 23h59" — DM Sans 400 13px, `#6B6860`. JetBrains Mono for the date and time.
+**Process status:** "Protocolo iniciado: repasse previsto em até 48h" — DM Sans 500 14px, `#1A1A1A`.
 **Progress indicator:** A simple linear progress bar — 1px `#D9D7D2` background, `#C47E10` fill, no animation initially, updating as time passes.
-**CTA:** "Acompanhar processo" — Inter Medium 14px, `#C47E10` text on `#FFFFFF` button with 1px `#C47E10` border, 0px radius.
+**CTA:** "Acompanhar processo" — DM Sans 500 14px, `#1A1A1A` text on `#FFFFFF` button with 1px `#C47E10` border, 0px radius.
 
 Lucas does not feel panic from this card. He feels: the system saw it. The system is handling it. He is being informed. The Caregiver's signal is the calm amber progress bar — not a red alert screen with exclamation marks.
 
 ### 2.4 Payment Confirmed — Resolution State
 
 **Card background:** `#FFFFFF`. Status banner: 4px `#2E8B5A` (Trust green).
-**Header:** "Pagamento realizado" — Geist Bold 18px, `#1A1A1A`.
-**Amount:** "R$2.847,00" — Geist Bold 32px, `#2E8B5A`. The green amount is the resolution.
-**Detail:** "Transferido para Bradesco ····3847" — Inter Regular 14px, `#6B6860`.
+**Header:** "Pagamento realizado" — DM Sans 700 18px, `#1A1A1A`.
+**Amount:** "R$2.847,00" — DM Sans 700 32px, `#2E8B5A`. The green amount is the resolution.
+**Detail:** "Transferido para Bradesco ····3847" — DM Sans 400 14px, `#6B6860`.
 **Timing:** "Tempo desde notificação de inadimplência: 4h37m" — JetBrains Mono 13px, `#6B6860`. This specific number is the brand promise materialized. It is never rounded.
 **Date:** "18h22 de hoje, 15 abr 2026" — JetBrains Mono 12px, `#9E9C98`.
 
@@ -108,9 +108,9 @@ This is the moment the brand delivers. The green amount is the payoff of the ent
 
 **Background:** `#F7F6F3`.
 **Left column:** Typography and CTA.
-**Headline:** "Quando o inquilino para de pagar, você recebe." — Geist Bold 48px, `#1A1A1A`, -1% tracking.
-**Sub:** "Sem formulário. Sem fila. Sem telefonema. O protocolo executa." — Inter Regular 18px, `#6B6860`. Three short sentences. Full stop after each.
-**CTA:** "Proteger meu imóvel" — Inter Semi-bold 15px, `#FFFFFF` text on `#C47E10` fill, 0px radius, 48px height.
+**Headline:** "Quando o inquilino para de pagar, você recebe." — DM Sans 700 48px, `#1A1A1A`, -1% tracking.
+**Sub:** "Sem formulário. Sem fila. Sem telefonema. O protocolo executa." — DM Sans 400 18px, `#6B6860`. Three short sentences. Full stop after each.
+**CTA:** "Proteger meu imóvel" — DM Sans 700 15px, `#1A1A1A` text on `#C47E10` fill, 0px radius, 48px height.
 **Right column:** Photography. A real São Paulo apartment, morning light, warm grade, no people visible — just the lived-in space. No caption. The image needs no explanation.
 
 The hero is a promise on the left and evidence on the right. Except the evidence is visual warmth, not data — because Lucas's evidence register is emotional, not technical.
@@ -177,12 +177,12 @@ The log is the protocol's memory. Every event is recorded, timestamped, and attr
 - Ana: "MUTAV — NAV atualizado · Liquidação executada bloco #284.091.447" — data first, technical specificity.
 - Operator: "[AÇÃO NECESSÁRIA] CTR-0028419 aguarda aprovação há 6h" — status code first, specific time.
 
-**Email body layout:** Single-column. White background on all emails (overrides dark-mode preferences — MUTAV emails are always light). Logo at top: "mutav" wordmark in amber, centered. Geist Bold for the key declaration, Inter Regular for the explanation, JetBrains Mono for any data value.
+**Email body layout:** Single-column. White background on all emails (overrides dark-mode preferences — MUTAV emails are always light). Logo at top: the MUTAV lockup as an image (`mutav-lockup-light`), centered. DM Sans 700 for the key declaration, DM Sans 400 for the explanation, JetBrains Mono for any data value. Where the fonts can't load: Arial or Helvetica, and Courier New for data.
 
 ### 4.2 Document System (Contracts, Reports, Investor Docs)
 
-**Cover:** `#0E0F11` background (documents exist in the investidor's world, not Lucas's — contracts are institutional). "mutav" Direction 2 (wordmark + rule) in amber, centered on cover. Document title in Geist Bold 28px, `#F0F0EE`. Date and version in JetBrains Mono 11px, `#8A8F99`.
-**Interior pages:** `#FFFFFF` background. Body: Inter Regular 10.5pt. Section headers: Geist Bold 14pt, `#1A1A1A`. Data tables: JetBrains Mono 9pt, tabular numerals, `#1A1A1A`.
+**Cover:** `#0E0F11` background (documents exist in the investidor's world, not Lucas's — contracts are institutional). The MUTAV lockup, dark colourway (`mutav-lockup-dark`), centered on cover. Document title in DM Sans 700 28px, `#F0F0EE`. Date and version in JetBrains Mono 11px, `#8A8F99`.
+**Interior pages:** `#FFFFFF` background. Body: DM Sans 400 10.5pt. Section headers: DM Sans 700 14pt, `#1A1A1A`. Data tables: JetBrains Mono 9pt, tabular numerals, `#1A1A1A`.
 **For Lucas-specific documents** (guarantee certificate, contract confirmation): Interior pages use `#F7F6F3` background. Amber rule at top of each page (1px `#C47E10`). The trust signal carries even in a printed document.
 
 ### 4.3 Protocol Status Page (Public)
@@ -192,7 +192,7 @@ A single-page public status endpoint — always live, always dark mode, JetBrain
 **URL pattern:** status.mutav.finance or similar.
 **Layout:** Exactly like a simplified terminal. Three sections:
 1. `PROTOCOLO` — ONLINE / DEGRADADO / OFFLINE in the corresponding semantic color.
-2. `NAV` — live value in Geist Bold amber.
+2. `NAV` — live value in DM Sans 700, `#E8A020` amber.
 3. `CONTRATOS_ATIVOS` — live count in JetBrains Mono.
 4. `LOG_RECENTE` — last 10 protocol events, terminal log format.
 

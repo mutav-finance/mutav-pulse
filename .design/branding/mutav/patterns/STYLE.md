@@ -25,8 +25,8 @@
 
 **Three-layer hierarchy is the core law.** Every screen in every front must present information in exactly three typographic registers:
 
-1. **Declaration** — Geist Bold. What happened. What the status is.
-2. **Explanation** — Inter. Why it matters. Context.
+1. **Declaration** — DM Sans 700. What happened. What the status is.
+2. **Explanation** — DM Sans 400. Why it matters. Context.
 3. **Evidence** — JetBrains Mono. Machine-verified proof: amounts, timestamps, hashes.
 
 No screen is complete without all three layers. This is not a stylistic preference — it is the brand's argument about what trustworthy information looks like.
@@ -52,12 +52,12 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border-radius | `0px` | `0px` |
 | shadow | none | none |
 | padding | `24px` | `24px` |
-| label font | Inter Medium 12px ALL CAPS `+0.01em` `#8A8F99` | Inter Medium 14px `#1A1A1A` |
-| value font | Geist Bold 48px `#F0F0EE` | JetBrains Mono Medium 16px `#1A1A1A` tabular-nums |
+| label font | JetBrains Mono 500 12px caps `+0.08em` `#8A8F99` | DM Sans 500 14px `#1A1A1A` |
+| value font | DM Sans 700 48px `#F0F0EE` | JetBrains Mono Medium 16px `#1A1A1A` tabular-nums |
 | sub-value font | JetBrains Mono 11px `#555B66` tabular-nums | — |
 | status stripe | — | 4px top border: amber active / `#B83232` default / `#2E8B5A` paid |
 | inadimplencia state | `#C94040` error semantics | card bg shifts to `#FFF8EE` |
-| pagamento state | `#3DAB72` success semantics | amount: Geist Bold 32px `#2E8B5A` |
+| pagamento state | `#3DAB72` success semantics | amount: DM Sans 700 32px `#2E8B5A` |
 
 ### 3.2 Button — Primary
 
@@ -68,7 +68,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border-radius | `0px` | `0px` | `0px` |
 | height | 40px | 48px | — |
 | text color | `#E8A020` | `#1A1A1A` | `#E8A020` |
-| font | Inter Medium 14px | Inter Medium 14px | JetBrains Mono Medium 13px |
+| font | DM Sans 500 14px | DM Sans 500 14px | JetBrains Mono Medium 13px |
 | label format | label | label | `[ LABEL ]` |
 | hover bg | `#E8A020` | `#9E6A10` | transparent |
 | hover text | `#0E0F11` | `#1A1A1A` | — |
@@ -85,7 +85,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border | `1px solid #2A2D33` | `1px solid #C47E10` |
 | border-radius | `0px` | `0px` |
 | height | 40px | 48px |
-| text color | `#8A8F99` | `#C47E10` |
+| text color | `#8A8F99` | `#1A1A1A` (never small amber text on paper) |
 | hover border | `#E8A020` | — |
 | hover text | `#F0F0EE` | — |
 | hover bg | — | `#FFF0D4` |
@@ -98,9 +98,9 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border | `1px solid #2A2D33` | `1px solid #D9D7D2` |
 | border-radius | `0px` | `0px` |
 | text color | `#F0F0EE` | `#1A1A1A` |
-| label font | Inter Medium 13px `#8A8F99` | Inter Medium 13px `#6B6860` |
+| label font | DM Sans 500 13px `#8A8F99` | DM Sans 500 13px `#6B6860` |
 | input font (data) | JetBrains Mono Regular 14px | JetBrains Mono Regular 14px |
-| input font (text) | Inter Regular 14px | Inter Regular 14px |
+| input font (text) | DM Sans 400 14px | DM Sans 400 14px |
 | placeholder | `#555B66` | `#9E9C98` |
 | focus border | `1px solid #E8A020` | `1px solid #C47E10` |
 | focus ring | none | none |
@@ -132,8 +132,8 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | background | `#0E0F11` |
 | height | 56px |
 | border-bottom | `1px solid #2A2D33` |
-| logo | Direction 1: `"mutav"` Geist Bold lowercase `#E8A020` |
-| nav items | Inter Medium 14px `#8A8F99` |
+| logo | MUTAV lockup, dark colourway: `kit/logo/svg/mutav-lockup-dark.svg`. Never retyped. |
+| nav items | DM Sans 500 14px `#8A8F99` |
 | active item | `#F0F0EE` + 1px `#E8A020` bottom border |
 | live dot | 6px circle `#E8A020`, opacity pulse 2s linear ∞ |
 | counter | JetBrains Mono 12px |
@@ -162,7 +162,8 @@ No screen is complete without all three layers. This is not a stylistic preferen
 - Rounded corners — `border-radius` must be `0px` on all elements: cards, buttons, inputs, badges, modals, tooltips, dropdowns
 - Glass / `backdrop-filter: blur()` effects
 - `#22C55E` ANSI green anywhere, especially in Terminal
-- Amber-colored icons — amber is reserved for text, CTAs, and status markers only
+- Amber-colored icons — amber is reserved for the logo, fills, CTAs, rules, status markers and large headlines
+- Small text in amber on paper (links, labels, badges): use ink or stone with an amber bar or underline
 - Photography inside Dashboard Investidor product UI
 - Blockchain jargon in Dashboard Imobiliárias copy
 - `text-shadow` effects (no phosphor glow, no text bloom)
@@ -171,22 +172,22 @@ No screen is complete without all three layers. This is not a stylistic preferen
 - Glow orbs, ambient bloom, or decorative light effects
 - ASCII art decorations
 - Pill-shaped or rounded badges
-- Inter font inside Terminal panes
+- DM Sans font inside Terminal panes
 
 ### Always
 
 - `border-radius: 0px` on every UI element, no exceptions
 - `1px solid` borders — never 2px decorative, never dashed
 - JetBrains Mono with `font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums;` on all numeric data
-- Three-layer hierarchy present on every screen (Geist / Inter / JetBrains Mono)
+- Three-layer hierarchy present on every screen (DM Sans 700 / DM Sans 400 / JetBrains Mono)
 - Amber occupying less than 5% of screen pixels on dark fronts
 - Surface stacking for depth (canvas → surface-1 → surface-2 → surface-3)
 - Success and error colors used semantically only, never decoratively
 - `#1A1A1A` text on `#C47E10` amber fill in Imobiliárias (5.3:1 AA pass)
-- Inter Semi-bold 600 minimum when `#2E8B5A` appears on light background
+- DM Sans 700 minimum when `#2E8B5A` appears on light background
 - Bold status labels ≥14px when `#C94040` appears on dark background
 - Phosphor Icons at `weight="light"` only
-- 1× cap-height clear space around logo on all sides
+- Clear space around the logo equal to the pill height (**p**) on all sides
 - 8px baseline grid for all spacing decisions
 
 ---
@@ -247,7 +248,7 @@ Count amber pixels before shipping every screen. The live dot (6px × 56px nav =
 No number may appear without `font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums;`. This includes: balances, timestamps, contract IDs, hashes, percentages, counter badges, table cells, chart labels. Create a `<Mono>` component that enforces this and never render numeric data without it.
 
 **4. Three-layer hierarchy enforcement at the screen level.**
-Every route must have exactly one Geist Bold declaration (the heading/status), at least one Inter explanation, and at least one JetBrains Mono evidence element. If a screen design has no JetBrains Mono visible, it is missing the evidence layer — the protocol's proof. This is a design review checklist item, not a guideline.
+Every route must have exactly one DM Sans 700 declaration (the heading/status), at least one DM Sans 400 explanation, and at least one JetBrains Mono evidence element. If a screen design has no JetBrains Mono visible, it is missing the evidence layer — the protocol's proof. This is a design review checklist item, not a guideline.
 
 **5. Surface stacking without shadows.**
 When a modal, drawer, or popover opens, it must sit on a higher surface color — not cast a shadow. Modal background: `#1E2126` (surface-2) on top of page canvas `#0E0F11`. The color difference is the depth. If you feel the need to add a `box-shadow`, that is a signal the surface color step is missing or too subtle — fix the color, do not add a shadow.
@@ -314,9 +315,10 @@ When a modal, drawer, or popover opens, it must sit on a higher surface color �
 
 @theme {
   /* Fonts */
-  --font-display: "Geist", sans-serif;
-  --font-body:    "Inter Variable", sans-serif;
-  --font-mono:    "JetBrains Mono Variable", monospace;
+  /* Same values as kit/tokens/tokens.css */
+  --font-sans: "DM Sans", Arial, Helvetica, sans-serif;  /* headlines 700, body 400, emphasis 500 */
+  --font-mono: "JetBrains Mono", "Courier New", monospace;  /* labels, figures, data */
+  /* Outfit 800 lives only in the logo artwork. Never load it for text. */
 
   /* Semantic colors (resolved by data-front attribute) */
   --color-canvas:     var(--color-canvas);
@@ -352,14 +354,19 @@ When a modal, drawer, or popover opens, it must sit on a higher surface color �
 
 ```tsx
 // app/layout.tsx
-import { Geist } from "next/font/google"
-import "@fontsource-variable/inter"
-import "@fontsource-variable/jetbrains-mono"
+import { DM_Sans, JetBrains_Mono } from "next/font/google"
 
-const geist = Geist({
-  weight: ["700"],   // Bold only — never load other weights
+const sans = DM_Sans({
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-sans",
+  display: "swap",
+})
+
+const mono = JetBrains_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 })
 ```
