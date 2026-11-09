@@ -7,7 +7,7 @@
 |------|-------------|
 | [mutav.yml](./mutav.yml) | Style preset — single source of truth. Tokens, intensity, patterns, constraints, per-front overrides with documented rationale. |
 | [STYLE.md](./STYLE.md) | Agent contract — rendered from `.yml`. Component tables, constraint lists, bold bets, implementation snippets. |
-| [guidelines.html](./guidelines.html) | Visual brand guide — open in browser. Self-contained, no external deps. Demonstrates Precision Brutalism using MUTAV's own visual language. |
+| [guidelines.html](./guidelines.html) | Superseded April 2026 visual guide: old logo and type. The current guide is `kit/MUTAV-brand-kit.html`. |
 
 ## System Overview
 
@@ -15,7 +15,7 @@
 |-----------|-------|
 | Strategy | `generate` — full greenfield system |
 | Tech stack | Next.js + Tailwind v4 + shadcn/ui |
-| Fonts | Geist (700 only) · Inter Variable · JetBrains Mono Variable |
+| Fonts | DM Sans 400/500/700 · JetBrains Mono 400/500 · Outfit 800 in the logo only (see `kit-src/brand.json`) |
 | Fronts | Investidor (dark) · Imobiliárias (light) · Terminal (monospace) |
 | Border radius | `0px` everywhere — no exceptions |
 | Intensity | variance: 3 · motion: 2 · density: 6 |

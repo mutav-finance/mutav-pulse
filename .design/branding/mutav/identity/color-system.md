@@ -1,6 +1,6 @@
 # Color System
 **MUTAV — Token de Garantia de Aluguel**
-Identity Phase · April 2026
+Identity Phase · April 2026 · Brand palette updated 2026-11-08 to match the brand kit v1.0 (`kit/MUTAV-brand-kit.html`, built from `kit-src/brand.json`).
 
 ---
 
@@ -12,6 +12,36 @@ Composition strategy per front:
 - **Dashboard Investidor:** Neutral + Single Accent. Obsidian dominates. Amber appears in fewer than 5% of screen pixels at any moment.
 - **Dashboard Imobiliárias:** 60-30-10. Warm white (60%) + white surfaces/neutrals (30%) + amber (10% on CTAs and active states only).
 - **Terminal:** Terminal/ANSI aesthetic with warm/earthy accent replacing conventional green. Monochrome obsidian base + amber for status indicators, warm copper for secondary data states.
+
+---
+
+## Brand Palette (kit v1.0)
+
+The source of truth is `kit-src/brand.json` → `color`. The published tokens are `kit/tokens/tokens.css` and `tokens.json`. The product palettes below extend this set for the apps; where they disagree, this section wins.
+
+Two canvases, one accent. Paper is the plain side: agencies, letters, forms. Obsidian is the technical side: the reserve, presentations.
+
+| Colour | Hex | Token | Role |
+|---|---|---|---|
+| Obsidian | `#0E0F11` | `--mutav-obsidian` | Dark canvas. The technical side: reserve, presentations. |
+| Surface | `#16181C` | `--mutav-surface` | Cards on obsidian. |
+| Border dark | `#2A2D33` | `--mutav-border-dk` | Rules and borders on obsidian. |
+| Warm white | `#F0F0EE` | `--mutav-warm-white` | Text and the mark's letters on obsidian. |
+| Mute | `#8A8F99` | `--mutav-mute` | Secondary text on obsidian. |
+| Paper | `#F7F6F3` | `--mutav-paper` | Light canvas. The plain side: agencies, letters, forms. |
+| Ink | `#1A1A1A` | `--mutav-ink` | Text and the mark's letters on paper. |
+| Stone | `#6B6860` | `--mutav-stone` | Secondary text on paper. |
+| Rule | `#D9D7D2` | `--mutav-rule` | Rules and borders on paper. |
+| Amber | `#E8A020` | `--mutav-amber` | The brand colour. Logo on dark, fills, the favicon pill. |
+| Amber deep | `#C47E10` | `--mutav-amber-deep` | Logo, fills and large headlines on paper. |
+
+### Amber rules
+- **Amber is scarce on purpose.** It marks the one thing that matters on each surface: the logo, the main action, the payoff phrase. Keep it under about 10% of any layout.
+- **On paper, amber stays bright or it stays out.** Use Amber deep `#C47E10` for the logo, fills, rules and headlines of 24px and up.
+- **Never set small text in amber on paper.** Use ink or stone, and mark it with an amber bar or underline.
+- **Links on paper are ink with an amber underline**, not amber text.
+- **On obsidian, Amber `#E8A020` works at any size.**
+- **No metallic gold foil.** Amber prints as ink or enamel.
 
 ---
 
@@ -53,7 +83,7 @@ Composition strategy per front:
 | Foreground Primary | `#1A1A1A` | oklch(0.187 0.000 0) | Primary text — all body copy, headings | Near-black, no blue undertone. Reads as ink on paper on warm canvas. |
 | Foreground Secondary | `#6B6860` | oklch(0.480 0.012 75) | Secondary text, labels, helper text | Warm medium grey. Receded but readable. |
 | Foreground Tertiary | `#9E9C98` | oklch(0.670 0.008 85) | Placeholders, disabled states, fine print | Floor of legibility on this front. |
-| Accent (Amber) | `#C47E10` | oklch(0.610 0.132 65) | CTAs, active contract badges, primary links | Same amber family as dark front — darker value maintains presence on light canvas. |
+| Accent (Amber) | `#C47E10` | oklch(0.610 0.132 65) | Logo, fills (CTA buttons with ink text), rules, headlines ≥ 24px | Same amber family as dark front — darker value maintains presence on light canvas. Never small text: links are ink with an amber underline. |
 | Accent Light | `#FFF0D4` | oklch(0.965 0.040 82) | Amber-tinted background for confirmation states | Warmest surface. Used for "pagamento confirmado" callout areas. |
 | Trust (Paid/OK) | `#2E8B5A` | oklch(0.600 0.120 157) | Pagamento confirmado, contract in good standing | Muted forest green — warm and legible. Must appear every time a payment is confirmed. |
 | Alert (Default) | `#B83232` | oklch(0.483 0.147 24) | Inadimplência detected, action required | Deep red — serious but not alarming. |
@@ -62,6 +92,7 @@ Composition strategy per front:
 **Rules — Light System:**
 - No dark-mode surfaces on this front.
 - Amber accent only on CTAs and active contract states — not decorative.
+- No small text in amber. Links, badge labels and status text are ink or stone, marked with an amber bar or underline.
 - `#FFF8EE` surface active may cover up to 30% of card surface in active/paid states (amber tint, not full accent).
 - Success green must accompany every pagamento confirmado state.
 
@@ -125,9 +156,9 @@ Composition strategy per front:
 | `#2E8B5A` | `#F7F6F3` | **3.9:1** | ⚠️ AA large (use Semi-bold minimum) |
 | `#B83232` | `#F7F6F3` | **5.5:1** | ✅ AA |
 
-**Amber CTA guidance:** `#C47E10` on light background fails AA for normal text. Use `#1A1A1A` as button text color (5.3:1 ✅). Amber accent is approved for large text (section titles, badge labels in bold), icons, and decorative borders — not for body text.
+**Amber CTA guidance:** `#C47E10` on light background fails AA for normal text. Use `#1A1A1A` as button text color (5.3:1 ✅). Amber deep is approved for the logo, fills, rules and headlines of 24px and up. Never for small text, links or badge labels: use ink or stone with an amber bar or underline.
 
-**Trust green guidance:** `#2E8B5A` on canvas is 3.9:1. Use Inter Semi-bold (600) minimum for all trust-colored text. "Pagamento confirmado" label must be Semi-bold at 14px minimum.
+**Trust green guidance:** `#2E8B5A` on canvas is 3.9:1. Use DM Sans Bold (700) for all trust-colored text. "Pagamento confirmado" label must be Bold at 14px minimum.
 
 ### Terminal (deep obsidian background)
 

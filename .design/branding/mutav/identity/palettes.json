@@ -164,10 +164,10 @@
     "dashboard_imobiliarias": {
       "primary_on_canvas": { "fg": "#1A1A1A", "bg": "#F7F6F3", "ratio": "16.1:1", "wcag": "AAA" },
       "secondary_on_canvas": { "fg": "#6B6860", "bg": "#F7F6F3", "ratio": "5.2:1", "wcag": "AA" },
-      "amber_on_canvas": { "fg": "#C47E10", "bg": "#F7F6F3", "ratio": "3.1:1", "wcag": "AA-large-only", "note": "Use for large text, icons, borders — not body copy" },
+      "amber_on_canvas": { "fg": "#C47E10", "bg": "#F7F6F3", "ratio": "3.1:1", "wcag": "AA-large-only", "note": "Use for the logo, fills, rules and headlines of 24px and up. Never small text or links: links are ink with an amber underline" },
       "white_on_amber": { "fg": "#FFFFFF", "bg": "#C47E10", "ratio": "3.3:1", "wcag": "AA-large-only", "note": "⚠️ Do not use white text on amber buttons" },
       "dark_on_amber": { "fg": "#1A1A1A", "bg": "#C47E10", "ratio": "5.3:1", "wcag": "AA", "note": "✅ Use dark text on amber CTAs" },
-      "trust_on_canvas": { "fg": "#2E8B5A", "bg": "#F7F6F3", "ratio": "3.9:1", "wcag": "AA-large-only", "note": "Use Inter Semi-bold 600 minimum" },
+      "trust_on_canvas": { "fg": "#2E8B5A", "bg": "#F7F6F3", "ratio": "3.9:1", "wcag": "AA-large-only", "note": "Use DM Sans Bold 700" },
       "alert_on_canvas": { "fg": "#B83232", "bg": "#F7F6F3", "ratio": "5.5:1", "wcag": "AA" }
     },
     "terminal": {
