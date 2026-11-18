@@ -52,7 +52,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border-radius | `0px` | `0px` |
 | shadow | none | none |
 | padding | `24px` | `24px` |
-| label font | JetBrains Mono 500 12px caps `+0.08em` `#8A8F99` | DM Sans 500 14px `#1A1A1A` |
+| label font | JetBrains Mono 500 12px caps `+0.08em` `#A0A5AE` | DM Sans 500 14px `#1A1A1A` |
 | value font | DM Sans 700 48px `#F0F0EE` | JetBrains Mono Medium 16px `#1A1A1A` tabular-nums |
 | sub-value font | JetBrains Mono 11px `#555B66` tabular-nums | — |
 | status stripe | — | 4px top border: amber active / `#B83232` default / `#2E8B5A` paid |
@@ -85,7 +85,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border | `1px solid #2A2D33` | `1px solid #C47E10` |
 | border-radius | `0px` | `0px` |
 | height | 40px | 48px |
-| text color | `#8A8F99` | `#1A1A1A` (never small amber text on paper) |
+| text color | `#A0A5AE` | `#1A1A1A` (never small amber text on paper) |
 | hover border | `#E8A020` | — |
 | hover text | `#F0F0EE` | — |
 | hover bg | — | `#FFF0D4` |
@@ -98,7 +98,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | border | `1px solid #2A2D33` | `1px solid #D9D7D2` |
 | border-radius | `0px` | `0px` |
 | text color | `#F0F0EE` | `#1A1A1A` |
-| label font | DM Sans 500 13px `#8A8F99` | DM Sans 500 13px `#6B6860` |
+| label font | DM Sans 500 13px `#A0A5AE` | DM Sans 500 13px `#6B6860` |
 | input font (data) | JetBrains Mono Regular 14px | JetBrains Mono Regular 14px |
 | input font (text) | DM Sans 400 14px | DM Sans 400 14px |
 | placeholder | `#555B66` | `#9E9C98` |
@@ -133,7 +133,7 @@ No screen is complete without all three layers. This is not a stylistic preferen
 | height | 56px |
 | border-bottom | `1px solid #2A2D33` |
 | logo | MUTAV lockup, dark colourway: `kit/logo/svg/mutav-lockup-dark.svg`. Never retyped. |
-| nav items | DM Sans 500 14px `#8A8F99` |
+| nav items | DM Sans 500 14px `#A0A5AE` |
 | active item | `#F0F0EE` + 1px `#E8A020` bottom border |
 | live dot | 6px circle `#E8A020`, opacity pulse 2s linear ∞ |
 | counter | JetBrains Mono 12px |
@@ -268,7 +268,7 @@ When a modal, drawer, or popover opens, it must sit on a higher surface color �
   --color-surface-3:  #252830;
   --color-border:     #2A2D33;
   --color-text:       #F0F0EE;
-  --color-text-2:     #8A8F99;
+  --color-text-2:     #A0A5AE;
   --color-text-3:     #555B66;
   --color-accent:     #E8A020;
   --color-accent-dim: #9E6A10;

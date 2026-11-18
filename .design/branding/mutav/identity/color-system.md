@@ -27,7 +27,7 @@ Two canvases, one accent. Paper is the plain side: agencies, letters, forms. Obs
 | Surface | `#16181C` | `--mutav-surface` | Cards on obsidian. |
 | Border dark | `#2A2D33` | `--mutav-border-dk` | Rules and borders on obsidian. |
 | Warm white | `#F0F0EE` | `--mutav-warm-white` | Text and the mark's letters on obsidian. |
-| Mute | `#8A8F99` | `--mutav-mute` | Secondary text on obsidian. |
+| Mute | `#A0A5AE` | `--mutav-mute` | Secondary text on obsidian. |
 | Paper | `#F7F6F3` | `--mutav-paper` | Light canvas. The plain side: agencies, letters, forms. |
 | Ink | `#1A1A1A` | `--mutav-ink` | Text and the mark's letters on paper. |
 | Stone | `#6B6860` | `--mutav-stone` | Secondary text on paper. |
@@ -55,7 +55,7 @@ Two canvases, one accent. Paper is the plain side: agencies, letters, forms. Obs
 | Surface 3 | `#252830` | oklch(0.210 0.010 265) | Hover states, secondary panels, flyouts | Third elevation layer — ceiling of the surface stack. |
 | Border | `#2A2D33` | oklch(0.234 0.009 264) | Structural borders — used sparingly | 1px only. Separation without new tonal families. |
 | Foreground Primary | `#F0F0EE` | oklch(0.944 0.004 102) | Primary text — all body copy, data labels | Warm white. Pure white creates cold contrast against obsidian; this carries amber's warmth through to text. |
-| Foreground Secondary | `#8A8F99` | oklch(0.620 0.015 250) | Secondary text, labels, timestamps | Receded but legible. All non-critical data identifiers. |
+| Foreground Secondary | `#A0A5AE` | oklch(0.721 0.014 262) | Secondary text, labels, timestamps | Receded but legible. All non-critical data identifiers. |
 | Foreground Tertiary | `#555B66` | oklch(0.430 0.018 250) | Disabled states, placeholders, ghost text | Near floor of legibility. Used only for intentional recession. |
 | Accent (Amber) | `#E8A020` | oklch(0.758 0.152 74.86) | CTAs, logo, active state indicators, live dot | Sole color event on the dark front. Carries ALL semantic weight for action and attention. |
 | Accent Dim | `#9E6A10` | oklch(0.513 0.103 75.08) | Amber hover states, secondary amber contexts | Lower-luminosity amber for hover without introducing a new hue. |
@@ -133,8 +133,8 @@ Two canvases, one accent. Paper is the plain side: agencies, letters, forms. Obs
 | `#F0F0EE` | `#0E0F11` | **16.9:1** | ✅ AAA |
 | `#F0F0EE` | `#16181C` | **16.1:1** | ✅ AAA |
 | `#F0F0EE` | `#1E2126` | **14.2:1** | ✅ AAA |
-| `#8A8F99` | `#0E0F11` | **6.0:1** | ✅ AA |
-| `#8A8F99` | `#16181C` | **5.7:1** | ✅ AA |
+| `#A0A5AE` | `#0E0F11` | **7.8:1** | ✅ AAA |
+| `#A0A5AE` | `#16181C` | **7.2:1** | ✅ AAA |
 | `#E8A020` | `#0E0F11` | **8.8:1** | ✅ AAA |
 | `#E8A020` | `#16181C` | **8.3:1** | ✅ AAA |
 | `#3DAB72` | `#0E0F11` | **6.7:1** | ✅ AA |
@@ -197,7 +197,7 @@ Dashboard Investidor IS the dark system. Dashboard Imobiliárias does not have a
 | Surface 1 | `#FFFFFF` | `#16181C` |
 | Surface 2 | `#EEEDEA` | `#1E2126` |
 | Foreground Primary | `#1A1A1A` | `#F0F0EE` |
-| Foreground Secondary | `#6B6860` | `#8A8F99` |
+| Foreground Secondary | `#6B6860` | `#A0A5AE` |
 | Accent | `#C47E10` | `#E8A020` |
 | Trust/Success | `#2E8B5A` | `#3DAB72` |
 | Alert/Error | `#B83232` | `#C94040` |
@@ -213,7 +213,7 @@ Dashboard Investidor IS the dark system. Dashboard Imobiliárias does not have a
 | `--color-surface-2` | `#1E2126` | `#EEEDEA` | `#181B1F` |
 | `--color-border` | `#2A2D33` | `#D9D7D2` | `#2A2D33` |
 | `--color-text` | `#F0F0EE` | `#1A1A1A` | `#E8E4DC` |
-| `--color-text-2` | `#8A8F99` | `#6B6860` | `#7A7870` |
+| `--color-text-2` | `#A0A5AE` | `#6B6860` | `#7A7870` |
 | `--color-text-3` | `#555B66` | `#9E9C98` | `#4A4844` |
 | `--color-accent` | `#E8A020` | `#C47E10` | `#E8A020` |
 | `--color-accent-dim` | `#9E6A10` | `#FFF0D4` | `#B87010` |

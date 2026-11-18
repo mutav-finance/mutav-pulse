@@ -155,7 +155,7 @@
     "dashboard_investidor": {
       "primary_on_canvas": { "fg": "#F0F0EE", "bg": "#0E0F11", "ratio": "16.9:1", "wcag": "AAA" },
       "primary_on_surface1": { "fg": "#F0F0EE", "bg": "#16181C", "ratio": "16.1:1", "wcag": "AAA" },
-      "secondary_on_canvas": { "fg": "#8A8F99", "bg": "#0E0F11", "ratio": "6.0:1", "wcag": "AA" },
+      "secondary_on_canvas": { "fg": "#A0A5AE", "bg": "#0E0F11", "ratio": "7.8:1", "wcag": "AAA" },
       "amber_on_canvas": { "fg": "#E8A020", "bg": "#0E0F11", "ratio": "8.8:1", "wcag": "AAA" },
       "amber_on_surface1": { "fg": "#E8A020", "bg": "#16181C", "ratio": "8.3:1", "wcag": "AAA" },
       "success_on_canvas": { "fg": "#3DAB72", "bg": "#0E0F11", "ratio": "6.7:1", "wcag": "AA" },

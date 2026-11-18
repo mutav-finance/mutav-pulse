@@ -66,7 +66,7 @@ tokens:
       surface-3:         { hex: "#252830", oklch: "oklch(0.210 0.010 265)", usage: "Hover states, panels" }
       border:            { hex: "#2A2D33", oklch: "oklch(0.234 0.009 264)", usage: "1px structural borders" }
       fg-primary:        { hex: "#F0F0EE", oklch: "oklch(0.944 0.004 102)", usage: "Primary text" }
-      fg-secondary:      { hex: "#8A8F99", oklch: "oklch(0.620 0.015 250)", usage: "Secondary text, labels" }
+      fg-secondary:      { hex: "#A0A5AE", oklch: "oklch(0.721 0.014 262)", usage: "Secondary text, labels" }
       fg-tertiary:       { hex: "#555B66", oklch: "oklch(0.430 0.018 250)", usage: "Disabled, placeholders" }
       accent:            { hex: "#E8A020", oklch: "oklch(0.758 0.152 74.86)", usage: "CTAs, logo, active states" }
       accent-dim:        { hex: "#9E6A10", oklch: "oklch(0.513 0.103 75.08)", usage: "Amber hover states" }
@@ -138,7 +138,7 @@ tokens:
         imobiliarias:  "#1A1A1A"
         terminal:      "#E8E4DC"
       "--color-text-2":
-        investidor:    "#8A8F99"
+        investidor:    "#A0A5AE"
         imobiliarias:  "#6B6860"
         terminal:      "#7A7870"
       "--color-text-3":
@@ -168,9 +168,9 @@ tokens:
         ratio: "16.9:1"
         level: AAA
         status: pass
-      - pair: "#8A8F99 on #0E0F11"
-        ratio: "6.0:1"
-        level: AA
+      - pair: "#A0A5AE on #0E0F11"
+        ratio: "7.8:1"
+        level: AAA
         status: pass
       - pair: "#E8A020 on #0E0F11"
         ratio: "8.8:1"
@@ -388,7 +388,7 @@ patterns:
       border-radius: 0px
       shadow: none
       padding: "24px"
-      label: "JetBrains Mono 500 12px caps tracking +0.08em #8A8F99"
+      label: "JetBrains Mono 500 12px caps tracking +0.08em #A0A5AE"
       value: "DM Sans 700 48px #F0F0EE"
       sub-value: "JetBrains Mono 11px #555B66 (tabular numerals)"
     imobiliarias:
@@ -442,7 +442,7 @@ patterns:
       border: "1px solid #2A2D33"
       border-radius: 0px
       height: 40px
-      color: "#8A8F99"
+      color: "#A0A5AE"
       font: "DM Sans 500 14px"
       hover-border-color: "#E8A020"
       hover-color: "#F0F0EE"
@@ -461,7 +461,7 @@ patterns:
       border: "1px solid #2A2D33"
       border-radius: 0px
       color: "#F0F0EE"
-      label-font: "DM Sans 500 13px #8A8F99"
+      label-font: "DM Sans 500 13px #A0A5AE"
       input-font: "JetBrains Mono Regular 14px (data inputs)"
       # Override: body font for descriptive fields, mono for data fields
       focus-border: "1px solid #E8A020"
@@ -494,7 +494,7 @@ patterns:
       background: "#0E0F11"
       height: 56px
       logo: "MUTAV lockup, dark colourway (kit/logo/svg/mutav-lockup-dark.svg), left"
-      nav-items: "DM Sans 500 14px #8A8F99; active: #F0F0EE + 1px amber bottom border"
+      nav-items: "DM Sans 500 14px #A0A5AE; active: #F0F0EE + 1px amber bottom border"
       live-dot: "6px #E8A020 circle, opacity pulse 2s linear infinite (1→0.4→1)"
       counter: "JetBrains Mono 12px"
       connect-button: "amber outline, 0px radius, no fill (see button-primary.investidor)"
@@ -657,7 +657,7 @@ fronts:
       --color-surface-3:  "#252830"
       --color-border:     "#2A2D33"
       --color-text:       "#F0F0EE"
-      --color-text-2:     "#8A8F99"
+      --color-text-2:     "#A0A5AE"
       --color-text-3:     "#555B66"
       --color-accent:     "#E8A020"
       --color-accent-dim: "#9E6A10"

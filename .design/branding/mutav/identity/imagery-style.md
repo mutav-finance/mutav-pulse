@@ -22,7 +22,7 @@ This front does not use photography. The decision is not a budget constraint —
 **Data visualization as the primary visual element:**
 The charts, graphs, and tables embedded in the dashboard interface are the "images" of this front. A NAV curve plotted over 90 days, showing disbursement events as vertical markers, is more visually compelling to Ana than any stock photograph could be. These are functional images — they carry data — and they are the design expression of the brand value "Verificabilidade Como Padrão."
 
-Visual treatment for charts: stroke-based, amber (`#E8A020`) for the primary data line, `#8A8F99` for axis labels and grid lines, `#3DAB72` for confirmed disbursement markers, `#C94040` for default event markers. No fills. No gradients. The line is the argument.
+Visual treatment for charts: stroke-based, amber (`#E8A020`) for the primary data line, `#A0A5AE` for axis labels and grid lines, `#3DAB72` for confirmed disbursement markers, `#C94040` for default event markers. No fills. No gradients. The line is the argument.
 
 **Onchain artifacts as visual anchors:**
 In contexts where a large visual element is needed (a protocol landing page section, an investor documentation header), the approved imagery is an actual high-contrast render of a Solana transaction viewer or program account explorer. Treatment: desaturated to near-monochrome, with amber tonal overlay at 20–30% opacity. Cropped tight to the relevant data field.
