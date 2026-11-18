@@ -31,7 +31,7 @@ The reference: "A financial instrument's offering memorandum designed for a prot
 | Surface 3 | `#252830` | Hover states, secondary panels |
 | Border | `#2A2D33` | Structural borders — used sparingly |
 | Foreground Primary | `#F0F0EE` | Primary text — warm white, not pure |
-| Foreground Secondary | `#8A8F99` | Secondary text, labels, captions |
+| Foreground Secondary | `#A0A5AE` | Secondary text, labels, captions |
 | Foreground Tertiary | `#555B66` | Disabled, placeholders |
 | Accent (Amber) | `#E8A020` | CTAs, logo, active states, live indicators — ONLY |
 | Accent Dim | `#9E6A10` | Amber hover/secondary states |

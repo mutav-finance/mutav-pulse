@@ -18,7 +18,7 @@ The three fronts must feel coherent as siblings and distinct as siblings. A pers
 
 **Background:** `#0E0F11` (Obsidian) — the nav shares the page canvas.
 **Logo:** The MUTAV lockup, dark colourway (`mutav-lockup-dark`): warm-white mark letters, `#E8A020` amber pill and name. Positioned left. Clear space respected. No tagline in the nav.
-**Nav items:** DM Sans 500 14px, `#8A8F99`. Active state: `#F0F0EE` with a 1px amber underline below the item (not a background highlight — a line). The amber is the pointer.
+**Nav items:** DM Sans 500 14px, `#A0A5AE`. Active state: `#F0F0EE` with a 1px amber underline below the item (not a background highlight — a line). The amber is the pointer.
 **Live indicator:** A 6px amber dot, pulsing at 2-second interval (opacity 100% → 40% → 100%, linear), adjacent to a JetBrains Mono 12px counter showing "NAV ao vivo · R$47.2M." This is the only animation in the nav.
 **Right side:** Wallet address in JetBrains Mono 12px, `#555B66`, truncated to first-6/last-4. Connect button in amber outline (1px border `#E8A020`, no fill, DM Sans 500 13px, 0px radius).
 
@@ -27,7 +27,7 @@ The nav communicates immediately: this is a live instrument, not a static dashbo
 ### 1.2 NAV Display Module
 
 **Background:** Surface 1 (`#16181C`).
-**Label:** "NAV Total do Protocolo" — DM Sans 500 12px, `#8A8F99`, uppercase, +1% tracking.
+**Label:** "NAV Total do Protocolo" — DM Sans 500 12px, `#A0A5AE`, uppercase, +1% tracking.
 **Value:** "R$47.284.000" — DM Sans 700 48px, `#F0F0EE`. The period as thousands separator (BRL format) and the comma for decimals — never vice versa.
 **Sub-value:** "Última atualização: 23 minutos atrás · Bloco #284.091.447" — JetBrains Mono 11px, `#555B66`.
 **Change indicator:** "+R$284.000 (últimas 24h)" — JetBrains Mono 13px, `#3DAB72` (positive) or `#C94040` (negative). The color is the only semantic addition needed.
@@ -38,8 +38,8 @@ The module is a proof of value. DM Sans 700 makes the declaration; JetBrains Mon
 ### 1.3 Contract Registry Table
 
 **Background:** `#0E0F11` base, Surface 2 (`#1E2126`) for alternating header.
-**Header row:** JetBrains Mono 11px, `#8A8F99`, ALL CAPS, +2% tracking. Columns: CONTRACT_ID / INQUILINO / VALOR_MENSAL / STATUS / ÚLTIMA_AÇÃO / BLOCO.
-**Data rows:** JetBrains Mono 13px, `#F0F0EE` for primary values. `#8A8F99` for IDs and timestamps.
+**Header row:** JetBrains Mono 11px, `#A0A5AE`, ALL CAPS, +2% tracking. Columns: CONTRACT_ID / INQUILINO / VALOR_MENSAL / STATUS / ÚLTIMA_AÇÃO / BLOCO.
+**Data rows:** JetBrains Mono 13px, `#F0F0EE` for primary values. `#A0A5AE` for IDs and timestamps.
 **Status badge:** A 6px colored square (not a rounded pill — 0px radius) + JetBrains Mono 11px label. ATIVO: `#3DAB72` square + "ATIVO." EM_DEFAULT: `#C94040` square + "EM_DEFAULT." LIQUIDADO: `#E8A020` square + "LIQUIDADO."
 **Row hover:** Background lifts to Surface 3 (`#252830`). Border appears at `#2A2D33` on top and bottom of the row.
 
@@ -49,7 +49,7 @@ The table is not styled — it is organized. Every styling decision is a legibil
 
 **Background:** `#0E0F11` full viewport.
 **Headline:** "Yield real. Colateral verificável. Sem intermediário." — DM Sans 700 64px, `#F0F0EE`, -4% tracking, leading 1.05. Left-aligned.
-**Sub-headline:** "O único protocolo na Solana com exposição ao mercado brasileiro de garantias locatícias." — DM Sans 400 18px, `#8A8F99`. Left-aligned.
+**Sub-headline:** "O único protocolo na Solana com exposição ao mercado brasileiro de garantias locatícias." — DM Sans 400 18px, `#A0A5AE`. Left-aligned.
 **CTA:** "Conectar carteira" — DM Sans 500 14px, `#E8A020` text, 1px `#E8A020` border, `#0E0F11` background fill, 0px radius, 40px height. Hover: `#E8A020` fill, `#0E0F11` text.
 **Visual element:** A live-rendering NAV chart component, embedded directly in the hero — real protocol data, not a screenshot. Amber line on obsidian background. This is the hero image.
 
@@ -181,7 +181,7 @@ The log is the protocol's memory. Every event is recorded, timestamped, and attr
 
 ### 4.2 Document System (Contracts, Reports, Investor Docs)
 
-**Cover:** `#0E0F11` background (documents exist in the investidor's world, not Lucas's — contracts are institutional). The MUTAV lockup, dark colourway (`mutav-lockup-dark`), centered on cover. Document title in DM Sans 700 28px, `#F0F0EE`. Date and version in JetBrains Mono 11px, `#8A8F99`.
+**Cover:** `#0E0F11` background (documents exist in the investidor's world, not Lucas's — contracts are institutional). The MUTAV lockup, dark colourway (`mutav-lockup-dark`), centered on cover. Document title in DM Sans 700 28px, `#F0F0EE`. Date and version in JetBrains Mono 11px, `#A0A5AE`.
 **Interior pages:** `#FFFFFF` background. Body: DM Sans 400 10.5pt. Section headers: DM Sans 700 14pt, `#1A1A1A`. Data tables: JetBrains Mono 9pt, tabular numerals, `#1A1A1A`.
 **For Lucas-specific documents** (guarantee certificate, contract confirmation): Interior pages use `#F7F6F3` background. Amber rule at top of each page (1px `#C47E10`). The trust signal carries even in a printed document.
 
